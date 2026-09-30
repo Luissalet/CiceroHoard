@@ -11,7 +11,7 @@ export const selectSlide = (deckId, slideId) => goReplace(`deck/${deckId}/slides
 
 export default function Slides() {
   const { t } = useApp();
-  const { deckId, deck, setDeck, reload, run, busy, query, confirmDiscard } = useDeck();
+  const { deckId, deck, setDeck, reload, run, busy, query, confirmDiscard, noteGenerator } = useDeck();
   const [newLayout, setNewLayout] = useState("bullets");
   const slides = (deck.slides || []).slice().sort((a, b) => a.position - b.position);
   const wanted = query.get("slide");
@@ -46,10 +46,22 @@ export default function Slides() {
     selectSlide(deckId, next ? next.id : null);
   };
 
+  const generateFromOutline = () => run(t("busy_slides"), async () => {
+    const res = await api.slidesGenerate(deckId, false);
+    const next = res.deck || res;
+    setDeck(next);
+    noteGenerator(res, t("what_slides"), next.model_used);
+    return true;
+  });
+
   if (!slide) {
+    const hasOutline = (deck.outline || []).length > 0;
     return (
       <div className="max-w-2xl space-y-3">
         <Empty>{t("slides_empty")}</Empty>
+        {hasOutline && (
+          <button type="button" className="btn btn-primary" disabled={off} onClick={generateFromOutline}>{t("slides_generate")}</button>
+        )}
         <div className="flex flex-wrap items-end gap-2">
           <label className="block">
             <span className="label">{t("layout")}</span>
@@ -57,7 +69,7 @@ export default function Slides() {
               {LAYOUTS.map((l) => <option key={l} value={l}>{t(`layout_${l}`)}</option>)}
             </select>
           </label>
-          <button type="button" className="btn btn-primary" disabled={off} onClick={add}>{t("slide_add")}</button>
+          <button type="button" className={hasOutline ? "btn" : "btn btn-primary"} disabled={off} onClick={add}>{t("slide_add")}</button>
           <a className="btn" href={`#/deck/${deckId}/outline`}>{t("tab_outline")}</a>
         </div>
       </div>
