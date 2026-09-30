@@ -113,6 +113,9 @@ def _add_chart(slide: Any, box: Box, theme: dict[str, Any], lang: str) -> None:
     ctype = {"bar": XL_CHART_TYPE.COLUMN_CLUSTERED, "line": XL_CHART_TYPE.LINE_MARKERS, "pie": XL_CHART_TYPE.PIE}.get(kind, XL_CHART_TYPE.COLUMN_CLUSTERED)
     frame = slide.shapes.add_chart(ctype, _emu(box.x), _emu(box.y), _emu(box.w), _emu(box.h), data)
     chart = frame.chart
+    values = [v for s in series for v in (s.get("values") or []) if isinstance(v, (int, float))]
+    # Grouped thousands; the viewer's locale draws the separator (a point in Spanish), as the preview does.
+    number_format = "#,##0" if all(float(v).is_integer() for v in values) else "#,##0.0#"
     text_hex, muted_hex = _color(theme, "text"), _color(theme, "muted")
     palette = series_colors(theme)
     chart.font.size = Pt(11)
@@ -137,6 +140,8 @@ def _add_chart(slide: Any, box: Box, theme: dict[str, Any], lang: str) -> None:
         plot.data_labels.font.size = Pt(11)
         plot.data_labels.font.color.rgb = _rgb(text_hex)
         plot.data_labels.position = XL_LABEL_POSITION.OUTSIDE_END
+        plot.data_labels.number_format = number_format
+        plot.data_labels.number_format_is_linked = False
     else:
         chart.has_legend = len(series) > 1
         if chart.has_legend:
@@ -162,7 +167,11 @@ def _add_chart(slide: Any, box: Box, theme: dict[str, Any], lang: str) -> None:
             plot.data_labels.font.size = Pt(11)
             plot.data_labels.font.color.rgb = _rgb(text_hex)
             plot.data_labels.position = XL_LABEL_POSITION.OUTSIDE_END if kind == "bar" else XL_LABEL_POSITION.ABOVE
+            plot.data_labels.number_format = number_format
+            plot.data_labels.number_format_is_linked = False
         cat_axis, val_axis = chart.category_axis, chart.value_axis
+        val_axis.tick_labels.number_format = number_format
+        val_axis.tick_labels.number_format_is_linked = False
         for axis in (cat_axis, val_axis):
             axis.tick_labels.font.size = Pt(11)
             axis.tick_labels.font.color.rgb = _rgb(muted_hex if axis is val_axis else text_hex)
