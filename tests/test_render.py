@@ -144,3 +144,28 @@ def test_empty_deck_renders_a_message():
 def test_text_estimator_is_monotonic():
     assert layouts.text_width("hola mundo", 20) < layouts.text_width("hola mundo largo", 20) < layouts.text_width("hola mundo largo", 30)
     assert layouts.count_lines("palabra " * 50, 300, 20, "sans", False) > layouts.count_lines("palabra " * 5, 300, 20, "sans", False)
+
+
+@pytest.mark.parametrize("theme", ["editorial", "carmesi"])
+def test_theme_fonts_survive_in_style_attributes(theme):
+    """Font stacks carry double quotes; unescaped, they closed the style attribute and every slide fell back to the page font."""
+    from html.parser import HTMLParser
+
+    class Styles(HTMLParser):
+        def __init__(self):
+            super().__init__()
+            self.stage, self.svg = [], []
+
+        def handle_starttag(self, tag, attrs):
+            attrs = dict(attrs)
+            if "stage" in (attrs.get("class") or "").split():
+                self.stage.append(attrs.get("style") or "")
+            if tag == "svg":
+                self.svg.append(attrs.get("style") or "")
+
+    html, _ = render_document(sample_deck(theme), assets=NO_ASSETS)
+    parser = Styles()
+    parser.feed(html)
+    heading = themes.get_theme(theme)["fonts"]["heading"]
+    assert parser.stage and all(f'--f-h:"{heading}"' in s and "--f-b:" in s for s in parser.stage)
+    assert parser.svg and all(s.startswith('font-family:"') for s in parser.svg)

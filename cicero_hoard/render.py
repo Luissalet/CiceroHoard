@@ -63,7 +63,7 @@ def chart_svg(block: dict[str, Any], w: float, h: float, theme: dict[str, Any], 
     colors = series_colors(theme)
     text_c, muted_c = _hex(theme["colors"]["text"]), _hex(theme["colors"]["muted"])
     parts = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {w:.0f} {h:.0f}" width="{w:.0f}" height="{h:.0f}" role="img" '
-             f'aria-label="{esc(block.get("title") or "chart")}" style="font-family:{font}">']
+             f'aria-label="{esc(block.get("title") or "chart")}" style="font-family:{esc(font)}">']
     if not cats or not series:
         return "".join(parts) + "</svg>"
     n = len(cats)
@@ -222,7 +222,7 @@ def slide_section(slide: dict[str, Any], *, deck: dict[str, Any], theme: dict[st
     ui = UI_TEXT.get(lang, UI_TEXT["es"])
     label = f'{ui["slide"]} {number} {ui["of"]} {total}: {slide.get("title") or ""}'
     return (f'<section class="slide" id="s-{esc(slide["id"])}" data-index="{index}" aria-label="{esc(label.strip())}">'
-            f'<div class="stage" style="{_theme_vars(theme)}">{body}</div></section>'), plan
+            f'<div class="stage" style="{esc(_theme_vars(theme))}">{body}</div></section>'), plan
 
 
 CSS = """
