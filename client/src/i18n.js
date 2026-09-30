@@ -121,7 +121,7 @@ const DICT = {
     "image_caption": "Pie de imagen",
     "image_formats": "PNG, JPEG o WebP. Máximo 15 MB.",
     "image_generate": "Generar imagen",
-    "image_generate_help": "Usa el estudio de imágenes de la familia si está en marcha. Guarda antes los cambios pendientes.",
+    "image_generate_help": "Usa el estudio de imágenes de la familia si está en marcha. Antes se guardan los cambios pendientes.",
     "image_generated": "Imagen generada",
     "image_missing": "Bloque {n}: falta la imagen.",
     "image_none": "Sin imagen.",
