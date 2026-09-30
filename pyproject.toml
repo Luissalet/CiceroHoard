@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cicero-hoard"
+version = "0.1.0"
+description = "A local workspace that turns a brief and source documents into an editable presentation, with per-slide review and export to PPTX, PDF, HTML and Markdown, exposed to assistants through MCP."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { file = "LICENSE" }
+authors = [{ name = "Luissalet" }]
+dependencies = [
+  "fastapi>=0.115",
+  "uvicorn>=0.30",
+  "pydantic>=2.7",
+  "httpx>=0.27",
+  "mcp>=1.10,<2",
+  "python-multipart>=0.0.9",
+  "python-pptx>=1.0",
+  "python-docx>=1.1",
+  "pypdf>=3.17",
+  "pillow>=10",
+]
+
+[project.optional-dependencies]
+pdf = ["playwright>=1.45"]
+dev = ["pytest>=8", "pytest-asyncio>=0.23"]
+icon = ["pillow>=11", "numpy>=2", "opencv-python-headless>=4.9"]
+
+[project.scripts]
+cicero-hoard = "cicero_hoard.__main__:main"
+
+[tool.setuptools.packages.find]
+include = ["cicero_hoard*"]
+
+[tool.setuptools.package-data]
+cicero_hoard = ["static/**/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+asyncio_mode = "auto"
+filterwarnings = ["ignore::DeprecationWarning", "ignore::UserWarning", "ignore::FutureWarning"]
