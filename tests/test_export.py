@@ -184,7 +184,9 @@ def test_pdf_real_render():
     assert len(reader.pages) == 11
     box = reader.pages[0].mediabox
     assert abs(float(box.width) / float(box.height) - 16 / 9) < 0.02
-    assert "Revisión trimestral" in reader.pages[0].extract_text() or "trimestral" in reader.pages[0].extract_text()
+    # Text extraction may split words at glyph-spacing boundaries depending on the installed fonts.
+    text = "".join(reader.pages[0].extract_text().split())
+    assert "Revisióntrimestral" in text
 
 
 # ---------------- through the service ----------------
