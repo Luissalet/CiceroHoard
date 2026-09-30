@@ -37,7 +37,7 @@ class Config:
     data_dir_configured: bool = False
     file_roots: tuple[Path, ...] = ()  # CICERO_FILE_ROOTS: when set, local-file sources must live under one of them
     image_studio_url: str = ""  # CICERO_IMAGE_STUDIO_URL: skip discovery and use this studio
-    image_tool: str = "studio_generate"  # CICERO_IMAGE_TOOL: the studio tool that returns one image
+    image_timeout: float = 600.0  # CICERO_IMAGE_TIMEOUT: seconds to wait for a render in the studio
     max_upload_bytes: int = MAX_UPLOAD_BYTES
     max_image_bytes: int = MAX_IMAGE_BYTES
 
@@ -78,5 +78,5 @@ class Config:
             data_dir_configured=bool(raw_dir),
             file_roots=roots,
             image_studio_url=_env("CICERO_IMAGE_STUDIO_URL").rstrip("/"),
-            image_tool=_env("CICERO_IMAGE_TOOL") or "studio_generate",
+            image_timeout=float(_int(_env("CICERO_IMAGE_TIMEOUT") or "600", 600, 10, 86400)),
         )

@@ -132,7 +132,7 @@ formats do not depend on it). Files live in `<data>/exports/<export id>/`. The H
 | method and path | body | answer |
 | --- | --- | --- |
 | `GET /api/themes` | | `{items: [{id, name, colors: {background, surface, text, muted, accent, accent2}, fonts: {heading, body}}]}` |
-| `GET /api/settings` | | `{model, default_language, pdf_available, image_studio: {configured_url, tool}, file_roots, max_upload_mb}` |
+| `GET /api/settings` | | `{model, default_language, pdf_available, image_studio: {configured_url, timeout_s}, file_roots, max_upload_mb}` |
 | `PATCH /api/settings` (also `PUT`) | `{model?, default_language?}` | the settings |
 
 ## Agent bridge

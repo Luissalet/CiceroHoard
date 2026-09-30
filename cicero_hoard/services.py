@@ -68,7 +68,7 @@ class Services:
         self._injected_link = link
         self._link: Any = None
         self.link_sync: Any = link if link is not None else self._build_link()
-        self.image_studio = image_studio or ImageStudio(configured_url=config.image_studio_url, tool=config.image_tool)
+        self.image_studio = image_studio or ImageStudio(configured_url=config.image_studio_url, timeout=config.image_timeout)
         self._emit = emit_fn
         self._pdf_fn = pdf_fn
 
@@ -126,7 +126,7 @@ class Services:
             "model": self.db.get_setting("model", "") or "",
             "default_language": self.default_language(),
             "pdf_available": self.pdf_available(),
-            "image_studio": {"configured_url": self.config.image_studio_url or None, "tool": self.config.image_tool},
+            "image_studio": {"configured_url": self.config.image_studio_url or None, "timeout_s": self.config.image_timeout},
             "file_roots": [str(p) for p in self.config.file_roots],
             "max_upload_mb": self.config.max_upload_bytes // (1024 * 1024),
         }

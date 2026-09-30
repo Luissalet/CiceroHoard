@@ -327,7 +327,7 @@ def test_themes_and_settings(client):
     themes = client.get("/api/themes").json()["items"]
     assert len(themes) >= 6 and {"id", "name", "colors", "fonts"} <= set(themes[0])
     s = client.get("/api/settings").json()
-    assert s["default_language"] == "es" and "pdf_available" in s and s["image_studio"]["tool"] == "studio_generate"
+    assert s["default_language"] == "es" and "pdf_available" in s and s["image_studio"]["timeout_s"] == 600.0
     assert client.patch("/api/settings", json={"default_language": "en"}).json()["default_language"] == "en"
     assert client.put("/api/settings", json={"model": "qwen3"}).json()["model"] == "qwen3"
     assert client.get("/api/settings").json()["model"] == "qwen3"

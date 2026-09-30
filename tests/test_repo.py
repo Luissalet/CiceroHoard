@@ -46,7 +46,7 @@ def test_readmes_list_every_tool_and_have_the_responsible_use_section(readme):
     for tool in agent_tools.TOOLS_BY_NAME:
         assert f"`{tool}`" in text, (readme, tool)
     assert ("## Responsible use" if readme == "README.md" else "## Uso responsable") in text
-    for var in ("CICERO_PORT", "CICERO_DATA_DIR", "CICERO_FILE_ROOTS", "CICERO_IMAGE_STUDIO_URL", "CICERO_IMAGE_TOOL", "CICERO_ALLOWED_HOSTS"):
+    for var in ("CICERO_PORT", "CICERO_DATA_DIR", "CICERO_FILE_ROOTS", "CICERO_IMAGE_STUDIO_URL", "CICERO_IMAGE_TIMEOUT", "CICERO_ALLOWED_HOSTS"):
         assert f"`{var}`" in text, (readme, var)
     assert "pdf_unavailable" in text and "5194" in text
 
@@ -88,7 +88,7 @@ def test_vendored_hoard_link_is_untouched():
 
 def test_defaults():
     cfg = Config.from_env()
-    assert cfg.port == 5194 and cfg.image_tool == "studio_generate" and cfg.max_upload_bytes == 20 * 1024 * 1024
+    assert cfg.port == 5194 and cfg.image_timeout == 600.0 and cfg.max_upload_bytes == 20 * 1024 * 1024
     assert (ROOT / "LICENSE").is_file() and (ROOT / ".gitignore").is_file() and (ROOT / ".github" / "workflows" / "ci.yml").is_file()
 
 
