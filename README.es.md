@@ -139,6 +139,21 @@ python -m pytest -q      # sin red: el modelo y el estudio de imágenes están s
 Las pruebas de PDF solo se ejecutan si hay un Chromium disponible. La documentación de la API HTTP está en
 `docs/API.md`.
 
+## Una prueba real
+
+En un PC con Windows y un modelo local de 27B servido con llama.cpp: un plan de ventas de siete diapositivas para una
+tienda ficticia, a partir de un encargo y un informe pegado. El guion tardó 155 s; escritas una tras otra, cada
+diapositiva tardaba unos 75 s, y por eso ahora se escriben de tres en tres. El modelo usó solo las cifras del informe:
+un gráfico de barras con los cuatro trimestres, los datos de clientes en dos columnas y, tras la indicación «quita la
+frase del margen bruto, no está en el informe; muestra el desglose de los 70.000 € como gráfico de barras», una
+diapositiva con ese desglose exacto y sin la frase. La revisión no encontró cifras sin fuente. Se abrieron las
+exportaciones PPTX y PDF: gráficos nativos, notas del orador y las fuentes del tema incrustadas en el PDF. El estudio
+de imágenes dibujó una imagen 16:9 para una diapositiva en 79 s. Un asistente conectado por MCP listó las
+presentaciones, pasó la revisión y exportó el PDF en cuatro rondas. Cuatro fallos encontrados en esa prueba están
+corregidos y cubiertos por pruebas: fuentes del tema perdidas en el HTML, miles sin separar en los gráficos nativos, un
+puente que daba por parada una aplicación en marcha cuando no podía leer su token y una llamada de imagen a una
+herramienta que el estudio no tiene.
+
 ## Límites
 
 - Una imagen tarda lo que el estudio tarde en renderizarla; la petición espera hasta `CICERO_IMAGE_TIMEOUT` segundos.

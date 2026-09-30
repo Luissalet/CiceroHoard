@@ -135,6 +135,19 @@ python -m pytest -q      # no network: the model and the image studio are faked
 
 The PDF tests run only when a Chromium is available. Documentation of the HTTP API is in `docs/API.md`.
 
+## A real run
+
+On a Windows PC with a local 27B model served by llama.cpp: a seven-slide sales plan for a fictional shop, from a
+brief and one pasted report. The outline took 155 s; with slides written one after another each took about 75 s, which
+is why they are now written three at a time. The model used only the report's figures: a bar chart of the four
+quarters, the customer figures in two columns, and, after the feedback "remove the gross-margin sentence, it is not in
+the report; show the 70,000 EUR breakdown as a bar chart", a slide with that exact breakdown and without the sentence.
+The check reported no unsourced figure. PPTX and PDF exports were opened: native charts, speaker notes, the theme's
+fonts embedded in the PDF. The image studio drew a 16:9 picture for one slide in 79 s. An assistant connected over
+MCP listed the decks, ran the check and exported the PDF in four rounds. Four faults found in that run are fixed and
+covered by tests: theme fonts lost in the HTML, bare thousands on native charts, a bridge that called a running app
+stopped when it could not read its token, and an image call to a tool the studio does not have.
+
 ## Limits
 
 - A picture takes as long as the studio needs to render it; the request waits up to `CICERO_IMAGE_TIMEOUT` seconds.
