@@ -77,6 +77,7 @@ The built client is committed under `cicero_hoard/static`, so `npm` is only need
 | `CICERO_IMAGE_STUDIO_URL` | discovered | address of the image studio, to skip discovery |
 | `CICERO_IMAGE_TIMEOUT` | `600` | seconds to wait for one render in the image studio (10-86400) |
 | `CICERO_PARALLEL_SLIDES` | `3` | slides written at the same time by the model after the first one (1-8); a local server with several slots finishes a deck sooner |
+| `CICERO_SLIDE_EFFORT` | `low` | reasoning effort asked of the model for each slide and rewrite (`off`, `low`, `medium`, `high`); the outline always asks `medium` |
 
 The model comes from Hoard Link (`data/backend.json` or the Hoard environment variables); the model name can also be
 chosen in Settings.

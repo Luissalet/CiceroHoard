@@ -45,12 +45,12 @@ class ModelDown(Exception):
 
 # ---------------- talking to the model ----------------
 
-def chat_json(svc: Any, messages: list[dict[str, str]], parse: Callable[[Any, bool], Any], *, max_tokens: int, effort: str = "medium") -> tuple[Any, Optional[str]]:
+def chat_json(svc: Any, messages: list[dict[str, str]], parse: Callable[[Any, bool], Any], *, max_tokens: int, effort: Optional[str] = None) -> tuple[Any, Optional[str]]:
     """Ask for JSON, parse it (strict), retry once with the error, then parse leniently. Returns (value, model name)."""
 
     def ask(msgs: list[dict[str, str]]) -> tuple[str, Optional[str]]:
         try:
-            result = svc.link_sync.chat(msgs, effort=effort, max_tokens=max_tokens, temperature=0.4)
+            result = svc.link_sync.chat(msgs, effort=effort or slide_effort(), max_tokens=max_tokens, temperature=0.4)
         except Exception as error:  # noqa: BLE001 - any backend failure means "no model" for the caller
             raise ModelDown(f"{type(error).__name__}: {str(error)[:200]}") from error
         text = (getattr(result, "text", "") or "").strip()
@@ -221,7 +221,7 @@ def slide_messages(deck: dict[str, Any], item: dict[str, Any], position: int, to
     if feedback:
         parts += [f"Change requested by the person: {feedback}"]
     parts += ["", f"Source excerpts:\n{excerpt_text or '(no sources: use only the brief and the outline)'}", "",
-              'Return {"layout":"...","title":"...","subtitle":null,"blocks":[...],"notes":"2 to 5 sentences the speaker can say","sources":[ids of the excerpts used, e.g. [1,3]],"image_prompt":null}.',
+              'Return {"layout":"...","title":"...","subtitle":null,"blocks":[...],"notes":"2 to 5 sentences the speaker can say to this audience, in a plain spoken register without ceremonial forms of address unless the brief asks for them","sources":[ids of the excerpts used, e.g. [1,3]],"image_prompt":null}.',
               LAYOUT_SPEC, BLOCK_SPEC,
               "Rules: honour the outline item's layout_hint when it fits; a bullets slide has one bullets block; use a chart only when the excerpts contain the "
               "numbers; write everything in the deck language; keep bullets short; for image_text slides add an image_prompt describing the picture."]
@@ -492,7 +492,7 @@ def generate_outline(svc: Any, deck_id: str) -> dict[str, Any]:
     generator, model = "model", None
     try:
         items, model = chat_json(svc, outline_messages(deck, excerpt_text), lambda d, strict: parse_outline(d, strict, deck["slide_count"], warnings),
-                                 max_tokens=2500)
+                                 max_tokens=4000, effort="medium")
     except ModelDown as down:
         generator = "fallback"
         warnings.append(model_status_note(str(down)))
@@ -523,6 +523,16 @@ def _order_after_generation(svc: Any, deck_id: str, outline_ids: list[str], old_
             final += anchor.get(oid, [])
     leftovers = [sid for sid in current if sid not in final]  # e.g. hand-added slides anchored to a removed outline item
     store.reorder_slides(svc, deck_id, final + leftovers)
+
+
+def slide_effort() -> str:
+    """Reasoning effort asked of the model for slides and rewrites (CICERO_SLIDE_EFFORT, default low).
+
+    The outline decides the argument and keeps "medium"; a slide only lays out points already chosen, and on a
+    local 27B model "medium" made one rewrite take minutes instead of about one.
+    """
+    value = (os.environ.get("CICERO_SLIDE_EFFORT") or "low").strip().lower()
+    return value if value in ("off", "low", "medium", "high", "max") else "low"
 
 
 def parallel_slides() -> int:

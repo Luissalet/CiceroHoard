@@ -79,6 +79,7 @@ navegador.
 | `CICERO_IMAGE_STUDIO_URL` | se descubre | dirección del estudio de imágenes, para saltarse el descubrimiento |
 | `CICERO_IMAGE_TIMEOUT` | `600` | segundos que se espera a un render del estudio de imágenes (10-86400) |
 | `CICERO_PARALLEL_SLIDES` | `3` | diapositivas que el modelo escribe a la vez después de la primera (1-8); un servidor local con varias ranuras termina antes |
+| `CICERO_SLIDE_EFFORT` | `low` | esfuerzo de razonamiento que se pide al modelo en cada diapositiva y reescritura (`off`, `low`, `medium`, `high`); el guion pide siempre `medium` |
 
 El modelo sale de Hoard Link (`data/backend.json` o las variables de entorno de Hoard); el nombre del modelo también
 se puede elegir en Ajustes.
