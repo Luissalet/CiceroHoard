@@ -75,7 +75,8 @@ The built client is committed under `cicero_hoard/static`, so `npm` is only need
 | `CICERO_ALLOWED_HOSTS` | local only | extra host names the server accepts |
 | `CICERO_FILE_ROOTS` | empty | folders (separated by the OS path separator) that local-file sources may come from |
 | `CICERO_IMAGE_STUDIO_URL` | discovered | address of the image studio, to skip discovery |
-| `CICERO_IMAGE_TOOL` | `studio_generate` | name of the studio tool that returns one image |
+| `CICERO_IMAGE_TIMEOUT` | `600` | seconds to wait for one render in the image studio (10-86400) |
+| `CICERO_PARALLEL_SLIDES` | `3` | slides written at the same time by the model after the first one (1-8); a local server with several slots finishes a deck sooner |
 
 The model comes from Hoard Link (`data/backend.json` or the Hoard environment variables); the model name can also be
 chosen in Settings.
@@ -119,8 +120,10 @@ person's decision: an assistant should not approve slides on its own.
 Cicero works alone. Decks are addressable as `hoard://cicero/deck/<id>`. It emits `cicero.deck.created`,
 `cicero.deck.deleted`, `cicero.outline.generated`, `cicero.slides.generated` and `cicero.deck.exported` on the hub
 bus (ids and short titles only). Pictures come from Prospero's Hoard when it runs: the studio is looked up through
-`CICERO_IMAGE_STUDIO_URL`, the hub's app list, or its default local port, and is called through the hub with this
-app's own token.
+`CICERO_IMAGE_STUDIO_URL`, the hub's app list, or its default local port (8815), and is used through its local REST
+API, which needs no token. Slide pictures go into a studio project named "Cicero's Hoard slides" (reused, or created
+the first time); each request submits one 16:9 render, waits for it and stores the resulting image in the deck. Only
+loopback addresses are ever contacted.
 
 ## Development
 
@@ -133,9 +136,9 @@ The PDF tests run only when a Chromium is available. Documentation of the HTTP A
 
 ## Limits
 
-- The image studio call was written against the documented conventions of the family and has not been checked
-  against a running studio: the tool name is configurable (`CICERO_IMAGE_TOOL`) and the result reader accepts
-  base64, data URLs, local paths and local URLs.
+- A picture takes as long as the studio needs to render it; the request waits up to `CICERO_IMAGE_TIMEOUT` seconds.
+  If that time passes the render keeps running in the studio and is not submitted again. Only one image is taken
+  per request, from a studio on this machine; images over 15 MB or not PNG, JPEG or WEBP are refused.
 - The PDF export needs Chromium (`python -m playwright install chromium`, or a system Edge or Chrome). Without it,
   exporting `pdf` fails with the code `pdf_unavailable` and the other formats keep working.
 - Fonts are those of the theme; a machine without them substitutes another and lines may wrap differently. The

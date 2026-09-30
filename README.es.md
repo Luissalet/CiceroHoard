@@ -77,7 +77,8 @@ navegador.
 | `CICERO_ALLOWED_HOSTS` | solo local | nombres de host adicionales que acepta el servidor |
 | `CICERO_FILE_ROOTS` | vacío | carpetas (separadas con el separador de rutas del sistema) de las que pueden venir archivos locales |
 | `CICERO_IMAGE_STUDIO_URL` | se descubre | dirección del estudio de imágenes, para saltarse el descubrimiento |
-| `CICERO_IMAGE_TOOL` | `studio_generate` | nombre de la herramienta del estudio que devuelve una imagen |
+| `CICERO_IMAGE_TIMEOUT` | `600` | segundos que se espera a un render del estudio de imágenes (10-86400) |
+| `CICERO_PARALLEL_SLIDES` | `3` | diapositivas que el modelo escribe a la vez después de la primera (1-8); un servidor local con varias ranuras termina antes |
 
 El modelo sale de Hoard Link (`data/backend.json` o las variables de entorno de Hoard); el nombre del modelo también
 se puede elegir en Ajustes.
@@ -122,7 +123,10 @@ Cicero funciona solo. Las presentaciones se pueden direccionar como `hoard://cic
 `cicero.deck.created`, `cicero.deck.deleted`, `cicero.outline.generated`, `cicero.slides.generated` y
 `cicero.deck.exported` en el bus del hub (solo identificadores y títulos cortos). Las imágenes vienen de Prospero's
 Hoard cuando está en marcha: el estudio se busca con `CICERO_IMAGE_STUDIO_URL`, con la lista de aplicaciones del hub o
-con su puerto local por defecto, y se le llama a través del hub con el token de esta aplicación.
+con su puerto local por defecto (8815), y se usa a través de su API REST local, que no necesita token. Las imágenes de
+las diapositivas van a un proyecto del estudio llamado "Cicero's Hoard slides" (se reutiliza o se crea la primera
+vez); cada petición envía un render 16:9, espera a que termine y guarda la imagen resultante en la presentación. Solo
+se contacta con direcciones de bucle local.
 
 ## Desarrollo
 
@@ -136,9 +140,10 @@ Las pruebas de PDF solo se ejecutan si hay un Chromium disponible. La documentac
 
 ## Límites
 
-- La llamada al estudio de imágenes se escribió siguiendo las convenciones documentadas de la familia y no se ha
-  comprobado con un estudio en marcha: el nombre de la herramienta es configurable (`CICERO_IMAGE_TOOL`) y el lector
-  del resultado acepta base64, URL de datos, rutas locales y URL locales.
+- Una imagen tarda lo que el estudio tarde en renderizarla; la petición espera hasta `CICERO_IMAGE_TIMEOUT` segundos.
+  Si pasa ese tiempo, el render sigue en marcha en el estudio y no se vuelve a enviar. Solo se toma una imagen por
+  petición, de un estudio de este mismo equipo; se rechazan las imágenes de más de 15 MB o que no sean PNG, JPEG ni
+  WEBP.
 - La exportación a PDF necesita Chromium (`python -m playwright install chromium`, o un Edge o Chrome del sistema). Sin
   él, exportar `pdf` falla con el código `pdf_unavailable` y los demás formatos siguen funcionando.
 - Las tipografías son las del tema; un equipo que no las tenga sustituye otra y las líneas pueden cortarse de otra

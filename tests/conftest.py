@@ -4,6 +4,7 @@ import io
 import json
 import re
 import sys
+import threading
 import warnings
 from dataclasses import dataclass
 from pathlib import Path
@@ -82,16 +83,18 @@ class FakeLink:
         self.available = available
         self.calls: list[list[dict[str, str]]] = []
         self._i = 0
+        self._lock = threading.Lock()
 
     def chat(self, messages, images=None, **kwargs):
-        self.calls.append(messages)
-        if not self.available:
-            raise RuntimeError("no model configured")
-        if isinstance(self.responder, list):
-            text = self.responder[min(self._i, len(self.responder) - 1)]
-            self._i += 1
-        else:
-            text = self.responder(messages)
+        with self._lock:
+            self.calls.append(messages)
+            if not self.available:
+                raise RuntimeError("no model configured")
+            if isinstance(self.responder, list):
+                text = self.responder[min(self._i, len(self.responder) - 1)]
+                self._i += 1
+                return FakeChatResult(text=text)
+        text = self.responder(messages)
         return FakeChatResult(text=text)
 
     def status(self):
@@ -224,3 +227,9 @@ def deck(services):
     generate.generate_outline(services, d["id"])
     generate.generate_slides(services, d["id"])
     return decks.deck_view(services, d["id"])
+
+
+@pytest.fixture(autouse=True)
+def _one_slide_at_a_time(monkeypatch):
+    """Canned answer lists are served in order, so slides are written one by one unless a test asks otherwise."""
+    monkeypatch.setenv("CICERO_PARALLEL_SLIDES", "1")

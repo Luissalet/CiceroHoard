@@ -12,8 +12,10 @@ Rules that hold for every path:
 from __future__ import annotations
 
 import json
+import os
 import re
 import unicodedata
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Callable, Optional
 
 from pydantic import ValidationError
@@ -523,6 +525,14 @@ def _order_after_generation(svc: Any, deck_id: str, outline_ids: list[str], old_
     store.reorder_slides(svc, deck_id, final + leftovers)
 
 
+def parallel_slides() -> int:
+    """How many slides are written at the same time (CICERO_PARALLEL_SLIDES, 1-8, default 3)."""
+    try:
+        return max(1, min(8, int(os.environ.get("CICERO_PARALLEL_SLIDES", "3"))))
+    except ValueError:
+        return 3
+
+
 def generate_slides(svc: Any, deck_id: str, only_missing: bool = False) -> dict[str, Any]:
     deck = store.deck_view(svc, deck_id)
     outline = deck["outline"]
@@ -539,31 +549,60 @@ def generate_slides(svc: Any, deck_id: str, only_missing: bool = False) -> dict[
     used_model = used_fallback = False
     model_name: Optional[str] = None
     generated = kept = 0
+    jobs: list[tuple[int, dict[str, Any], Optional[dict[str, Any]]]] = []
     for index, item in enumerate(outline, start=1):
         current = existing.get(item["id"])
         if current is not None and (current["status"] == "approved" or only_missing):
             kept += 1
             continue
+        jobs.append((index, item, current))
+
+    def ask(job: tuple[int, dict[str, Any], Optional[dict[str, Any]]]) -> tuple[str, Any, Optional[str], list[str]]:
+        index, item, _current = job
         neighbours = (outline[index - 2]["title"] if index > 1 else "", outline[index]["title"] if index < total else "")
-        content: Optional[dict[str, Any]] = None
-        if not model_down:
-            query = " ".join([item["title"], item.get("purpose", ""), *item.get("points", [])])
-            excerpt_text, _ = excerpts(sources, query, SLIDE_BUDGET)
-            slide_warnings: list[str] = []
-            try:
-                content, name = chat_json(
-                    svc, slide_messages(deck, item, index, total, neighbours, excerpt_text),
-                    lambda d, strict: finish_slide(GeneratedSlide.model_validate(d), strict=strict, source_ids=source_ids, reference=reference,
-                                                   warnings=slide_warnings, fallback_title=item["title"]),
-                    max_tokens=1600)
-                warnings += slide_warnings
-                used_model = True
-                model_name = name or model_name
-            except ModelDown as down:
-                model_down = True
-                warnings.append(model_status_note(str(down)))
-            except GenerationFailed as failed:
-                warnings.append(f"Slide {index} (\"{clip(item['title'], 40)}\"): {failed} Built by the fallback instead.")
+        query = " ".join([item["title"], item.get("purpose", ""), *item.get("points", [])])
+        excerpt_text, _ = excerpts(sources, query, SLIDE_BUDGET)
+        slide_warnings: list[str] = []
+        try:
+            content, name = chat_json(
+                svc, slide_messages(deck, item, index, total, neighbours, excerpt_text),
+                lambda d, strict: finish_slide(GeneratedSlide.model_validate(d), strict=strict, source_ids=source_ids, reference=reference,
+                                               warnings=slide_warnings, fallback_title=item["title"]),
+                max_tokens=1600)
+            return "ok", content, name, slide_warnings
+        except ModelDown as down:
+            return "down", None, str(down), []
+        except GenerationFailed as failed:
+            return "failed", None, str(failed), []
+
+    # The first slide goes alone: it tells whether a model answers at all. The rest run a few at a time,
+    # since a local server with several slots finishes them sooner together than one after another.
+    answers: dict[int, tuple[str, Any, Optional[str], list[str]]] = {}
+    if jobs:
+        first = ask(jobs[0])
+        answers[jobs[0][0]] = first
+        if first[0] == "down":
+            model_down = True
+            warnings.append(model_status_note(first[2] or ""))
+        elif len(jobs) > 1:
+            workers = max(1, min(parallel_slides(), len(jobs) - 1))
+            with ThreadPoolExecutor(max_workers=workers, thread_name_prefix="cicero-slide") as pool:
+                for job, answer in zip(jobs[1:], pool.map(ask, jobs[1:])):
+                    answers[job[0]] = answer
+            if any(a[0] == "down" for a in answers.values()):
+                warnings.append(model_status_note(next(a[2] for a in answers.values() if a[0] == "down") or ""))
+
+    for index, item, current in jobs:
+        kind, content, detail, slide_warnings = answers.get(index, ("down", None, None, []))
+        if kind == "ok":
+            warnings += slide_warnings
+            used_model = True
+            model_name = detail or model_name
+        elif kind == "failed":
+            warnings.append(f"Slide {index} (\"{clip(item['title'], 40)}\"): {detail} Built by the fallback instead.")
+            content = None
+        else:
+            content = None
         if content is None:
             content = fallback_slide(deck, item, index, total, sources)
             used_fallback = True

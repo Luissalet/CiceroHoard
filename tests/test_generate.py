@@ -329,3 +329,39 @@ def test_fallback_slides_never_carry_charts(fallback_services):
     generate.generate_outline(svc, d["id"])
     out = generate.generate_slides(svc, d["id"])
     assert all(b["type"] != "chart" for s in out["slides"] for b in s["blocks"])
+
+
+def test_slides_are_written_a_few_at_a_time_and_keep_their_order(services, monkeypatch):
+    import threading
+    import time
+
+    monkeypatch.setenv("CICERO_PARALLEL_SLIDES", "3")
+    d = _with_source(services)
+    generate.generate_outline(services, d["id"])
+    state = {"now": 0, "peak": 0}
+    lock = threading.Lock()
+    base = services.link_sync.responder
+
+    def slow(messages):
+        with lock:
+            state["now"] += 1
+            state["peak"] = max(state["peak"], state["now"])
+        time.sleep(0.05)
+        with lock:
+            state["now"] -= 1
+        return base(messages)
+
+    services.link_sync.responder = slow
+    out = generate.generate_slides(services, d["id"])
+    assert out["generator"] == "model" and out["generated"] == 6
+    assert state["peak"] == 3  # the first slide alone, then three at once
+    assert [s["title"] for s in out["slides"]] == [o["title"] for o in out["outline"]]
+
+
+def test_a_model_that_is_down_is_asked_once_not_once_per_slide(services):
+    d = _with_source(services)
+    generate.generate_outline(services, d["id"])
+    services.link_sync.available = False
+    before = len(services.link_sync.calls)
+    out = generate.generate_slides(services, d["id"])
+    assert out["generator"] == "fallback" and len(services.link_sync.calls) - before == 1
