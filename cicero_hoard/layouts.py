@@ -20,6 +20,8 @@ CONTENT_BOTTOM = 652
 GAP = 22
 BODY_LINE = 1.3
 HEAD_LINE = 1.15
+# Body text starts at this size and only shrinks when a slide is full: a short slide reads from the back of the room.
+BODY_MAX = 34
 SAFETY = 1.05  # estimated widths are inflated a little so that a fallback font does not wrap unexpectedly
 
 COLOR_KEYS = ("background", "surface", "text", "muted", "accent", "accent2")
@@ -169,12 +171,15 @@ def bullet_indent(size: float) -> int:
 
 def fmt_num(value: float, lang: str = "es") -> str:
     """Numbers as they were typed: no invented precision, decimal comma in Spanish."""
+    # Spanish business documents group thousands with a point (250.000), as the sources usually do.
     if float(value).is_integer():
-        text = f"{int(value)}" if abs(value) < 10_000 else f"{int(value):,}".replace(",", "\u202f" if lang == "es" else ",")
-    else:
-        text = f"{value:.6g}"
-        if "e" in text:
-            text = f"{value:.4f}".rstrip("0").rstrip(".")
+        if abs(value) < 10_000:
+            return f"{int(value)}"
+        grouped = f"{int(value):,}"
+        return grouped.replace(",", ".") if lang == "es" else grouped
+    text = f"{value:.6g}"
+    if "e" in text:
+        text = f"{value:.4f}".rstrip("0").rstrip(".")
     return text.replace(".", ",") if lang == "es" else text
 
 
@@ -450,7 +455,7 @@ def build_plan(slide: dict[str, Any], *, deck_title: str, theme: dict[str, Any],
             half = (len(blocks) + 1) // 2
             left, right = blocks[:half], blocks[half:]
             cw = 548
-            s = min(stack_size(left, cw, region_h, ctx, 28, 16), stack_size(right, cw, region_h, ctx, 28, 16))
+            s = min(stack_size(left, cw, region_h, ctx, BODY_MAX, 16), stack_size(right, cw, region_h, ctx, BODY_MAX, 16))
             got, o1 = stack(left, MARGIN_X, top, cw, region_h, ctx, smax=s, smin=s, where="left column")
             got2, o2 = stack(right, MARGIN_X + cw + 40, top, cw, region_h, ctx, smax=s, smin=s, where="right column")
             boxes += got + got2
@@ -462,7 +467,7 @@ def build_plan(slide: dict[str, Any], *, deck_title: str, theme: dict[str, Any],
                 got2, _ = stack(others, MARGIN_X + 580, top, 556, region_h, ctx, smax=26, smin=15)
                 boxes += got + got2
             else:
-                got, _ = stack(blocks, MARGIN_X, top, 1136, region_h, ctx)
+                got, _ = stack(blocks, MARGIN_X, top, 1136, region_h, ctx, smax=BODY_MAX)
                 boxes += got
         elif layout == "chart":
             charts = [b for b in blocks if b.get("type") == "chart"]
@@ -472,10 +477,10 @@ def build_plan(slide: dict[str, Any], *, deck_title: str, theme: dict[str, Any],
                 got2, _ = stack(others, MARGIN_X + 800, top, 336, region_h, ctx, smax=24, smin=14)
                 boxes += got + got2
             else:
-                got, _ = stack(blocks, MARGIN_X, top, 1136, region_h, ctx)
+                got, _ = stack(blocks, MARGIN_X, top, 1136, region_h, ctx, smax=BODY_MAX)
                 boxes += got
         else:
-            got, _ = stack(blocks, MARGIN_X, top, 1136, region_h, ctx)
+            got, _ = stack(blocks, MARGIN_X, top, 1136, region_h, ctx, smax=BODY_MAX)
             boxes += got
         boxes += _footer(deck_title, number, total, ctx)
 

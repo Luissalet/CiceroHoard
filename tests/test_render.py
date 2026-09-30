@@ -100,7 +100,7 @@ def test_boxes_stay_on_the_canvas():
 
 
 def test_number_format_by_language():
-    assert layouts.fmt_num(1250000, "es") == "1\u202f250\u202f000"
+    assert layouts.fmt_num(1250000, "es") == "1.250.000"
     assert layouts.fmt_num(4.3, "es") == "4,3" and layouts.fmt_num(4.3, "en") == "4.3"
     assert layouts.fmt_num(1500, "en") == "1500" and layouts.fmt_num(125000, "en") == "125,000"
     assert layouts.fmt_num(38.0, "es") == "38"
