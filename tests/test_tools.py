@@ -206,3 +206,42 @@ def test_bridge_refuses_non_local_urls():
     with pytest.raises(SystemExit):
         mcp_server._check_local("http://evil.example:5194")
     mcp_server._check_local("http://127.0.0.1:5194")
+
+
+def test_bridge_names_a_missing_or_foreign_token_instead_of_a_stopped_app(client, monkeypatch, tmp_path):
+    """Seen live: a running app with its data in another folder was reported as 'not running', and the assistant tried
+    to start it again."""
+    sys.path.insert(0, str(ROOT))
+    import httpx
+    import mcp_server
+
+    catalog = client.get("/api/agent/tools").json()
+    bridge = mcp_server.CiceroBridge(catalog["tools"], catalog["instructions"])
+    monkeypatch.delenv("CICERO_TOKEN", raising=False)
+    started = []
+    monkeypatch.setattr(mcp_server, "ensure_running", lambda *a, **k: started.append(1) or True)
+    monkeypatch.setattr(mcp_server, "_healthy", lambda: True)
+
+    class FakeAsyncClient:
+        def __init__(self, *a, **k):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *a):
+            return False
+
+        async def post(self, url, json=None, headers=None):
+            return client.post(url.replace(mcp_server.BASE_URL, ""), json=json, headers=headers)
+
+    monkeypatch.setattr(httpx, "AsyncClient", FakeAsyncClient)
+    monkeypatch.setattr(mcp_server, "TOKEN_FILE", tmp_path / "missing" / "mcp-token")
+    missing = json.loads(asyncio.run(bridge.call_tool("deck_list", {}))[0].text)["error"]
+    assert "running" in missing and "mcp-token" in missing and not started
+
+    foreign = tmp_path / "mcp-token"
+    foreign.write_text("not-the-token", encoding="utf-8")
+    monkeypatch.setattr(mcp_server, "TOKEN_FILE", foreign)
+    refused = json.loads(asyncio.run(bridge.call_tool("deck_list", {}))[0].text)["error"]
+    assert "refused" in refused and "CICERO_TOKEN_FILE" in refused

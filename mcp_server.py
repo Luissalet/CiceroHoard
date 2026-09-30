@@ -31,6 +31,11 @@ TOKEN_FILE = Path(
     or Path(os.environ.get("CICERO_DATA_DIR") or ROOT / "data") / "mcp-token"
 )
 NOT_RUNNING = "Open Cicero's Hoard (python -m cicero_hoard) so the assistant can use the presentation workspace."
+NO_TOKEN = ("Cicero's Hoard is running, but this bridge has no access token at {path}. The app writes it as mcp-token in "
+            "its data folder; point CICERO_TOKEN_FILE at that file (the data folder is CICERO_DATA_DIR when the app was "
+            "started with one).")
+TOKEN_REFUSED = ("Cicero's Hoard is running but refused this bridge's token ({path}): the file belongs to another data "
+                 "folder. Point CICERO_TOKEN_FILE at the mcp-token of the running app's data folder.")
 
 
 def _check_local(url: str) -> None:
@@ -76,10 +81,19 @@ class CiceroBridge(FastMCP):
                     headers={"Authorization": f"Bearer {_token()}"},
                 )
             body = response.json()
+            if response.status_code == 401:
+                return [TextContent(type="text", text=json.dumps({"error": TOKEN_REFUSED.format(path=TOKEN_FILE)}, ensure_ascii=False))]
             if response.status_code >= 400:
                 return [TextContent(type="text", text=json.dumps({"error": body.get("error", f"Error {response.status_code}")}, ensure_ascii=False))]
             return [TextContent(type="text", text=json.dumps(body, ensure_ascii=False))]
-        except (httpx.ConnectError, FileNotFoundError):
+        except FileNotFoundError:
+            # A missing token is not a stopped app: say which file is missing instead of offering to start it.
+            if _healthy():
+                return [TextContent(type="text", text=json.dumps({"error": NO_TOKEN.format(path=TOKEN_FILE)}, ensure_ascii=False))]
+            if retry and ensure_running():
+                return await self._call(name, arguments, retry=False)
+            return [TextContent(type="text", text=json.dumps({"error": NOT_RUNNING}))]
+        except httpx.ConnectError:
             if retry and ensure_running():
                 return await self._call(name, arguments, retry=False)
             return [TextContent(type="text", text=json.dumps({"error": NOT_RUNNING}))]
