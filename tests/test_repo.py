@@ -22,7 +22,8 @@ def repo_files():
         if not path.is_file() or path.suffix not in TEXT_SUFFIXES:
             continue
         rel = path.relative_to(ROOT)
-        if set(rel.parts) & SKIP_DIRS or rel.name == "package-lock.json" or rel.parts[0] == "tests":
+        # hoard-theme.css is synced verbatim from HoardLink and lists every family palette by app name.
+        if set(rel.parts) & SKIP_DIRS or rel.name in ("package-lock.json", "hoard-theme.css") or rel.parts[0] == "tests":
             continue
         yield path
 
