@@ -21,6 +21,71 @@ function Mini({ theme, title, subtitle }) {
   );
 }
 
+// A design system's roles in one mode, shaped like a theme so the same miniature can draw it.
+function roleTheme(roles, mode) {
+  const p = roles?.[mode];
+  if (!p) return null;
+  return {
+    colors: { background: p.background, surface: p.surface2 || p.surface, text: p.text, muted: p.muted, accent: p.accent, accent2: p.accent2 },
+    fonts: { heading: roles.fonts?.heading, body: roles.fonts?.body },
+  };
+}
+
+// "Theme from a design system": the design systems of the family design-system app, each in its light and dark mode.
+function FromDesignSystems({ deckId, setDeck, run, busy, onCreated }) {
+  const { t, notify } = useApp();
+  const systems = useAsync(() => api.designSystems(), []);
+  const [last, setLast] = React.useState(null);
+  const items = systems.data?.items || [];
+
+  const make = (system, mode) => run(t("busy_saving"), async () => {
+    const made = await api.themeFromTokens(system.id, mode);
+    const res = await api.deckUpdate(deckId, { theme: made.theme.id });
+    setDeck(res.deck || res);
+    setLast({ name: made.theme.name, warnings: made.warnings || [], created: made.created });
+    onCreated();
+    notify(t(made.created ? "theme_ds_created" : "theme_ds_reused", { name: made.theme.name }));
+    return true;
+  });
+
+  return (
+    <Section title={t("theme_ds_title")} right={<button type="button" className="btn" onClick={systems.reload} disabled={systems.loading}>{t("theme_ds_reload")}</button>}>
+      <p className="help mb-3">{t("theme_ds_help")}</p>
+      {systems.loading && !items.length && <p className="help" role="status">{t("theme_ds_loading")}</p>}
+      {systems.error && <p className="help" role="alert">{t("theme_ds_unavailable", { reason: systems.error.message })}</p>}
+      {!systems.loading && !systems.error && !items.length && <p className="help">{t("theme_ds_none")}</p>}
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        {items.map((system) => (
+          <div key={system.id} className="theme-card" data-design-system={system.id}>
+            <div className="grid grid-cols-2 gap-2">
+              {["light", "dark"].map((mode) => {
+                const th = roleTheme(system.roles, mode);
+                return th ? <Mini key={mode} theme={th} title={system.name} subtitle={t(mode === "light" ? "theme_ds_light" : "theme_ds_dark")} /> : <span key={mode} />;
+              })}
+            </div>
+            <div className="mt-2 font-semibold">{system.name}</div>
+            <div className="mt-1 flex flex-wrap gap-2">
+              {["light", "dark"].filter((mode) => system.roles?.[mode]).map((mode) => (
+                <button key={mode} type="button" className="btn" disabled={!!busy} onClick={() => make(system, mode)}>
+                  {t(mode === "light" ? "theme_ds_use_light" : "theme_ds_use_dark")}
+                </button>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+      {last && (
+        <div className="mt-3" role="status">
+          <div className="help">{t(last.created ? "theme_ds_created" : "theme_ds_reused", { name: last.name })}</div>
+          {last.warnings.length > 0 && (
+            <ul className="help mt-1 list-disc pl-5">{last.warnings.map((w) => <li key={w}>{w}</li>)}</ul>
+          )}
+        </div>
+      )}
+    </Section>
+  );
+}
+
 export default function Theme() {
   const { t } = useApp();
   const { deckId, deck, setDeck, run, busy } = useDeck();
@@ -48,11 +113,12 @@ export default function Theme() {
                 <span className="font-semibold">{th.name}</span>
                 {deck.theme === th.id && <span className="chip chip-accent">{t("theme_current")}</span>}
               </div>
-              <div className="help">{th.fonts?.heading} · {th.fonts?.body}</div>
+              <div className="help">{th.fonts?.heading} · {th.fonts?.body}{th.custom ? ` · ${t("theme_ds_badge")}` : ""}</div>
             </label>
           ))}
         </div>
       </Section>
+      <FromDesignSystems deckId={deckId} setDeck={setDeck} run={run} busy={busy} onCreated={themes.reload} />
       {first && (
         <Section title={t("theme_real")}>
           <div className="max-w-2xl"><SlideFrame deckId={deckId} slide={first} theme={deck.theme} title={t("theme_real")} /></div>

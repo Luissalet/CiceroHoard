@@ -28,6 +28,11 @@ construidas con el mismo código, de modo que no pueden discrepar.
   revisión lo avisa en vez de recortarlo en silencio.
 - **Temas**: siete temas (`claro`, `oscuro`, `editorial`, `carmesi`, `pizarra`, `tecnico`, `oceano`), todos con un
   contraste mínimo de 4,5:1 en texto, texto atenuado y acentos. Las tipografías son de las que trae Windows.
+  Un sistema de diseño de la aplicación de sistemas de diseño de la familia puede convertirse en un tema propio
+  (`theme_from_tokens`, o el selector "Tema desde un sistema de diseño" de la pantalla de tema): se trasladan sus
+  colores, tipografías y radio de esquinas, los colores que no se leerían se acercan al blanco o al negro hasta llegar a
+  4,5:1 (los cambios se listan) y una tipografía que no trae Windows se sustituye por la más parecida que sí. Las
+  tarjetas de un tema con radio se dibujan con esquinas redondeadas en la vista previa, el HTML y el PPTX.
 - **Exportaciones**:
   - PPTX con cuadros de texto reales, párrafos con viñeta, notas del orador y gráficos nativos (editables en el
     paquete ofimático), en 16:9.
@@ -111,7 +116,8 @@ herramientas de la aplicación en marcha y reenvía cada llamada. Si la aplicaci
 | `slide_approve` | aprobar o quitar la aprobación de una diapositiva |
 | `slide_revert` | listar las revisiones de una diapositiva o restaurar una como revisión nueva |
 | `deck_check` | revisión: desbordes, cifras que no están en las fuentes, notas ausentes, diapositivas sin aprobar |
-| `deck_theme` | listar los temas o aplicar uno |
+| `deck_theme` | listar los temas (los de serie y los hechos desde sistemas de diseño) o aplicar uno |
+| `theme_from_tokens` | crear un tema desde un sistema de diseño (`tokens_id`, `mode` claro u oscuro, `deck_id` opcional para aplicarlo); sin `tokens_id` lista los sistemas de diseño |
 | `deck_export` | exportar a `pptx`, `pdf`, `html` o `md`; devuelve la ruta del archivo y la URL de descarga |
 | `slide_image` | generar una imagen para una diapositiva con el estudio de imágenes |
 
@@ -122,7 +128,11 @@ una diapositiva es decisión de la persona: un asistente no debería aprobar por
 
 Cicero funciona solo. Las presentaciones se pueden direccionar como `hoard://cicero/deck/<id>`. Emite
 `cicero.deck.created`, `cicero.deck.deleted`, `cicero.outline.generated`, `cicero.slides.generated` y
-`cicero.deck.exported` en el bus del hub (solo identificadores y títulos cortos). Las imágenes vienen de Prospero's
+`cicero.deck.exported` en el bus del hub (solo identificadores y títulos cortos). Los temas hechos desde un sistema de diseño emiten
+`cicero.theme.created` y quedan enlazados con él (`hoard://cicero/theme/<id>` derivado de
+`hoard://vitruvius/tokens/<id>`); el sistema de diseño se lee a través del hub (`tokens_list` y `tokens_get` de la
+aplicación de sistemas de diseño), así que el hub y esa aplicación deben estar en marcha, y pedir el mismo sistema en el
+mismo estado devuelve el mismo tema. Las imágenes vienen de Prospero's
 Hoard cuando está en marcha: el estudio se busca con `CICERO_IMAGE_STUDIO_URL`, con la lista de aplicaciones del hub o
 con su puerto local por defecto (8815), y se usa a través de su API REST local, que no necesita token. Las imágenes de
 las diapositivas van a un proyecto del estudio llamado "Cicero's Hoard slides" (se reutiliza o se crea la primera

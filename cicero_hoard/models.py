@@ -208,6 +208,11 @@ class ExportBody(_Body):
     format: ExportFormat
 
 
+class ThemeFromTokensBody(_Body):
+    tokens_id: str = Field(..., min_length=1, max_length=80)
+    mode: Literal["light", "dark"] = "light"
+
+
 class SlideImageBody(_Body):
     prompt: Optional[str] = Field(None, max_length=1000)
 

@@ -14,7 +14,7 @@ from . import images as images_mod
 from .errors import CiceroError
 from .models import (Block, DeckCreate, DeckPatch, ExportFormat, Language, Layout, MAX_BLOCKS, MAX_SLIDES, OutlineItemIn, SlidePatch)
 from .services import Services
-from .themes import list_themes, require_theme
+from . import custom_themes
 
 AGENT_INSTRUCTIONS = """Cicero's Hoard builds presentations that a person can review slide by slide. Work in this order: deck_create (title, brief,
 audience, tone, language, number of slides) -> source_add (paste the text you may use, or a document the user names; figures on slides must come from
@@ -132,6 +132,12 @@ class ReorderArgs(BaseModel):
 class ThemeArgs(BaseModel):
     deck_id: Optional[str] = Field(None, max_length=40)
     theme: Optional[str] = Field(None, max_length=40, description="Theme id to apply; omit to list the themes.")
+
+
+class ThemeFromTokensArgs(BaseModel):
+    tokens_id: Optional[str] = Field(None, max_length=80, description="Id of a design system in the family design-system app; omit to list the ones available.")
+    mode: Literal["light", "dark"] = Field("light", description="Which of the design system's two colour modes becomes the theme.")
+    deck_id: Optional[str] = Field(None, max_length=40, description="Also apply the new theme to this presentation.")
 
 
 class ExportArgs(BaseModel):
@@ -275,12 +281,24 @@ def run_deck_check(svc: Services, a: DeckIdArgs) -> dict:
 def run_deck_theme(svc: Services, a: ThemeArgs) -> dict:
     if a.theme is None:
         current = store.deck_view(svc, a.deck_id)["theme"] if a.deck_id else None
-        return {"current": current, "themes": list_themes()}
+        return {"current": current, "themes": svc.themes()}
     if not a.deck_id:
         raise CiceroError("Pass deck_id to set a theme.")
-    require_theme(a.theme)
-    store.update_deck(svc, a.deck_id, {"theme": a.theme})
-    return {"current": a.theme, "themes": [{"id": t["id"], "name": t["name"]} for t in list_themes()]}
+    store.update_deck(svc, a.deck_id, {"theme": a.theme})  # validates the id, built-in or made from a design system
+    return {"current": a.theme, "themes": [{"id": t["id"], "name": t["name"]} for t in svc.themes()]}
+
+
+def run_theme_from_tokens(svc: Services, a: ThemeFromTokensArgs) -> dict:
+    if not a.tokens_id:
+        return {"ok": True, "design_systems": [{"id": d["id"], "name": d["name"]} for d in svc.design_systems()],
+                "hint": "Call again with tokens_id (and mode light or dark) to turn one into a theme."}
+    made = svc.theme_from_tokens(a.tokens_id, a.mode)
+    out = {"ok": True, "theme_id": made["theme"]["id"], "theme": {k: made["theme"][k] for k in ("id", "name", "colors", "fonts", "radius")}, "created": made["created"],
+           "warnings": made["warnings"], "contrast_issues": made["contrast_issues"]}
+    if a.deck_id:
+        store.update_deck(svc, a.deck_id, {"theme": made["theme"]["id"]})
+        out["applied_to"] = a.deck_id
+    return out
 
 
 def run_deck_export(svc: Services, a: ExportArgs) -> dict:
@@ -387,6 +405,11 @@ TOOLS: list[Tool] = [
          "List the themes, or set the theme of a presentation. Tema visual.\n"
          "Sinónimos: colores, tipografía, estilo, tema claro u oscuro.\nKeywords: theme, colours, fonts, style.",
          ThemeArgs, _ann(False, False, True), run_deck_theme),
+    Tool("theme_from_tokens",
+         "Make a theme from a design system (colours, fonts, radius); no tokens_id lists them. Tema desde diseño.\n"
+         "Colours are adjusted to read (contrast 4.5:1); a font that is not a Windows font is replaced. Sinónimos: usar mi marca, identidad visual, paleta corporativa, design system, tokens.\n"
+         "Keywords: theme, design system, tokens, brand, palette, vitruvius.",
+         ThemeFromTokensArgs, _ann(False, False, True, True), run_theme_from_tokens),
     Tool("deck_export",
          "Export to pptx (editable, native charts), pdf, html or md; returns the file path and download URL. Exportar.\n"
          "PDF needs Chromium. Sinónimos: descargar, guardar, generar archivo, pptx, PDF.\nKeywords: export, pptx, pdf, html, markdown.",

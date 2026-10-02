@@ -131,7 +131,9 @@ formats do not depend on it). Files live in `<data>/exports/<export id>/`. The H
 
 | method and path | body | answer |
 | --- | --- | --- |
-| `GET /api/themes` | | `{items: [{id, name, colors: {background, surface, text, muted, accent, accent2}, fonts: {heading, body}}]}` |
+| `GET /api/themes` | | `{items: [{id, name, colors: {background, surface, text, muted, accent, accent2}, fonts: {heading, body}}]}`; themes made from a design system also carry `custom: true`, `radius`, `source_ref`, `source_revision` and `warnings`. A deck whose `theme` is one of them has its definition in `theme_def` |
+| `GET /api/themes/design-systems` | | `{items: [{id, name, created_ts, roles}]}`: the design systems of the family design-system app, read through the hub (400 `family_unavailable` when the hub or that app is not there) |
+| `POST /api/themes/from-tokens` | `{tokens_id, mode?: "light" \| "dark"}` | 201 `{theme, created, warnings, contrast_issues}`: saves the design system as a custom theme; the same system in the same state answers with the theme made before (`created: false`) |
 | `GET /api/settings` | | `{model, default_language, pdf_available, image_studio: {configured_url, timeout_s}, file_roots, max_upload_mb}` |
 | `PATCH /api/settings` (also `PUT`) | `{model?, default_language?}` | the settings |
 
@@ -142,7 +144,7 @@ formats do not depend on it). Files live in `<data>/exports/<export id>/`. The H
 | `GET /api/agent/tools` | `{instructions, tools: [{name, description, annotations, inputSchema}]}` |
 | `POST /api/agent/call` | body `{name, arguments?, caller?}` with `Authorization: Bearer <contents of data/mcp-token>`; answers the tool result (trimmed to about 20 KB); 401 without the token, 404 for an unknown tool, 400 for invalid arguments or a domain error, 403 for a refused path |
 
-The 25 tools are listed in `README.md`. The REST routes above and the tools share one implementation.
+The 26 tools are listed in `README.md`. The REST routes above and the tools share one implementation.
 
 ## PWA and client
 

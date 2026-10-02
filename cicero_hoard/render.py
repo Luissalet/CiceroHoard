@@ -14,8 +14,8 @@ import re
 from pathlib import Path
 from typing import Any, Callable, Optional
 
-from .layouts import Box, Para, Plan, W, H, build_plan, fmt_num
-from .themes import COLOR_KEYS, css_font_stack, get_theme, series_colors
+from .layouts import Box, Para, Plan, W, H, build_plan, fmt_num, is_card
+from .themes import COLOR_KEYS, css_font_stack, series_colors, theme_of
 
 AssetLookup = Callable[[str], Optional[dict[str, Any]]]
 _HEX = re.compile(r"^#[0-9a-fA-F]{6}$")
@@ -181,7 +181,8 @@ def _para_style(p: Para, lang_fonts: dict[str, str]) -> str:
 def box_html(box: Box, theme: dict[str, Any], lang: str, assets: AssetLookup, src: Callable[[str], str]) -> str:
     geo = f"left:{_px(box.x)};top:{_px(box.y)};width:{_px(box.w)};height:{_px(box.h)}"
     if box.kind == "rect":
-        return f'<div class="b" style="{geo};background:var(--{box.fill or "surface"})"></div>'
+        radius = f";border-radius:{int(theme['radius'])}px" if theme.get("radius") and is_card(box) else ""
+        return f'<div class="b" style="{geo};background:var(--{box.fill or "surface"}){radius}"></div>'
     if box.kind == "image" and box.image:
         return f'<img class="b" style="{geo};object-fit:contain" src="{esc(src(box.image["asset_id"]))}" alt="{esc(box.image.get("alt", ""))}">'
     if box.kind == "chart" and box.chart:
@@ -313,7 +314,7 @@ def _asset_src(assets: AssetLookup, inline: bool) -> Callable[[str], str]:
 def render_document(deck: dict[str, Any], *, assets: AssetLookup, inline: bool = False, mode: str = "stacked",
                     only_slide: Optional[str] = None) -> tuple[str, list[Plan]]:
     """A complete HTML document. ``mode``: ``stacked`` (preview), ``present`` (one slide at a time, keyboard) or ``single``."""
-    theme = get_theme(deck.get("theme"))
+    theme = theme_of(deck)
     lang = deck.get("language", "es")
     slides = deck.get("slides", [])
     if only_slide is not None:

@@ -87,6 +87,19 @@ MIGRATIONS: list[str] = [
     );
     CREATE INDEX exports_deck ON exports(deck_id, created_ts);
     """,
+    # 2: themes made from another app's design system (a deck's `theme` column may name one)
+    """
+    CREATE TABLE custom_themes (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      definition TEXT NOT NULL,
+      source_ref TEXT NOT NULL DEFAULT '',
+      source_revision TEXT NOT NULL DEFAULT '',
+      warnings TEXT NOT NULL DEFAULT '[]',
+      created_ts REAL NOT NULL
+    );
+    CREATE INDEX custom_themes_source ON custom_themes(source_ref, source_revision);
+    """,
 ]
 
 

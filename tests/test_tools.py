@@ -17,13 +17,13 @@ ROOT = Path(__file__).resolve().parent.parent
 
 REQUIRED = {"cicero_status", "deck_list", "deck_create", "deck_get", "deck_update", "deck_delete", "source_add", "source_list", "source_get", "source_remove",
             "outline_generate", "outline_update", "slides_generate", "slide_get", "slide_update", "slide_regenerate", "slide_approve", "slide_revert", "slide_add",
-            "slide_delete", "slides_reorder", "deck_check", "deck_theme", "deck_export", "slide_image"}
+            "slide_delete", "slides_reorder", "deck_check", "deck_theme", "theme_from_tokens", "deck_export", "slide_image"}
 READ_ONLY = {"cicero_status", "deck_list", "deck_get", "source_list", "source_get", "slide_get", "deck_check"}
 
 
 def test_catalogue_has_every_tool_once():
     names = [t.name for t in at.TOOLS]
-    assert set(names) == REQUIRED and len(names) == len(set(names)) == 25
+    assert set(names) == REQUIRED and len(names) == len(set(names)) == 26
 
 
 def test_descriptions_are_short_first_lines_and_neutral():

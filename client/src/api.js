@@ -82,6 +82,8 @@ export const api = {
   assetUrl: (assetId) => `/api/assets/${e(assetId)}`,
 
   themes: () => request("GET", "/api/themes"),
+  designSystems: () => request("GET", "/api/themes/design-systems"),
+  themeFromTokens: (tokens_id, mode) => request("POST", "/api/themes/from-tokens", { body: { tokens_id, mode } }),
   check: (id) => request("GET", `${deckBase(id)}/check`),
 
   exportCreate: (id, format) => request("POST", `${deckBase(id)}/export`, { body: { format } }),

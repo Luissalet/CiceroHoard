@@ -17,7 +17,8 @@ from typing import Any, Optional
 from .errors import CiceroError, NotFound, Refused
 from .extract import extract_bytes, kind_for
 from .models import Block, DeckCreate, DeckPatch, LAYOUTS, OutlineItemIn, dump_blocks
-from .themes import DEFAULT_THEME, require_theme
+from . import custom_themes
+from .themes import DEFAULT_THEME
 from .util import clip, iso_stamp, jdump, jload, new_id, sha256_hex, slugify
 
 IMAGE_FORMATS = {"PNG": ("image/png", "png"), "JPEG": ("image/jpeg", "jpg"), "WEBP": ("image/webp", "webp")}
@@ -82,17 +83,21 @@ def deck_view(svc: Any, deck_id: str) -> dict[str, Any]:
     row = _deck_row(svc, deck_id)
     sources = [_source_dict(r) for r in svc.db.query("SELECT * FROM sources WHERE deck_id = ? ORDER BY id", (deck_id,))]
     slides = [_slide_dict(r) for r in svc.db.query("SELECT * FROM slides WHERE deck_id = ? ORDER BY position", (deck_id,))]
-    return {
+    custom = custom_themes.get_custom(svc, row["theme"])
+    view = {
         "id": row["id"], "ref": deck_ref(row["id"]), "title": row["title"], "brief": row["brief"], "audience": row["audience"], "tone": row["tone"],
         "language": row["language"], "slide_count": row["slide_count"], "theme": row["theme"], "status": row["status"],
         "created_at": iso_stamp(row["created_ts"]), "updated_at": iso_stamp(row["updated_ts"]), "model_used": row["model_used"],
         "sources": sources, "outline": jload(row["outline"], []), "slides": slides,
     }
+    if custom:  # a theme made from a design system: the renderers read the definition from here
+        view["theme_def"] = custom
+    return view
 
 
 def create_deck(svc: Any, data: DeckCreate) -> dict[str, Any]:
     language = data.language or svc.default_language()
-    theme = require_theme(data.theme) if data.theme else DEFAULT_THEME
+    theme = custom_themes.require(svc, data.theme) if data.theme else DEFAULT_THEME
     deck_id, ts = new_id(), svc.clock()
     svc.db.execute(
         "INSERT INTO decks(id, title, brief, audience, tone, language, slide_count, theme, status, outline, created_ts, updated_ts) "
@@ -115,7 +120,7 @@ def update_deck(svc: Any, deck_id: str, patch: DeckPatch | dict[str, Any]) -> di
     _deck_row(svc, deck_id)
     fields = patch.model_dump(exclude_none=True) if hasattr(patch, "model_dump") else {k: v for k, v in patch.items() if v is not None}
     if "theme" in fields:
-        require_theme(fields["theme"])
+        custom_themes.require(svc, fields["theme"])
     if fields:
         cols = ", ".join(f"{k} = ?" for k in fields)
         svc.db.execute(f"UPDATE decks SET {cols}, updated_ts = ? WHERE id = ?", (*fields.values(), svc.clock(), deck_id))

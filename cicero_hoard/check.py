@@ -10,7 +10,7 @@ import re
 from typing import Any, Callable, Iterable, Optional
 
 from .layouts import build_plan
-from .themes import get_theme
+from .themes import theme_of
 
 AssetLookup = Callable[[str], Optional[dict[str, Any]]]
 
@@ -201,7 +201,7 @@ EXPECTED_BLOCK = {"quote": "quote", "chart": "chart", "two_column": "columns", "
 def check_deck(deck: dict[str, Any], sources: list[dict[str, Any]], assets: AssetLookup) -> list[dict[str, Any]]:
     lang = deck.get("language", "es")
     m = MSG.get(lang, MSG["es"])
-    theme = get_theme(deck.get("theme"))
+    theme = theme_of(deck)
     issues: list[dict[str, Any]] = []
     slides = deck.get("slides", [])
 

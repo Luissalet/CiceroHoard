@@ -18,11 +18,11 @@ from .check import check_deck
 from .config import Config
 from .db import Database
 from .errors import CiceroError
-from .hoard_link import family
+from .hoard_link import fam_refs, family
 from .hoard_link.config import LinkConfig
 from .images import ImageStudio
 from .render import render_document
-from .themes import list_themes
+from . import custom_themes
 from .util import clip
 
 log = logging.getLogger("cicero")
@@ -57,7 +57,8 @@ def write_url(config: Config) -> None:
 
 class Services:
     def __init__(self, config: Config, *, link: Any = None, image_studio: Any = None, emit_fn: Optional[Callable[[str, dict], None]] = None,
-                 clock_fn: Callable[[], float] = time.time, pdf_fn: Optional[Callable[..., bytes]] = None):
+                 clock_fn: Callable[[], float] = time.time, pdf_fn: Optional[Callable[..., bytes]] = None,
+                 family_call_fn: Optional[Callable[..., dict]] = None, refs_link_fn: Optional[Callable[..., dict]] = None):
         self.config = config
         self.clock = clock_fn
         self.started_at = time.time()
@@ -71,6 +72,8 @@ class Services:
         self.image_studio = image_studio or ImageStudio(configured_url=config.image_studio_url, timeout=config.image_timeout)
         self._emit = emit_fn
         self._pdf_fn = pdf_fn
+        self._family_call_fn = family_call_fn
+        self._refs_link_fn = refs_link_fn
 
     # ---------------- lifecycle ----------------
     def start(self) -> None:
@@ -164,7 +167,28 @@ class Services:
         return lambda asset_id: store.asset_info(self, asset_id)
 
     def themes(self) -> list[dict[str, Any]]:
-        return list_themes()
+        return custom_themes.all_themes(self)
+
+    # ---------------- other apps ----------------
+    def family_call(self, app: str, tool: str, arguments: Optional[dict[str, Any]] = None, timeout: float = 30.0) -> dict[str, Any]:
+        """Call a tool of another app through the hub; the answer is the hub's ``{ok, result|error, status}``. Never raises."""
+        try:
+            return (self._family_call_fn or family.call)(app, tool, arguments or {}, timeout=timeout)
+        except Exception as error:  # noqa: BLE001
+            return {"ok": False, "app": app, "tool": tool, "error": f"{type(error).__name__}: {error}"}
+
+    def refs_link(self, from_uri: str, to_uri: str, rel: str, **labels: str) -> None:
+        """Tell the hub two records are connected (a hint: never raises, never blocks the work)."""
+        try:
+            (self._refs_link_fn or fam_refs.link)(from_uri, to_uri, rel, **labels)
+        except Exception:  # noqa: BLE001
+            pass
+
+    def design_systems(self) -> list[dict[str, Any]]:
+        return custom_themes.list_design_systems(self)
+
+    def theme_from_tokens(self, tokens_id: str, mode: str = "light") -> dict[str, Any]:
+        return custom_themes.from_tokens(self, tokens_id, mode)
 
     def preview_html(self, deck_id: str, slide_id: Optional[str] = None) -> str:
         deck = store.deck_view(self, deck_id)

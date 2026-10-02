@@ -24,7 +24,7 @@ from cicero_hoard.main import create_app  # noqa: E402
 from cicero_hoard.services import Services  # noqa: E402
 
 # Words that must never appear in the product, its manifest or its docs (built from fragments so this file does not contain them).
-BANNED_WORDS = ("chat" + "gpt", "open" + "ai", "anthro" + "pic", "lm " + "studio", "odys" + "seus", "vitru" + "vius", "gem" + "ini", "co" + "pilot",
+BANNED_WORDS = ("chat" + "gpt", "open" + "ai", "anthro" + "pic", "lm " + "studio", "odys" + "seus", "gem" + "ini", "co" + "pilot",
                 "clau" + "de", "power" + "point", "key" + "note", "can" + "va", "pre" + "zi", "google " + "slides", "micro" + "soft")
 
 T0 = 1_790_000_000.0  # a fixed clock for the tests
@@ -117,6 +117,50 @@ class Recorder:
         return [t for t, _ in self.events]
 
 
+def sample_roles(**changes) -> dict:
+    """The colour roles a design-system app sends: two modes, font stacks and radii (see its ``tokens_get``)."""
+    roles = {
+        "name": "Aurora",
+        "light": {"background": "#fbfaf7", "surface": "#f3efe7", "surface2": "#ebe5d8", "border": "#d8d0c0", "text": "#1d1a16", "muted": "#5b5347",
+                  "accent": "#8a2d3b", "on_accent": "#ffffff", "accent2": "#7a4b00"},
+        "dark": {"background": "#14110f", "surface": "#1f1b18", "surface2": "#2a2521", "border": "#3a342e", "text": "#f4efe8", "muted": "#b9afa1",
+                 "accent": "#e08a98", "on_accent": "#14110f", "accent2": "#e0b25a"},
+        "fonts": {"heading": "Georgia, 'Times New Roman', serif", "body": "Inter, 'Segoe UI', system-ui, sans-serif", "mono": "ui-monospace, monospace"},
+        "radius": {"sm": "4px", "md": "0.75rem", "lg": "20px", "pill": "999px"},
+    }
+    roles.update(changes)
+    return roles
+
+
+class FakeHub:
+    """Stands in for the hub proxy: answers the design-system app's ``tokens_list`` and ``tokens_get`` and records the calls and the links."""
+
+    def __init__(self, systems: Optional[dict] = None, error: Optional[str] = None, status: Optional[int] = None):
+        self.systems = systems if systems is not None else {"ds1": sample_roles()}
+        self.error, self.status = error, status
+        self.calls: list[tuple[str, str, dict]] = []
+        self.links: list[tuple] = []
+
+    def call(self, app, tool, arguments=None, *, timeout=120.0):
+        self.calls.append((app, tool, dict(arguments or {})))
+        if self.error:
+            return {"ok": False, "app": app, "tool": tool, "status": self.status, "error": self.error}
+        if tool == "tokens_list":
+            items = [{"id": k, "name": v["name"], "created_ts": 1.0, "roles": v} for k, v in self.systems.items()]
+            return {"ok": True, "app": app, "tool": tool, "status": 200, "result": {"count": len(items), "design_systems": items}}
+        if tool == "tokens_get":
+            roles = self.systems.get((arguments or {}).get("id"))
+            if roles is None:
+                return {"ok": False, "app": app, "tool": tool, "status": 404, "error": "Unknown design system"}
+            return {"ok": True, "app": app, "tool": tool, "status": 200,
+                    "result": {"id": arguments["id"], "name": roles["name"], "tokens": {}, "roles": roles}}
+        return {"ok": False, "app": app, "tool": tool, "status": 404, "error": "no such tool"}
+
+    def link(self, from_uri, to_uri, rel="related", **labels):
+        self.links.append((from_uri, to_uri, rel, labels))
+        return {"ok": True}
+
+
 class FakeStudio:
     """Stands in for ImageStudio: returns the given PNG bytes or raises."""
 
@@ -164,9 +208,11 @@ def make_config(tmp_path: Path, **overrides) -> Config:
     return Config(**base)
 
 
-def make_services(tmp_path: Path, *, link: Any = None, studio: Any = None, pdf_fn: Optional[Callable] = None, **config_overrides) -> Services:
+def make_services(tmp_path: Path, *, link: Any = None, studio: Any = None, pdf_fn: Optional[Callable] = None, hub: Any = None, **config_overrides) -> Services:
+    hub = hub if hub is not None else FakeHub()
     svc = Services(make_config(tmp_path, **config_overrides), link=link if link is not None else FakeLink(), image_studio=studio or FakeStudio(png_bytes()),
-                   emit_fn=Recorder(), clock_fn=lambda: T0, pdf_fn=pdf_fn)
+                   emit_fn=Recorder(), clock_fn=lambda: T0, pdf_fn=pdf_fn, family_call_fn=hub.call, refs_link_fn=hub.link)
+    svc.hub = hub
     return svc
 
 

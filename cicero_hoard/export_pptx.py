@@ -19,8 +19,8 @@ from pptx.enum.text import MSO_ANCHOR, MSO_AUTO_SIZE, PP_ALIGN
 from pptx.oxml.ns import qn
 from pptx.util import Emu, Pt
 
-from .layouts import Box, Para, build_plan
-from .themes import get_theme, hex_to_rgb, series_colors
+from .layouts import Box, Para, build_plan, is_card
+from .themes import hex_to_rgb, series_colors, theme_of
 
 PX = 9525  # EMU per CSS pixel at 96 dpi
 SLIDE_W, SLIDE_H = 1280 * PX, 720 * PX  # 13.333 x 7.5 in
@@ -188,7 +188,10 @@ def _add_chart(slide: Any, box: Box, theme: dict[str, Any], lang: str) -> None:
 
 def _add_box(slide: Any, box: Box, theme: dict[str, Any], lang: str, assets: AssetLookup, title_shape: Any) -> Any:
     if box.kind == "rect":
-        shape = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, _emu(box.x), _emu(box.y), _emu(box.w), _emu(box.h))
+        radius = int(theme.get("radius") or 0) if is_card(box) else 0
+        shape = slide.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE if radius else MSO_SHAPE.RECTANGLE, _emu(box.x), _emu(box.y), _emu(box.w), _emu(box.h))
+        if radius:  # the adjustment is the corner radius as a share of the shorter side
+            shape.adjustments[0] = min(0.5, radius / max(1.0, min(box.w, box.h)))
         shape.fill.solid()
         shape.fill.fore_color.rgb = _rgb(_color(theme, box.fill or "surface"))
         shape.line.fill.background()
@@ -230,7 +233,7 @@ def _add_box(slide: Any, box: Box, theme: dict[str, Any], lang: str, assets: Ass
 
 
 def build_pptx(deck: dict[str, Any], *, assets: AssetLookup) -> bytes:
-    theme = get_theme(deck.get("theme"))
+    theme = theme_of(deck)
     lang = deck.get("language", "es")
     prs = Presentation()
     prs.slide_width, prs.slide_height = Emu(SLIDE_W), Emu(SLIDE_H)

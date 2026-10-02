@@ -28,6 +28,11 @@ code, so the two cannot disagree.
   by the check instead of being clipped silently.
 - **Themes**: seven built-in themes (`claro`, `oscuro`, `editorial`, `carmesi`, `pizarra`, `tecnico`, `oceano`), all
   with a contrast of at least 4.5:1 for text, muted text and accents. Fonts are ones present on Windows.
+  A design system from the family design-system app can become an eighth, custom theme (`theme_from_tokens`, or the
+  "Theme from a design system" picker in the theme screen): its colours, fonts and corner radius are mapped, colours
+  that would not read are pulled until they reach 4.5:1 (the changes are listed), and a font that is not on Windows is
+  replaced by the closest one that is. Cards in a theme with a radius are drawn with rounded corners in the preview,
+  the HTML and the PPTX.
 - **Exports**:
   - PPTX with real text boxes, bullet paragraphs, speaker notes and native charts (editable in the office suite),
     16:9.
@@ -109,7 +114,8 @@ turns that off). Register it in any MCP client:
 | `slide_approve` | approve or unapprove a slide |
 | `slide_revert` | list a slide's revisions, or restore one as a new revision |
 | `deck_check` | review: overflow, figures not in the sources, missing notes, unapproved slides |
-| `deck_theme` | list the themes or apply one |
+| `deck_theme` | list the themes (built-in and made from design systems) or apply one |
+| `theme_from_tokens` | make a theme from a design system (`tokens_id`, `mode` light or dark, optional `deck_id` to apply it); without `tokens_id` it lists the design systems |
 | `deck_export` | export to `pptx`, `pdf`, `html` or `md`; returns the file path and the download URL |
 | `slide_image` | generate a picture for a slide with the image studio |
 
@@ -120,7 +126,10 @@ person's decision: an assistant should not approve slides on its own.
 
 Cicero works alone. Decks are addressable as `hoard://cicero/deck/<id>`. It emits `cicero.deck.created`,
 `cicero.deck.deleted`, `cicero.outline.generated`, `cicero.slides.generated` and `cicero.deck.exported` on the hub
-bus (ids and short titles only). Pictures come from Prospero's Hoard when it runs: the studio is looked up through
+bus (ids and short titles only). Themes made from a design system emit `cicero.theme.created` and are linked to the
+design system (`hoard://cicero/theme/<id>` derived from `hoard://vitruvius/tokens/<id>`); the design system is read
+through the hub (`tokens_list` and `tokens_get` of the design-system app), so the hub and that app must be running,
+and asking for the same design system in the same state again gives back the same theme. Pictures come from Prospero's Hoard when it runs: the studio is looked up through
 `CICERO_IMAGE_STUDIO_URL`, the hub's app list, or its default local port (8815), and is used through its local REST
 API, which needs no token. Slide pictures go into a studio project named "Cicero's Hoard slides" (reused, or created
 the first time); each request submits one 16:9 render, waits for it and stores the resulting image in the deck. Only

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from .errors import CiceroError
@@ -42,6 +43,12 @@ def list_themes() -> list[dict[str, Any]]:
 def get_theme(theme_id: str | None) -> dict[str, Any]:
     """The theme, or the default one when the id is unknown (an old deck must still render)."""
     return _BY_ID.get(theme_id or "", _BY_ID[DEFAULT_THEME])
+
+
+def theme_of(deck: dict[str, Any]) -> dict[str, Any]:
+    """The theme a deck is drawn with: its saved custom definition (``theme_def``, attached by ``deck_view``) or a built-in one."""
+    definition = deck.get("theme_def")
+    return definition if isinstance(definition, dict) else get_theme(deck.get("theme"))
 
 
 def require_theme(theme_id: str) -> str:
@@ -111,3 +118,129 @@ def css_font_stack(name: str) -> str:
                 "serif": '"Times New Roman", "Liberation Serif", "DejaVu Serif", serif',
                 "sans": '"Helvetica Neue", Arial, "Liberation Sans", "DejaVu Sans", sans-serif'}[kind]
     return f'"{name}", {fallback}'
+
+
+# ---------------- contrast check ----------------
+
+MIN_CONTRAST = 4.5
+# Every colour that carries text or a mark must read on both the page and the card.
+READABLE_ON = {"text": ("background", "surface"), "muted": ("background", "surface"),
+               "accent": ("background", "surface"), "accent2": ("background", "surface")}
+
+
+def contrast_issues(theme: dict[str, Any], minimum: float = MIN_CONTRAST) -> list[dict[str, Any]]:
+    """The pairs of a theme that fall below ``minimum`` (WCAG contrast): ``[{"fg", "bg", "ratio"}]``; empty when the theme passes."""
+    colors = theme["colors"]
+    out: list[dict[str, Any]] = []
+    for fg, backgrounds in READABLE_ON.items():
+        for bg in backgrounds:
+            ratio = contrast(colors[fg], colors[bg])
+            if ratio < minimum:
+                out.append({"fg": fg, "bg": bg, "ratio": round(ratio, 2)})
+    return out
+
+
+def fit_contrast(theme: dict[str, Any], minimum: float = MIN_CONTRAST) -> tuple[dict[str, Any], list[str]]:
+    """A copy of the theme in which every failing colour is pulled toward black or white until it reads.
+
+    The pull goes in the direction that raises contrast against the page, in steps of 5%, so the hue is kept as long as possible.
+    Returns the theme and one warning per colour that had to change.
+    """
+    fixed = {**theme, "colors": dict(theme["colors"])}
+    warnings: list[str] = []
+    colors = fixed["colors"]
+    for fg, backgrounds in READABLE_ON.items():
+        original = colors[fg]
+        # Lighten on a dark page, darken on a light one (the page and the card share a side in every sane theme).
+        target = "#ffffff" if luminance(colors["background"]) < 0.4 else "#000000"
+        for step in range(0, 21):
+            candidate = blend(original, target, step / 20)
+            if all(contrast(candidate, colors[bg]) >= minimum for bg in backgrounds):
+                colors[fg] = candidate
+                break
+        else:
+            colors[fg] = target
+        if colors[fg] != original:
+            warnings.append(f"{fg} changed from {original} to {colors[fg]} to reach a contrast of {minimum}:1 on the background and the cards")
+    return fixed, warnings
+
+
+# ---------------- custom themes ----------------
+
+HEX6 = re.compile(r"^#[0-9a-fA-F]{6}$")
+# Fonts that exist on Windows and embed predictably in PPTX; a design system's own font is used only when it is one of these.
+SAFE_FONTS = ("Segoe UI", "Calibri", "Cambria", "Arial", "Georgia", "Consolas", "Times New Roman", "Verdana", "Tahoma", "Trebuchet MS",
+              "Courier New", "Candara", "Constantia", "Corbel", "Garamond", "Palatino Linotype", "Century Gothic", "Franklin Gothic Medium")
+_GENERIC_FONT = {"serif": "Georgia", "ui-serif": "Georgia", "monospace": "Consolas", "ui-monospace": "Consolas", "sans-serif": "Segoe UI",
+                 "ui-sans-serif": "Segoe UI", "system-ui": "Segoe UI", "cursive": "Segoe UI", "fantasy": "Segoe UI"}
+_SAFE_LOWER = {name.lower(): name for name in SAFE_FONTS}
+MAX_RADIUS = 32
+
+
+def pick_font(stack: str, fallback: str = "Segoe UI") -> tuple[str, str | None]:
+    """A usable font name for a CSS family stack, and a warning when the stack's first family had to be replaced."""
+    families = [f.strip().strip("\"'") for f in (stack or "").split(",") if f.strip()]
+    if not families:
+        return fallback, None
+    first = families[0]
+    for family in families:
+        if family.lower() in _SAFE_LOWER:
+            chosen = _SAFE_LOWER[family.lower()]
+            return chosen, (None if family.lower() == first.lower() else f"font {first} is not a Windows font; using {chosen}")
+    for family in families:
+        if family.lower() in _GENERIC_FONT:
+            chosen = _GENERIC_FONT[family.lower()]
+            return chosen, (None if first.lower() in _GENERIC_FONT and _GENERIC_FONT[first.lower()] == chosen else f"font {first} is not a Windows font; using {chosen}")
+    return fallback, f"font {first} is not a Windows font; using {fallback}"
+
+
+def radius_px(value: Any) -> int:
+    """A CSS length such as ``10px`` or ``0.5rem`` as whole pixels, clamped to 0..MAX_RADIUS; anything else is 0."""
+    match = re.match(r"^\s*(-?\d+(?:\.\d+)?)\s*(px|rem|em)?\s*$", str(value or ""))
+    if not match:
+        return 0
+    px = float(match.group(1)) * (16 if match.group(2) in ("rem", "em") else 1)
+    return max(0, min(MAX_RADIUS, round(px)))
+
+
+def clean_custom_theme(raw: dict[str, Any]) -> dict[str, Any]:
+    """Validate a custom theme: the six colours as #rrggbb, two font names, an optional radius. Raises CiceroError."""
+    colors = raw.get("colors") or {}
+    fonts = raw.get("fonts") or {}
+    for key in COLOR_KEYS:
+        if not isinstance(colors.get(key), str) or not HEX6.match(colors[key]):
+            raise CiceroError(f"Theme colour {key!r} must be a #rrggbb value.")
+    for key in ("heading", "body"):
+        if not isinstance(fonts.get(key), str) or not fonts[key].strip() or len(fonts[key]) > 80:
+            raise CiceroError(f"Theme font {key!r} must be a font name.")
+    name = str(raw.get("name") or "").strip()[:80]
+    if not name:
+        raise CiceroError("A theme needs a name.")
+    return {"id": str(raw["id"]), "name": name, "colors": {k: colors[k].lower() for k in COLOR_KEYS},
+            "fonts": {"heading": fonts["heading"].strip(), "body": fonts["body"].strip()}, "radius": radius_px(raw.get("radius", 0))}
+
+
+def theme_from_roles(roles: dict[str, Any], *, theme_id: str, name: str, mode: str = "light") -> tuple[dict[str, Any], list[str]]:
+    """Map a design system's roles (see Vitruvius's ``roles``) to a Cicero theme and make it pass the contrast check.
+
+    Colours: page = background, card = the stronger panel fill (surface2), text, muted, accent and accent2 as given. Fonts: the
+    heading and body stacks reduced to a Windows font. Radius: the system's ``md``. Returns the theme and the warnings
+    (a replaced font, a colour pulled to reach the contrast).
+    """
+    if mode not in ("light", "dark"):
+        raise CiceroError("mode must be 'light' or 'dark'.")
+    palette = roles.get(mode)
+    if not isinstance(palette, dict):
+        raise CiceroError(f"The design system has no {mode} colours.")
+    warnings: list[str] = []
+    heading, warn_h = pick_font((roles.get("fonts") or {}).get("heading", ""))
+    body, warn_b = pick_font((roles.get("fonts") or {}).get("body", ""))
+    warnings += [w for w in (warn_h, warn_b) if w]
+    raw = {"id": theme_id, "name": name,
+           "colors": {"background": palette.get("background"), "surface": palette.get("surface2") or palette.get("surface"),
+                      "text": palette.get("text"), "muted": palette.get("muted") or palette.get("text"),
+                      "accent": palette.get("accent"), "accent2": palette.get("accent2") or palette.get("accent")},
+           "fonts": {"heading": heading, "body": body}, "radius": (roles.get("radius") or {}).get("md", 0)}
+    theme = clean_custom_theme(raw)
+    theme, fixes = fit_contrast(theme)
+    return theme, warnings + fixes

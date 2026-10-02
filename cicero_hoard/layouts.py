@@ -58,6 +58,11 @@ class Box:
     overflow: bool = False
 
 
+def is_card(box: Box) -> bool:
+    """A panel behind content (not a full-bleed background or an accent bar): the only rectangles a theme's radius rounds."""
+    return box.kind == "rect" and box.fill == "surface" and box.x > 0 and box.x + box.w < W - 1 and box.h > 40
+
+
 @dataclass
 class Plan:
     boxes: list[Box]
