@@ -6,6 +6,8 @@ import zipfile
 
 import pytest
 
+from pathlib import Path
+
 from cicero_hoard import decks, extract
 from cicero_hoard.errors import CiceroError, Refused
 from conftest import minimal_pdf, new_deck
@@ -146,3 +148,71 @@ def test_source_path_respects_file_roots(tmp_path):
         decks.add_source_path(svc, d["id"], str(outside))
     with pytest.raises(Refused):
         decks.add_source_path(svc, d["id"], str(inside / ".." / "b.txt"))
+
+
+# ---------------- the shared readers (Hoard Link) ----------------
+
+def _blank_pdf() -> bytes:
+    from pypdf import PdfWriter
+
+    writer = PdfWriter()
+    writer.add_blank_page(width=200, height=200)
+    buf = io.BytesIO()
+    writer.write(buf)
+    return buf.getvalue()
+
+
+def test_docx_keeps_headings_lists_and_tables():
+    from docx import Document
+
+    doc = Document()
+    doc.add_heading("Informe anual", level=1)
+    doc.add_paragraph("Texto inicial.")
+    doc.add_heading("Ventas", level=2)
+    doc.add_paragraph("Primer punto", style="List Bullet")
+    table = doc.add_table(rows=1, cols=2)
+    table.rows[0].cells[0].text = "Concepto"
+    table.rows[0].cells[1].text = "Valor 42"
+    buf = io.BytesIO()
+    doc.save(buf)
+    got = extract.extract_bytes(buf.getvalue(), "informe.docx")
+    assert got.kind == "docx"
+    assert "## Informe anual" in got.text and "## Ventas" in got.text and "- Primer punto" in got.text and "Concepto | Valor 42" in got.text
+
+
+def test_a_text_file_named_docx_is_refused_not_read_as_text():
+    with pytest.raises(CiceroError):
+        extract.extract_bytes("hola, esto es texto".encode(), "falso.docx")
+    # a pptx renamed .docx is not a Word document either
+    with pytest.raises(CiceroError):
+        extract.extract_bytes(_pptx(), "falso.docx")
+
+
+def test_a_zip_bomb_is_refused_by_the_shared_guard():
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+        z.writestr("word/document.xml", "<w:document/>")
+        z.writestr("bomb.bin", b"\x00" * (60 * 1024 * 1024))
+    with pytest.raises(CiceroError) as info:
+        extract.extract_bytes(buf.getvalue(), "bomba.docx")
+    assert "refused" in str(info.value)
+
+
+def test_a_scanned_pdf_goes_to_the_family_ocr_when_it_runs(monkeypatch):
+    calls = []
+
+    def fake_extract(path, **kw):
+        calls.append((Path(path).suffix, kw))
+        return {"ok": True, "via": "kafka", "text": "Texto reconocido por OCR 2024", "needs_ocr": False}
+
+    monkeypatch.setattr(extract.fam_docs, "extract", fake_extract)
+    got = extract.extract_bytes(_blank_pdf(), "escaneo.pdf")
+    assert got.kind == "pdf" and "reconocido por OCR" in got.text
+    assert calls == [(".pdf", {"ocr": "auto", "local_fallback": False})]
+
+
+def test_a_scanned_pdf_without_the_ocr_service_says_it_needs_ocr(monkeypatch):
+    monkeypatch.setattr(extract.fam_docs, "extract", lambda path, **kw: {"ok": False, "error": "hub unreachable"})
+    with pytest.raises(CiceroError) as info:
+        extract.extract_bytes(_blank_pdf(), "escaneo.pdf")
+    assert "OCR" in str(info.value)

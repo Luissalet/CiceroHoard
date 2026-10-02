@@ -23,6 +23,7 @@ from pydantic import ValidationError
 from . import decks as store
 from .check import all_number_values, chart_values_unsourced
 from .errors import CiceroError, GenerationFailed, ModelUnavailable
+from .hoard_link.docs import chunking
 from .models import GeneratedOutline, GeneratedSlide, LAYOUTS
 from .util import clip, jdump, shorten
 
@@ -109,37 +110,9 @@ def _fold(text: str) -> str:
 
 
 def chunk_text(text: str, size: int = CHUNK) -> list[str]:
-    """Paragraph-based chunks of about ``size`` characters (long paragraphs are split at sentence ends)."""
-    paras = [p.strip() for p in re.split(r"\n\s*\n", text) if p.strip()]
-    pieces: list[str] = []
-    for p in paras:
-        if len(p) <= size:
-            pieces.append(p)
-            continue
-        sentences = re.split(r"(?<=[.!?])\s+", p)
-        cur = ""
-        for s in sentences:
-            if cur and len(cur) + len(s) + 1 > size:
-                pieces.append(cur)
-                cur = s
-            else:
-                cur = f"{cur} {s}".strip()
-            while len(cur) > size * 1.5:
-                pieces.append(cur[:size])
-                cur = cur[size:]
-        if cur:
-            pieces.append(cur)
-    chunks: list[str] = []
-    cur = ""
-    for piece in pieces:
-        if cur and len(cur) + len(piece) + 2 > size:
-            chunks.append(cur)
-            cur = piece
-        else:
-            cur = f"{cur}\n\n{piece}".strip()
-    if cur:
-        chunks.append(cur)
-    return chunks
+    """Chunks of about ``size`` characters (paragraph and sentence boundaries) from the shared Hoard Link chunker, without overlap
+    (an excerpt that repeated its neighbour would waste the model's context)."""
+    return [c.text.strip() for c in chunking.chunk_text(text, size=size, overlap=0) if c.text.strip()]
 
 
 def excerpts(sources: list[dict[str, Any]], query: str, budget: int) -> tuple[str, list[int]]:

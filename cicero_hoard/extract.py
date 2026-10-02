@@ -1,20 +1,26 @@
-"""Text extraction from source documents: txt, md, pdf, docx, pptx (text only, size limits, no macros or scripts run)."""
+"""Text extraction from source documents: txt, md, pdf, docx, pptx (text only, size limits, no macros or scripts run).
+
+Text decoding, the zip-bomb guard and the Word reader are the shared ones of Hoard Link (``hoard_link.docs``); a PDF
+without a text layer (a scan) is handed to the family document service (Kafka's OCR) when it is running.
+"""
 
 from __future__ import annotations
 
 import io
 import re
+import tempfile
 import zipfile
 from dataclasses import dataclass
-from pathlib import PurePath
+from pathlib import Path, PurePath
 from typing import Any
 
 from .errors import CiceroError
+from .hoard_link import fam_docs
+from .hoard_link.docs import readers_lite, textclean
 
 MAX_FILE_BYTES = 20 * 1024 * 1024
 MAX_TEXT_CHARS = 400_000
 MAX_PDF_PAGES = 400
-MAX_UNZIPPED_BYTES = 300 * 1024 * 1024  # zip-bomb guard for docx / pptx
 SUFFIX_KIND = {".txt": "text", ".text": "text", ".md": "markdown", ".markdown": "markdown", ".pdf": "pdf", ".docx": "docx", ".pptx": "pptx"}
 
 
@@ -34,32 +40,42 @@ def kind_for(filename: str) -> str:
 
 
 def decode_text(data: bytes) -> str:
-    utf16 = data[:2] in (b"\xff\xfe", b"\xfe\xff")
-    if not utf16 and b"\x00" in data[:4096]:
-        raise CiceroError("The file looks binary, not text.")
-    for encoding in ("utf-16",) if utf16 else ("utf-8-sig", "cp1252"):
-        try:
-            return data.decode(encoding)
-        except UnicodeDecodeError:
-            continue
-    return data.decode("latin-1")
+    """Bytes to text (BOM, UTF-8, Windows-1252, Latin-1); a file with NUL bytes is not text."""
+    try:
+        return textclean.decode_text(data, reject_binary=True)
+    except ValueError as error:
+        raise CiceroError("The file looks binary, not text.") from error
 
 
 def _check_zip(data: bytes, required: str) -> None:
+    """The container checks of an Office file: a zip, with the part that makes it that kind of document, that is not a zip bomb."""
     if data[:2] != b"PK":
         raise CiceroError("The file is not a valid Office document (it is not a zip container).")
     try:
         with zipfile.ZipFile(io.BytesIO(data)) as z:
-            names = z.namelist()
-            if required not in names:
+            if required not in z.namelist():
                 raise CiceroError("The file is not a valid Office document of that type.")
-            if sum(i.file_size for i in z.infolist()) > MAX_UNZIPPED_BYTES:
-                raise CiceroError("The document expands to more than 300 MB and was refused.")
+            readers_lite.check_zip(z)
     except zipfile.BadZipFile as error:
         raise CiceroError("The file is damaged: it cannot be opened as a zip container.") from error
+    except readers_lite.ZipBombError as error:
+        raise CiceroError(f"The document was refused: {error}.") from error
 
 
-def _pdf(data: bytes) -> Extracted:
+def _scan_text(data: bytes, filename: str) -> str:
+    """The text of a scanned PDF from the family document service (OCR); empty when nobody can read it (the service is not running)."""
+    try:
+        with tempfile.TemporaryDirectory(prefix="cicero-ocr-") as folder:
+            path = Path(folder) / (PurePath(filename).stem[:60] or "scan").replace(" ", "_")
+            path = path.with_suffix(".pdf")
+            path.write_bytes(data)
+            got = fam_docs.extract(str(path), ocr="auto", local_fallback=False)
+    except Exception:  # noqa: BLE001 - OCR is an extra: a failure leaves the file "without readable text"
+        return ""
+    return str(got.get("text") or "") if got.get("ok") else ""
+
+
+def _pdf(data: bytes, filename: str = "scan.pdf") -> Extracted:
     if data[:5] != b"%PDF-":
         raise CiceroError("The file is not a PDF.")
     try:
@@ -84,49 +100,24 @@ def _pdf(data: bytes) -> Extracted:
         raise CiceroError(f"The PDF could not be read: {error}") from error
     title = str(getattr(meta, "title", "") or "") if meta else ""
     text = "\n\n".join(t for t in pages if t)
+    if not text.strip():  # a scan: the family OCR reads it when Kafka's Hoard is running
+        text = _scan_text(data, filename)
     return Extracted(title.strip()[:300], "pdf", text)
 
 
 def _docx(data: bytes) -> Extracted:
     _check_zip(data, "word/document.xml")
-    try:
-        from docx import Document
-    except ImportError as error:  # pragma: no cover
-        raise CiceroError("Reading DOCX needs python-docx.") from error
-    try:
-        doc = Document(io.BytesIO(data))
-    except Exception as error:  # noqa: BLE001
-        raise CiceroError(f"The DOCX could not be read: {error}") from error
+    got = readers_lite.read_any("document.docx", data)
+    if got.get("error") or got.get("kind") != "docx":
+        raise CiceroError(f"The DOCX could not be read: {got.get('error') or 'it is not a Word document'}")
     lines: list[str] = []
-    body = doc.element.body
-    from docx.table import Table
-    from docx.text.paragraph import Paragraph
-
-    for child in body.iterchildren():
-        tag = child.tag.rsplit("}", 1)[-1]
-        if tag == "p":
-            para = Paragraph(child, doc)
-            text = para.text.strip()
-            if not text:
-                continue
-            style = (para.style.name if para.style is not None and para.style.name else "") or ""
-            m = re.match(r"Heading (\d)", style)
-            if style == "Title":
-                lines.append(f"# {text}")
-            elif m:
-                lines.append(f"{'#' * min(6, int(m.group(1)))} {text}")
-            elif style.lower().startswith("list"):
-                lines.append(f"- {text}")
-            else:
-                lines.append(text)
-        elif tag == "tbl":
-            table = Table(child, doc)
-            for row in table.rows:
-                cells = [c.text.strip().replace("\n", " ") for c in row.cells]
-                if any(cells):
-                    lines.append(" | ".join(cells))
-    title = (doc.core_properties.title or "").strip()
-    return Extracted(title[:300], "docx", "\n\n".join(lines))
+    for unit in got["units"]:  # one unit per heading: "## heading" then its paragraphs, "- " items and " | " table rows
+        if unit["title"]:
+            lines.append(f"## {unit['title']}")
+        if unit["text"]:
+            lines.append(unit["text"])
+    title = "" if got["title"] == "document" else str(got["title"] or "")  # read_any falls back to the (made-up) name
+    return Extracted(title.strip()[:300], "docx", "\n\n".join(lines))
 
 
 def _shape_texts(shape: Any) -> list[str]:
@@ -190,7 +181,7 @@ def extract_bytes(data: bytes, filename: str, *, max_bytes: int = MAX_FILE_BYTES
         raise CiceroError("The file is empty.")
     kind = kind_for(filename)
     if kind == "pdf":
-        result = _pdf(data)
+        result = _pdf(data, filename)
     elif kind == "docx":
         result = _docx(data)
     elif kind == "pptx":

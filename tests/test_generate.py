@@ -32,7 +32,7 @@ def test_outline_from_model(services):
     out = generate.generate_outline(services, d["id"])
     assert out["generator"] == "model" and out["model_used"] == "fake-model" and len(out["outline"]) == 6
     assert out["outline"][0]["layout_hint"] == "title" and out["outline"][-1]["layout_hint"] == "closing"
-    assert out["status"] == "outline" and all(len(o["id"]) == 12 for o in out["outline"])
+    assert out["status"] == "outline" and all(len(o["id"]) == 26 for o in out["outline"])
     assert "cicero.outline.generated" in services._emit.types()
     user = services.link_sync.calls[0][-1]["content"]
     assert "Number of slides: exactly 6" in user and "[S1]" in user and "Spanish" in user
@@ -365,3 +365,11 @@ def test_a_model_that_is_down_is_asked_once_not_once_per_slide(services):
     before = len(services.link_sync.calls)
     out = generate.generate_slides(services, d["id"])
     assert out["generator"] == "fallback" and len(services.link_sync.calls) - before == 1
+
+
+def test_chunk_text_comes_from_the_shared_chunker_without_overlap():
+    text = "\n\n".join(f"Párrafo {i}. " + "Contenido relevante. " * 30 for i in range(12))
+    chunks = generate.chunk_text(text, size=1100)
+    assert len(chunks) > 3 and all(c.strip() == c and 0 < len(c) <= 1650 for c in chunks)
+    assert "".join(chunks).count("Párrafo 3.") == 1  # no overlap: nothing is repeated in the next chunk
+    assert generate.chunk_text("") == [] and generate.chunk_text("corto") == ["corto"]
