@@ -99,3 +99,12 @@ def test_the_guard_pins_the_port_of_an_allowed_host(tmp_path):
     with TestClient(create_app(svc.config, svc), base_url="http://127.0.0.1") as c:
         assert c.get("/api/health", headers={"Host": "pc2.example"}).status_code == 200
         assert c.get("/api/health", headers={"Host": "evil.example"}).status_code == 403
+
+
+def test_the_launcher_script_imports_the_shared_net_helpers():
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("cicero_launch_script", ROOT / "scripts" / "launch.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)  # a deleted helper module would fail here, not on the user's double click
+    assert module.SERVICE == "cicero-hoard" and callable(module.main)
