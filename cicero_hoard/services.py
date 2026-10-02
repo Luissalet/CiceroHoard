@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import dataclasses
 import logging
-import secrets
 import time
 from typing import Any, Callable, Optional
 
@@ -18,7 +17,7 @@ from .check import check_deck
 from .config import Config
 from .db import Database
 from .errors import CiceroError
-from .hoard_link import fam_refs, family
+from .hoard_link import fam_refs, family, tokens
 from .hoard_link.config import LinkConfig
 from .images import ImageStudio
 from .render import render_document
@@ -30,31 +29,6 @@ log = logging.getLogger("cicero")
 EXPORT_FORMATS = ("pptx", "pdf", "html", "md")
 
 
-def write_token(config: Config) -> str:
-    """The MCP token is persistent: created once, reused on every later start."""
-    config.data_dir.mkdir(parents=True, exist_ok=True)
-    try:
-        existing = config.token_path.read_text(encoding="utf-8").strip()
-    except OSError:
-        existing = ""
-    if len(existing) >= 32:
-        return existing
-    token = secrets.token_hex(32)
-    config.token_path.write_text(token, encoding="utf-8")
-    try:
-        config.token_path.chmod(0o600)
-    except OSError:
-        pass
-    return token
-
-
-def write_url(config: Config) -> None:
-    try:
-        config.url_path.write_text(f"http://127.0.0.1:{config.port}", encoding="utf-8")
-    except OSError:
-        pass
-
-
 class Services:
     def __init__(self, config: Config, *, link: Any = None, image_studio: Any = None, emit_fn: Optional[Callable[[str, dict], None]] = None,
                  clock_fn: Callable[[], float] = time.time, pdf_fn: Optional[Callable[..., bytes]] = None,
@@ -63,8 +37,11 @@ class Services:
         self.clock = clock_fn
         self.started_at = time.time()
         config.data_dir.mkdir(parents=True, exist_ok=True)
-        self.token = write_token(config)
-        write_url(config)
+        self.token = tokens.read_or_create_token(config.token_path)  # stable across restarts: the bridge keeps working
+        try:
+            tokens.write_url(config.url_path, f"http://127.0.0.1:{config.port}")
+        except OSError:
+            pass
         self.db = Database(config.db_path)
         self._injected_link = link
         self._link: Any = None
@@ -94,7 +71,7 @@ class Services:
         from .hoard_link.link import Link
 
         link_config = LinkConfig.load(self.config.backend_json_path if self.config.backend_json_path.is_file() else None, app=APP_ID)
-        preferred = (self.db.get_setting("model", "") or "").strip()
+        preferred = str(self.db.get_setting("model", "") or "").strip()
         if preferred:  # the person's choice in Settings wins over backend.json and the environment
             llm = dataclasses.replace(link_config.capability("llm"), model=preferred)
             link_config = dataclasses.replace(link_config, capabilities={**link_config.capabilities, "llm": llm})
@@ -126,7 +103,7 @@ class Services:
 
     def get_settings(self) -> dict[str, Any]:
         return {
-            "model": self.db.get_setting("model", "") or "",
+            "model": str(self.db.get_setting("model", "") or ""),
             "default_language": self.default_language(),
             "pdf_available": self.pdf_available(),
             "image_studio": {"configured_url": self.config.image_studio_url or None, "timeout_s": self.config.image_timeout},
@@ -160,7 +137,7 @@ class Services:
             model = {"error": f"{type(error).__name__}: {error}"}
         return {"service": SERVICE, "version": __version__, "counts": self.counts(), "model": model, "pdf_available": self.pdf_available(),
                 "family": family.status(), "uptime_s": int(time.time() - self.started_at),
-                "db": str(self.config.db_path) if self.config.data_dir_configured else "data/cicero.db", "schema": self.db.schema_version()}
+                "db": str(self.config.db_path) if self.config.data_dir_configured else "data/cicero.db", "schema": self.db.schema_version}
 
     # ---------------- rendering and export ----------------
     def assets_lookup(self) -> Callable[[str], Optional[dict[str, Any]]]:

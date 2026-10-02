@@ -19,7 +19,9 @@ from .extract import extract_bytes, kind_for
 from .models import Block, DeckCreate, DeckPatch, LAYOUTS, OutlineItemIn, dump_blocks
 from . import custom_themes
 from .themes import DEFAULT_THEME
-from .util import clip, iso_stamp, jdump, jload, new_id, sha256_hex, slugify
+from .hoard_link.atomic import write_bytes_atomic
+from .hoard_link.ids import new_ulid as new_id
+from .util import clip, iso_stamp, jdump, jload, sha256_hex, slugify
 
 IMAGE_FORMATS = {"PNG": ("image/png", "png"), "JPEG": ("image/jpeg", "jpg"), "WEBP": ("image/webp", "webp")}
 MAX_IMAGE_PIXELS = 50_000_000
@@ -438,7 +440,7 @@ def add_asset(svc: Any, deck_id: str, data: bytes, filename: str = "") -> dict[s
         data, img = buf.getvalue(), fixed
     asset_id = new_id()
     svc.config.assets_dir.mkdir(parents=True, exist_ok=True)
-    (svc.config.assets_dir / f"{asset_id}.{ext}").write_bytes(data)
+    write_bytes_atomic(svc.config.assets_dir / f"{asset_id}.{ext}", data, fsync=False)
     svc.db.execute("INSERT INTO assets(id, deck_id, filename, mime, ext, width, height, bytes, sha256, created_ts) VALUES (?,?,?,?,?,?,?,?,?,?)",
                    (asset_id, deck_id, clip(filename, 200), mime, ext, img.width, img.height, len(data), sha256_hex(data), svc.clock()))
     return {"asset_id": asset_id, "width": img.width, "height": img.height, "mime": mime, "bytes": len(data)}
@@ -462,7 +464,7 @@ def add_export(svc: Any, deck_id: str, fmt: str, data: bytes, title: str) -> dic
     filename = f"{slugify(title)}.{fmt}"
     folder = svc.config.exports_dir / export_id
     folder.mkdir(parents=True, exist_ok=True)
-    (folder / filename).write_bytes(data)
+    write_bytes_atomic(folder / filename, data, fsync=False)
     svc.db.execute("INSERT INTO exports(id, deck_id, format, filename, bytes, sha256, created_ts) VALUES (?,?,?,?,?,?,?)",
                    (export_id, deck_id, fmt, filename, len(data), sha256_hex(data), svc.clock()))
     return export_view(svc, svc.db.one("SELECT * FROM exports WHERE id = ?", (export_id,)))

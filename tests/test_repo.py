@@ -60,7 +60,7 @@ def test_api_doc_covers_every_route():
     import tempfile
 
     app = create_app(make_config(Path(tempfile.mkdtemp())))
-    routes = {r.path for r in app.routes if getattr(r, "path", "").startswith("/api/") and "{path" not in r.path}
+    routes = {r.path for r in app.routes if getattr(r, "path", "").startswith("/api/") and "{path" not in r.path and "{rest" not in r.path}
     for route in routes:
         normalized = re.sub(r"\{[a-z_]+\}", "{}", route)
         assert any(normalized == re.sub(r"\{[a-z_0-9]+\}", "{}", m.split("?")[0]) for m in re.findall(r"`(?:GET|POST|PUT|PATCH|DELETE)[^`]*?(/api/[^`\s]*)", doc)), route

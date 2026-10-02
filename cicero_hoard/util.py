@@ -1,14 +1,13 @@
-"""Small shared helpers: JSON columns, ids, timestamps, slugs, text clipping."""
+"""Small helpers: JSON columns, timestamps, slugs, text clipping. Ids come from ``hoard_link.ids``."""
 
 from __future__ import annotations
 
 import hashlib
 import json
-import re
-import secrets
-import unicodedata
 from datetime import datetime, timezone
 from typing import Any, Iterable
+
+from .hoard_link.text import slugify as _slugify
 
 
 def jload(raw: Any, default: Any) -> Any:
@@ -28,21 +27,13 @@ def iso_stamp(ts: float) -> str:
     return datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def new_id() -> str:
-    """12 hex characters: short enough for URLs, random enough for a local app."""
-    return secrets.token_hex(6)
-
-
 def sha256_hex(data: bytes | str) -> str:
     return hashlib.sha256(data.encode("utf-8") if isinstance(data, str) else data).hexdigest()
 
 
 def slugify(text: str, fallback: str = "presentation", maxlen: int = 60) -> str:
-    """ASCII, lowercase, hyphen-separated; safe as a file name on any platform."""
-    text = unicodedata.normalize("NFKD", text or "")
-    text = "".join(c for c in text if not unicodedata.combining(c)).lower()
-    text = re.sub(r"[^a-z0-9]+", "-", text).strip("-")
-    return (text[:maxlen].strip("-")) or fallback
+    """ASCII, lowercase, hyphen-separated; safe as a file name on any platform (the shared ``hoard_link.text.slugify``)."""
+    return _slugify(text, max_len=maxlen, fallback=fallback)
 
 
 def clip(text: str | None, n: int) -> str:

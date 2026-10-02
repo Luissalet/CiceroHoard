@@ -58,7 +58,7 @@ def test_allowed_hosts_env_extends_the_guard(tmp_path):
 
 def test_deck_crud_and_validation(client):
     d = mk(client, title="Uno")
-    assert d["status"] == "draft" and len(d["id"]) == 12
+    assert d["status"] == "draft" and len(d["id"]) == 26
     assert client.get("/api/decks").json()["items"][0]["title"] == "Uno"
     assert client.get(f"/api/decks/{d['id']}").json()["slides"] == []
     p = client.patch(f"/api/decks/{d['id']}", json={"title": "Dos", "theme": "oscuro"})
@@ -293,7 +293,7 @@ def test_pdf_over_http_reports_unavailable(tmp_path, monkeypatch):
     from cicero_hoard import export_pdf
     from cicero_hoard.errors import PdfUnavailable
 
-    def boom(p):
+    def boom(p, profile_dir=None):
         raise PdfUnavailable("No Chromium is available.")
 
     monkeypatch.setattr(export_pdf, "_launch", boom)
@@ -357,8 +357,11 @@ def test_agent_endpoints_require_the_token(client):
 def test_token_is_persistent(tmp_path):
     a = make_services(tmp_path)
     b = make_services(tmp_path)
-    assert a.token == b.token and len(a.token) == 64
+    assert a.token == b.token and len(a.token) >= 32
     assert (tmp_path / "data" / "mcp-token").read_text() == a.token
+    # a token written by an older version (64 hex characters) is kept, never replaced
+    (tmp_path / "data" / "mcp-token").write_text("ab" * 32, encoding="utf-8")
+    assert make_services(tmp_path).token == "ab" * 32
 
 
 # ---------------- PWA and SPA ----------------
@@ -370,12 +373,18 @@ def test_pwa_routes(client):
     assert sw.status_code == 200 and "cicero-hoard-assets" in sw.text and sw.headers["service-worker-allowed"] == "/"
 
 
-def test_spa_fallback_and_unknown_api(client, tmp_path, monkeypatch):
+def _client_with_static(tmp_path, monkeypatch, static):
+    monkeypatch.setattr(main_mod, "STATIC_DIR", static)
+    svc = make_services(tmp_path)
+    return TestClient(create_app(svc.config, svc), base_url="http://127.0.0.1")
+
+
+def test_spa_fallback_and_unknown_api(tmp_path, monkeypatch):
     static = tmp_path / "static"
     (static / "assets").mkdir(parents=True)
     (static / "index.html").write_text("<!doctype html><title>app</title>", encoding="utf-8")
     (static / "assets" / "a.js").write_text("console.log(1)", encoding="utf-8")
-    monkeypatch.setattr(main_mod, "_static_dir", lambda: static)
+    client = _client_with_static(tmp_path, monkeypatch, static)
     assert "<title>app</title>" in client.get("/").text
     assert "<title>app</title>" in client.get("/decks/abc").text
     assert client.get("/assets/a.js").text == "console.log(1)"
@@ -385,7 +394,7 @@ def test_spa_fallback_and_unknown_api(client, tmp_path, monkeypatch):
     assert "secret" not in client.get("/..%2fsecret.txt").text and "secret" not in client.get("/%2e%2e/secret.txt").text
 
 
-def test_spa_without_a_built_client(client, tmp_path, monkeypatch):
-    monkeypatch.setattr(main_mod, "_static_dir", lambda: tmp_path / "nothing")
+def test_spa_without_a_built_client(tmp_path, monkeypatch):
+    client = _client_with_static(tmp_path, monkeypatch, tmp_path / "nothing")
     r = client.get("/")
     assert r.status_code == 503 and "error" in r.json()
