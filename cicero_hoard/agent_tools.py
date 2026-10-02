@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-import json
-from dataclasses import dataclass
-from typing import Any, Callable, Literal, Optional
+import dataclasses
+from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -12,6 +11,8 @@ from . import decks as store
 from . import generate as gen
 from . import images as images_mod
 from .errors import CiceroError
+from .hoard_link import agentkit
+from .hoard_link.agentkit import Empty, Tool, ann as _ann
 from .models import (Block, DeckCreate, DeckPatch, ExportFormat, Language, Layout, MAX_BLOCKS, MAX_SLIDES, OutlineItemIn, SlidePatch)
 from .services import Services
 from . import custom_themes
@@ -27,10 +28,6 @@ draft slides are rewritten. Without a reachable model the outline and slides com
 slide_regenerate says so instead of pretending. Speaker notes are part of the deliverable: write them. Deletes (deck_delete, slide_delete,
 source_remove) need confirm=true; ask the user first. Replacing the outline (outline_generate, outline_update) or drafts (slides_generate) discards
 what they held: ask when the user has edited them. deck_export returns the file path on disk and the download URL."""
-
-
-class Empty(BaseModel):
-    pass
 
 
 DeckId = Field(..., min_length=1, max_length=40, description="Deck id (from deck_list or deck_create).")
@@ -147,20 +144,6 @@ class ExportArgs(BaseModel):
 
 class SlideImageArgs(SlideRefArgs):
     prompt: Optional[str] = Field(None, max_length=1000, description="Picture description; defaults to the slide's image_prompt.")
-
-
-@dataclass(frozen=True)
-class Tool:
-    name: str
-    description: str
-    input_model: type[BaseModel]
-    annotations: dict[str, bool]
-    run: Callable[[Services, Any], Any]
-
-
-def _ann(read_only: bool, destructive: bool = False, idempotent: bool | None = None, open_world: bool = False) -> dict[str, bool]:
-    return {"readOnlyHint": read_only, "destructiveHint": destructive,
-            "idempotentHint": read_only if idempotent is None else idempotent, "openWorldHint": open_world}
 
 
 # ---------------- runners ----------------
@@ -420,54 +403,19 @@ TOOLS: list[Tool] = [
          SlideImageArgs, _ann(False, False, False, True), run_slide_image),
 ]
 
+# the MCP bridge waits this long for a tool (seconds): a local model writing a whole deck, a PDF render or a picture
+# takes far longer than the bridge's default
+_WAIT_S = {"outline_generate": 300.0, "slides_generate": 900.0, "slide_regenerate": 300.0, "deck_export": 240.0, "slide_image": 660.0}
+TOOLS = [dataclasses.replace(t, timeout_s=_WAIT_S[t.name]) if t.name in _WAIT_S else t for t in TOOLS]
+
 TOOLS_BY_NAME = {t.name: t for t in TOOLS}
-RESULT_CAP = 20_000
 
 
 def tool_catalog() -> list[dict]:
-    return [
-        {"name": t.name, "description": t.description, "annotations": t.annotations,
-         "inputSchema": t.input_model.model_json_schema(by_alias=True)}
-        for t in TOOLS
-    ]
+    return agentkit.tool_catalog(TOOLS)
 
 
-def cap_result(result: Any, limit: int = RESULT_CAP) -> Any:
-    """Keep an agent-facing result under ~20 KB: halve the biggest list (or text) until it fits and say so."""
-    if not isinstance(result, dict) or len(json.dumps(result, ensure_ascii=False)) <= limit:
-        return result
-    cut: list[str] = []
-    for _ in range(40):
-        size = len(json.dumps(result, ensure_ascii=False))
-        if size <= limit:
-            break
-        best: tuple[int, Any, str] | None = None
-        for key, value in result.items():
-            if isinstance(value, list) and len(value) > 1:
-                n = len(json.dumps(value, ensure_ascii=False))
-                if best is None or n > best[0]:
-                    best = (n, result, key)
-        if best is None:
-            text_key = max((k for k, v in result.items() if isinstance(v, str)), key=lambda k: len(result[k]), default=None)
-            if text_key and len(result[text_key]) > 1000:
-                result[text_key] = result[text_key][: len(result[text_key]) // 2] + "…"
-                cut.append(text_key)
-                continue
-            break
-        _, holder, key = best
-        holder[key] = holder[key][: max(1, len(holder[key]) // 2)]
-        cut.append(key)
-    if cut:
-        result["truncated"] = True
-        result["truncated_fields"] = sorted(set(cut))
-        result["hint"] = "The result was trimmed to fit ~20 KB: ask for detail=summary, or read one slide or source at a time."
-    return result
-
-
-def call_tool(svc: Services, name: str, arguments: dict | None, *, caller: str | None = None, cap: bool = False) -> Any:
-    tool = TOOLS_BY_NAME.get(name)
-    if tool is None:
-        raise KeyError(f"Unknown tool: {name}")
-    args = tool.input_model.model_validate(arguments or {})
-    result = tool.run(svc, args)
-    return cap_result(result) if cap else result
+def call_tool(svc: Services, name: str, arguments: dict | None, *, cap: bool = False) -> Any:
+    """Run one tool by name (arguments validated). ``cap=True`` trims the result to ~20 KB the way the assistant gets it
+    (the shared Hoard Link cap); the web UI calls with ``cap=False``. ``KeyError`` (an ``UnknownTool``) for an unknown name."""
+    return agentkit.call_tool(TOOLS_BY_NAME, svc, name, arguments, cap=cap)

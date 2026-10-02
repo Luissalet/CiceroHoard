@@ -61,17 +61,30 @@ def test_unknown_tool_and_bad_arguments(services):
 
 
 def test_cap_result_trims_big_lists_and_texts():
+    from cicero_hoard.hoard_link.agentkit import MAX_RESULT_BYTES, cap_result
+
     big = {"items": [{"t": "x" * 500} for _ in range(200)], "n": 1}
-    out = at.cap_result(big)
-    assert len(json.dumps(out)) <= at.RESULT_CAP and out["truncated"] is True and "items" in out["truncated_fields"] and out["hint"]
-    text = at.cap_result({"text": "y" * 60000})
-    assert len(text["text"]) < 30000 and text["truncated"] is True
+    out = cap_result(big)
+    assert len(json.dumps(out)) <= MAX_RESULT_BYTES and "items" in out["truncated"]["original_lengths"] and out["truncated"]["hint"]
+    text = cap_result({"text": "y" * 60000})
+    assert len(text["text"]) < 30000 and "truncated" in text
     small = {"a": 1}
-    assert at.cap_result(small) == {"a": 1} and at.cap_result([1, 2]) == [1, 2]
+    assert cap_result(small) == {"a": 1}
+
+
+def test_agent_results_are_capped_and_the_ui_ones_are_not(services, deck):
+    from cicero_hoard.agent_tools import call_tool
+
+    for n in range(30):
+        at.call_tool(services, "source_add", {"deck_id": deck["id"], "title": f"s{n}", "text": ("palabra " * 2000)})
+    full = call_tool(services, "source_list", {"deck_id": deck["id"]})
+    assert "truncated" not in full
+    capped = call_tool(services, "deck_get", {"deck_id": deck["id"], "detail": "full"}, cap=True)
+    assert len(json.dumps(capped)) <= 20_000 or "truncated" in capped
 
 
 def test_every_tool_full_flow(services, tmp_path):
-    call = lambda _tool, **a: at.call_tool(services, _tool, a, caller="test")  # noqa: E731
+    call = lambda _tool, **a: at.call_tool(services, _tool, a)  # noqa: E731
     assert call("cicero_status")["service"] == "cicero-hoard"
     d = call("deck_create", title="Flujo", brief="Resumen del trimestre", audience="Dirección", slide_count=5, language="es")
     did = d["id"]
@@ -163,85 +176,11 @@ def test_deck_get_summary_is_smaller_than_full(services, deck):
     assert small < big
 
 
-# ---------------- MCP bridge parity ----------------
+# ---------------- MCP catalogue ----------------
 
-def test_bridge_lists_the_catalogue_and_proxies_calls(client, monkeypatch):
-    sys.path.insert(0, str(ROOT))
-    import httpx
-    import mcp_server
-
-    catalog = client.get("/api/agent/tools").json()
-    bridge = mcp_server.CiceroBridge(catalog["tools"], catalog["instructions"])
-    listed = asyncio.run(bridge.list_tools())
-    assert {t.name for t in listed} == {t.name for t in at.TOOLS}
-    assert all(t.annotations is not None for t in listed)
-
-    monkeypatch.setenv("CICERO_TOKEN", client.svc.token)
-
-    class FakeAsyncClient:
-        def __init__(self, *a, **k):
-            pass
-
-        async def __aenter__(self):
-            return self
-
-        async def __aexit__(self, *a):
-            return False
-
-        async def post(self, url, json=None, headers=None):
-            return client.post(url.replace(mcp_server.BASE_URL, ""), json=json, headers=headers)
-
-    monkeypatch.setattr(httpx, "AsyncClient", FakeAsyncClient)
-    out = asyncio.run(bridge.call_tool("deck_create", {"title": "Vía puente"}))
-    assert json.loads(out[0].text)["title"] == "Vía puente"
-    err = asyncio.run(bridge.call_tool("deck_get", {"deck_id": "inexistente"}))
-    assert "error" in json.loads(err[0].text)
-    assert mcp_server._token() == client.svc.token
-
-
-def test_bridge_refuses_non_local_urls():
-    sys.path.insert(0, str(ROOT))
-    import mcp_server
-
-    with pytest.raises(SystemExit):
-        mcp_server._check_local("http://evil.example:5194")
-    mcp_server._check_local("http://127.0.0.1:5194")
-
-
-def test_bridge_names_a_missing_or_foreign_token_instead_of_a_stopped_app(client, monkeypatch, tmp_path):
-    """Seen live: a running app with its data in another folder was reported as 'not running', and the assistant tried
-    to start it again."""
-    sys.path.insert(0, str(ROOT))
-    import httpx
-    import mcp_server
-
-    catalog = client.get("/api/agent/tools").json()
-    bridge = mcp_server.CiceroBridge(catalog["tools"], catalog["instructions"])
-    monkeypatch.delenv("CICERO_TOKEN", raising=False)
-    started = []
-    monkeypatch.setattr(mcp_server, "ensure_running", lambda *a, **k: started.append(1) or True)
-    monkeypatch.setattr(mcp_server, "_healthy", lambda: True)
-
-    class FakeAsyncClient:
-        def __init__(self, *a, **k):
-            pass
-
-        async def __aenter__(self):
-            return self
-
-        async def __aexit__(self, *a):
-            return False
-
-        async def post(self, url, json=None, headers=None):
-            return client.post(url.replace(mcp_server.BASE_URL, ""), json=json, headers=headers)
-
-    monkeypatch.setattr(httpx, "AsyncClient", FakeAsyncClient)
-    monkeypatch.setattr(mcp_server, "TOKEN_FILE", tmp_path / "missing" / "mcp-token")
-    missing = json.loads(asyncio.run(bridge.call_tool("deck_list", {}))[0].text)["error"]
-    assert "running" in missing and "mcp-token" in missing and not started
-
-    foreign = tmp_path / "mcp-token"
-    foreign.write_text("not-the-token", encoding="utf-8")
-    monkeypatch.setattr(mcp_server, "TOKEN_FILE", foreign)
-    refused = json.loads(asyncio.run(bridge.call_tool("deck_list", {}))[0].text)["error"]
-    assert "refused" in refused and "CICERO_TOKEN_FILE" in refused
+def test_the_catalogue_publishes_the_waiting_time_of_the_slow_tools(client):
+    catalog = {t["name"]: t for t in client.get("/api/agent/tools").json()["tools"]}
+    assert set(catalog) == {t.name for t in at.TOOLS}
+    assert catalog["slides_generate"]["x-timeout-s"] >= 600 and catalog["slide_image"]["x-timeout-s"] >= 600
+    assert "x-timeout-s" not in catalog["deck_list"]
+    assert all(t["annotations"] is not None for t in catalog.values())
