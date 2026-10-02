@@ -18,14 +18,13 @@ dependencies = [
   "mcp>=1.10,<2",
   "python-multipart>=0.0.9",
   "python-pptx>=1.0",
-  "python-docx>=1.1",
   "pypdf>=3.17",
   "pillow>=10",
 ]
 
 [project.optional-dependencies]
 pdf = ["playwright>=1.45"]
-dev = ["pytest>=8", "pytest-asyncio>=0.23"]
+dev = ["pytest>=8", "pytest-asyncio>=0.23", "python-docx>=1.1"]  # python-docx only builds the test documents: reading Word files is Hoard Link's
 icon = ["pillow>=11", "numpy>=2", "opencv-python-headless>=4.9"]
 
 [project.scripts]

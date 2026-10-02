@@ -4,7 +4,7 @@ Base URL `http://127.0.0.1:5194`. The server accepts local requests only (see th
 are JSON unless stated. Ids of decks, slides, outline items, assets and exports are 12-character hex strings; source
 ids are integers (per installation). Slide positions are 1-based.
 
-Errors are `{"error": "message"}` with, when there is one, `"code": "..."`:
+Errors are `{"error": "message", "code": "..."}` (one envelope for the whole app; validation errors add `issues: [{loc, msg}]`; `code` is always present):
 
 | status | meaning |
 | --- | --- |

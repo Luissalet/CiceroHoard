@@ -11,8 +11,8 @@ construidas con el mismo código, de modo que no pueden discrepar.
 - **Presentaciones**: título, encargo (brief), público, tono, idioma (español o inglés), número de diapositivas (de 3 a
   40) y tema. El estado se deduce, nunca se escribe a mano: `draft` (nada todavía), `outline` (hay guion), `review`
   (hay diapositivas y alguna sin aprobar), `ready` (todas aprobadas).
-- **Fuentes**: pega texto o añade un archivo `.txt`, `.md`, `.pdf`, `.docx` o `.pptx` (solo texto; los PDF escaneados
-  necesitan OCR aparte). Las fuentes se numeran y cada diapositiva puede citar en las que se apoya.
+- **Fuentes**: pega texto o añade un archivo `.txt`, `.md`, `.pdf`, `.docx` o `.pptx` (solo texto; un PDF escaneado lo lee el OCR
+  del servicio de documentos de la familia cuando esa aplicación está en marcha). Las fuentes se numeran y cada diapositiva puede citar en las que se apoya.
 - **Guion**: lo genera el modelo local a partir del encargo y de fragmentos numerados de las fuentes, o se escribe a
   mano. Cada punto tiene título, propósito, unas ideas y una sugerencia de diseño opcional.
 - **Diapositivas**: ocho diseños (`title`, `section`, `bullets`, `two_column`, `image_text`, `quote`, `chart`,
@@ -88,6 +88,14 @@ navegador.
 
 El modelo sale de Hoard Link (`data/backend.json` o las variables de entorno de Hoard); el nombre del modelo también
 se puede elegir en Ajustes.
+
+## Código compartido de Hoard Link
+
+La fontanería es la de las librerías comunes de Hoard Link (copia en `cicero_hoard/hoard_link/`): el lanzador (una instancia
+por puerto, registros en `data/logs/`), el guardián de peticiones, el formato de errores, el `mcp-token` estable, la capa
+SQLite, los ids ULID (los decks creados con versiones anteriores conservan sus ids de 12 caracteres), el catálogo del
+agente con el límite de 20 KB, los lectores de Word y de texto con la protección contra zip-bombs, el troceador, el
+lanzador de navegador para exportar a PDF y el puente MCP.
 
 ## MCP
 
@@ -178,7 +186,7 @@ herramienta que el estudio no tiene.
   de la fuente.
 - Gráficos: barras, líneas y circular; una o varias series (el circular usa la primera).
 - Las notas del orador no se incluyen en la exportación a HTML.
-- Los PDF escaneados no tienen texto y se rechazan con un mensaje.
+- Los PDF escaneados solo se leen si el servicio de documentos de la familia (OCR) está en marcha; si no, se rechazan con un mensaje.
 
 ## Licencia
 
