@@ -162,14 +162,14 @@ def test_markdown_notes_cannot_break_out_of_the_comment():
 # ---------------- PDF ----------------
 
 def test_pdf_unavailable_is_a_clear_error(monkeypatch):
-    monkeypatch.setattr(export_pdf, "_launch", lambda p: (_ for _ in ()).throw(PdfUnavailable("No Chromium is available")))
+    monkeypatch.setattr(export_pdf, "_launch", lambda p, d=None: (_ for _ in ()).throw(PdfUnavailable("No Chromium is available")))
     with pytest.raises(PdfUnavailable) as info:
         export_pdf.build_pdf(sample_deck(), assets=NO_ASSETS)
     assert info.value.code == "pdf_unavailable" and "playwright install chromium" in export_pdf.INSTALL_HINT
 
 
 def test_pdf_generic_browser_failure_is_pdf_unavailable(monkeypatch):
-    def boom(p):
+    def boom(p, profile_dir=None):
         raise RuntimeError("browser crashed\nstack")
     monkeypatch.setattr(export_pdf, "_launch", boom)
     with pytest.raises(PdfUnavailable) as info:
@@ -230,3 +230,48 @@ def test_service_pdf_uses_injected_function_and_reports_failure(tmp_path):
     decks.add_slide(svc2, d2["id"], title="x")
     with pytest.raises(PdfUnavailable):
         svc2.export(d2["id"], "pdf")
+
+
+def test_pdf_uses_the_shared_launcher_with_a_throwaway_profile(monkeypatch):
+    """The export goes through hoard_link.web.browser.launch_context (installed Edge/Chrome first on Windows) and a temp profile."""
+    seen = {}
+
+    class Page:
+        def set_content(self, *a, **k): pass
+        def emulate_media(self, **k): pass
+        def pdf(self, **k): return b"%PDF-fake"
+
+    class Context:
+        def new_page(self): return Page()
+        def close(self): seen["closed"] = True
+
+    def fake_launch(pw, profile_dir, *, headless=True, **k):
+        seen["profile"], seen["headless"] = profile_dir, headless
+        return Context(), "fake"
+
+    class FakePlaywright:
+        def __enter__(self): return object()
+        def __exit__(self, *a): return False
+
+    import playwright.sync_api as sync_api
+    monkeypatch.setattr(sync_api, "sync_playwright", lambda: FakePlaywright())
+    monkeypatch.setattr(export_pdf.browser, "launch_context", fake_launch)
+    assert export_pdf.build_pdf(sample_deck(), assets=NO_ASSETS) == b"%PDF-fake"
+    assert seen["headless"] is True and seen["closed"] and "cicero-pdf-" in str(seen["profile"])
+
+
+def test_a_missing_browser_is_reported_by_the_shared_error(monkeypatch):
+    import playwright.sync_api as sync_api
+
+    class FakePlaywright:
+        def __enter__(self): return object()
+        def __exit__(self, *a): return False
+
+    def none_available(*a, **k):
+        raise export_pdf.browser.BrowserUnavailable("no browser could be started (chrome: not found)")
+
+    monkeypatch.setattr(sync_api, "sync_playwright", lambda: FakePlaywright())
+    monkeypatch.setattr(export_pdf.browser, "launch_context", none_available)
+    with pytest.raises(PdfUnavailable) as info:
+        export_pdf.build_pdf(sample_deck(), assets=NO_ASSETS)
+    assert info.value.code == "pdf_unavailable" and "chrome: not found" in str(info.value) and "playwright install chromium" in str(info.value)
