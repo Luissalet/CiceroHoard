@@ -93,9 +93,56 @@ def test_real_designcraft_handout_contains_deck_text_and_rendered_preview(servic
     assert native.suffix == ".designcraft" and native.is_file()
     assert preview.suffix == ".png" and preview.is_file() and preview.stat().st_size > 1000
     assert result["editable"] is True and result["pages"] == 2 and len(result["preview_paths"]) == 2
-    assert result['image_transfer']=='captions_only' and result['chart_transfer']=='text_values'
+    assert result['image_transfer']=='embedded_raster_frames' and result['images_transferred']==[]
+    assert result['portable_copy_verified'] and result['chart_transfer']=='text_values'
     assert result["url"].startswith("/api/exports/") and len(result["preview_urls"]) == 2
     assert result["overset_text_frames"] == 0
     rendered_content = " ".join(story["preview"] or "" for story in result["inspection"]["stories"])
     assert "Distinctive slide heading" in rendered_content and "First retained point" in rendered_content
     assert "Second page proof" in rendered_content and "Second page body copy" in rendered_content
+
+
+@pytest.mark.skipif(not DESIGN.is_file(), reason="set CICERO_DESIGNCRAFT_CLI to run the local DesignCraft image integration test")
+def test_designcraft_handout_embeds_raster_and_svg_fallback_in_reopenable_project(services):
+    import io
+    from PIL import Image
+
+    services.config.designcraft_cli = str(DESIGN)
+    deck = decks.create_deck(services, DeckCreate(title="Image handout proof", slide_count=3))
+    raster = Image.new("RGB", (240, 120), "#da3f2b")
+    raster_buf = io.BytesIO(); raster.save(raster_buf, format="PNG")
+    raster_asset = decks.add_asset(services, deck["id"], raster_buf.getvalue(), "real-photo.png")
+    fallback = Image.new("RGB", (120, 180), "#235eb5")
+    fallback_buf = io.BytesIO(); fallback.save(fallback_buf, format="PNG")
+    vector = b'<svg xmlns="http://www.w3.org/2000/svg" width="120" height="180" viewBox="0 0 120 180"><rect width="120" height="180" fill="#235eb5"/></svg>'
+    svg_asset = decks.add_svg_asset(services, deck["id"], vector, "figure.svg", fallback_png=fallback_buf.getvalue())
+    slide = decks.add_slide(services, deck["id"], title="Raster and vector source",
+                            blocks=[{"type": "text", "text": "Text remains editable alongside the figures."},
+                                    {"type": "image", "asset_id": raster_asset["asset_id"], "caption": "Original raster photo"},
+                                    {"type": "image", "asset_id": svg_asset["asset_id"], "caption": "SVG source with PNG fallback"}],
+                            notes="Speaker notes remain in the editable handout.")
+    result = call_tool(services, "deck_handout_designcraft", {"deck_id": deck["id"]})
+    native, preview = Path(result["path"]), Path(result["preview_path"])
+    assert native.is_file() and native.suffix == ".designcraft"
+    assert result["portable_copy_verified"] is True
+    assert result["image_transfer"] == "embedded_raster_frames"
+    assert [item["source"] for item in result["images_transferred"]] == ["raster", "svg_png_fallback"]
+    assert [item["caption"] for item in result["images_transferred"]] == ["Original raster photo", "SVG source with PNG fallback"]
+    assert result["overset_text_frames"] == 0
+    text = " ".join(story["preview"] or "" for story in result["inspection"]["stories"])
+    assert "Text remains editable" in text
+    with zipfile.ZipFile(native) as package:
+        document = __import__("json").loads(package.read("document.json"))
+        stories = list(document["stories"].values())
+        assert any("Speaker notes remain in the editable handout." in story["text"] for story in stories)
+        graphics = [item for spread in document["spreads"] for item in spread["items"]
+                    if item.get("content", {}).get("type") == "graphic"]
+        assert len(graphics) == 2 and len(document["assets"]) >= 2
+    with Image.open(preview) as rendered:
+        colors = rendered.convert("RGB").getcolors(maxcolors=rendered.width * rendered.height)
+        assert colors and any(count > 500 and color[0] > color[1] * 1.5 for count, color in colors)
+        assert any(count > 500 and color[2] > color[0] * 1.5 for count, color in colors)
+    slide_after = decks.get_slide(services, deck["id"], slide["id"])
+    assert slide_after["notes"] == "Speaker notes remain in the editable handout."
+    assert [block["caption"] for block in slide_after["blocks"] if block["type"] == "image"] == [
+        "Original raster photo", "SVG source with PNG fallback"]

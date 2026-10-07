@@ -178,9 +178,11 @@ The 37 tools are listed in `README.md`. The REST routes above and the tools shar
 | `craft_discover` | `{app: "vectorcraft" | "designcraft"}` | Complete installed MCP tool, prompt, resource and resource-template inventories |
 | `craft_call` | `{app, calls: [{kind?: "tool" | "prompt" | "resource", name, arguments}]}` | Ordered native MCP dispatch with complete results |
 | `vector_figure_create` | `{deck_id, slide_id, title?, shape?, fill?, stroke?, replace_block_index?}` | Editable VectorCraft file plus an SVG figure attached to the slide; replace one image block without changing text/notes; PPTX embeds SVG and PNG fallback |
-| `deck_handout_designcraft` | `{deck_id}` | Editable `.designcraft` handout, PNG preview paths, page count |
+| `deck_handout_designcraft` | `{deck_id}` | Editable `.designcraft` handout with embedded raster image frames, PNG preview paths, page count and portable-copy verification |
 
 Set `CICERO_VECTORCRAFT_CLI` and `CICERO_DESIGNCRAFT_CLI` to portable executable paths. MCP schemas are discovered at runtime, so Cicero does not filter the native command catalogue. Craft app data is isolated under the configured Cicero data directory. Handout pages preserve slide text, notes, chart values and figure captions; previews are PNG. PDF and source-deck brand parity are not claimed for this workflow.
+
+Handouts also embed raster assets as separate graphic frames. SVG assets use their stored PNG fallback; their original vector source remains available through Cicero. The saved native project is copied and reopened before preview generation. The result reports `image_transfer`, `images_transferred`, and `portable_copy_verified`. Missing images or overset text produce an explicit error.
 
 Local executable configuration can also be read from `<data>/craft-engines.json` using `{app: {executable: path}}`. A raw `craft_call` batch starts a fresh native process; state-dependent operations belong in that batch, and documents must be saved before it ends. In-memory selection and undo do not survive separate batches.
 

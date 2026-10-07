@@ -6,10 +6,13 @@ it does not maintain a second, lossy allow-list of an installed app's MCP API.
 from __future__ import annotations
 
 import asyncio
+import base64
 import json
 import os
 import re
+import shutil
 import uuid
+import zipfile
 from pathlib import Path
 from typing import Any
 from concurrent.futures import ThreadPoolExecutor
@@ -121,7 +124,8 @@ async def _optional_list(request: Any, member: str) -> list[Any]:
 
 
 def create_handout(svc: Any, deck: dict[str, Any]) -> dict[str, Any]:
-    """Create a deterministic, editable A4 DesignCraft handout and page previews."""
+    """Create an editable A4 handout with embedded figures and page previews."""
+    from . import decks as store
     export_dir = Path(svc.config.data_dir) / "craft-runs" / "designcraft"
     export_dir.mkdir(parents=True, exist_ok=True)
     stem = f"{re.sub(r'[^A-Za-z0-9_-]+', '-', deck['title']).strip('-')[:40] or 'presentation'}-{deck['id']}-{uuid.uuid4().hex[:8]}"
@@ -131,27 +135,93 @@ def create_handout(svc: Any, deck: dict[str, Any]) -> dict[str, Any]:
         raise ValueError("Add slides before creating a DesignCraft handout.")
     pages = max(1, len(slides))
     calls: list[dict[str, Any]] = [{"name": "new_document", "arguments": {"title": deck["title"], "preset": "A4", "pages": pages, "margins": 36, "facingPages": False}}]
+    transferred: list[dict[str, Any]] = []
     for index, slide in enumerate(slides):
         body = _slide_text(slide, include_title=False)
-        # Separate editable heading and body frames create a clear hierarchy;
-        # the command targets each spread directly and works headless.
+        slide_images = []
+        for block in slide.get("blocks", []):
+            if block.get("type") != "image":
+                continue
+            info = store.asset_info(svc, str(block.get("asset_id", "")))
+            if info is None:
+                raise RuntimeError(f"Slide {index + 1} references a missing image asset.")
+            # DesignCraft 0.2.1's placed-graphic workflow accepts raster data.
+            # Cicero stores a paired PNG for VectorCraft SVGs; use it rather
+            # than claiming the handout retains vector source data.
+            source = info.get("fallback_path") if info["mime"] == "image/svg+xml" else info["path"]
+            if source is None or not Path(source).is_file():
+                raise RuntimeError(f"Slide {index + 1} image has no usable raster source for DesignCraft.")
+            data = Path(source).read_bytes()
+            if not data:
+                raise RuntimeError(f"Slide {index + 1} image asset is empty.")
+            from PIL import Image
+            with Image.open(source) as image:
+                image_width, image_height = image.size
+            slide_images.append((block, Path(source).name, data, image_width, image_height,
+                                 "svg_png_fallback" if info["mime"] == "image/svg+xml" else "raster"))
+
+        if slide_images:
+            # Reserve the upper half for a real image panel and the lower half
+            # for all original slide copy, including speaker notes/captions.
+            title_rect, body_rect, image_rect = [48, 36, 547, 96], [48, 438, 547, 794], [48, 110, 547, 425]
+        else:
+            title_rect, body_rect = [48, 48, 547, 132], [48, 150, 547, 794]
+            image_rect = None
         calls.extend([
             {"name": "execute", "arguments": {"command": "frame.create", "params": {
-                "spread": index, "rect": [48, 48, 547, 132], "content": "text", "text": slide.get("title", "")[:1000]}}},
+                "spread": index, "rect": title_rect, "content": "text", "text": slide.get("title", "")[:1000]}}},
             {"name": "execute", "arguments": {"command": "frame.create", "params": {
-                "spread": index, "rect": [48, 150, 547, 794], "content": "text", "text": body[:12000]}}},
+                "spread": index, "rect": body_rect, "content": "text", "text": body[:12000]}}},
         ])
+        if slide_images and image_rect:
+            cols = min(2, len(slide_images))
+            rows = (len(slide_images) + cols - 1) // cols
+            cell_w = (image_rect[2] - image_rect[0] - 12 * (cols - 1)) / cols
+            cell_h = (image_rect[3] - image_rect[1] - 12 * (rows - 1)) / rows
+            for image_index, (block, filename, data, iw, ih, source_kind) in enumerate(slide_images):
+                col, row = image_index % cols, image_index // cols
+                ar = iw / max(ih, 1)
+                width = min(cell_w, cell_h * ar)
+                height = width / ar
+                x = image_rect[0] + col * (cell_w + 12) + (cell_w - width) / 2
+                y = image_rect[1] + row * (cell_h + 12) + (cell_h - height) / 2
+                calls.append({"name": "execute", "arguments": {"command": "edit.deselectAll", "params": {}}})
+                calls.append({"name": "execute", "arguments": {"command": "file.place", "params": {
+                    "base64": base64.b64encode(data).decode("ascii"), "name": filename,
+                    "spread": index, "x": round(x, 3), "y": round(y, 3), "width": round(width, 3)}}})
+                transferred.append({"slide": index + 1, "caption": block.get("caption", ""), "source": source_kind})
     previews = [export_dir / f"{stem}-page-{index + 1}.png" for index in range(pages)]
     calls.append({"name": "save_document", "arguments": {"path": str(native)}})
-    calls.extend({"name": "render_page", "arguments": {"page": index, "path": str(path), "scale": 1}}
-                 for index, path in enumerate(previews))
-    calls.append({"name": "inspect_document", "arguments": {}})
+    portable = export_dir / f"{stem}-portable.designcraft"
     result = call(svc, "designcraft", calls)
     failed = [r for r in result["results"] if r["is_error"]]
     if failed:
         raise RuntimeError(f"DesignCraft failed at {failed[0]['name']}: {failed[0]['result']}")
-    if not native.is_file() or not all(path.is_file() and path.stat().st_size > 1000 for path in previews):
-        raise RuntimeError("DesignCraft did not produce the editable document and rendered previews for every page.")
+    if not native.is_file():
+        raise RuntimeError("DesignCraft did not produce the editable document.")
+    # Re-open a copied project in a fresh MCP process before inspection and
+    # rendering. This proves images travel inside the project, not by links to
+    # Cicero's asset store or temporary source paths.
+    shutil.copy2(native, portable)
+    try:
+        with zipfile.ZipFile(portable) as package:
+            saved_document = json.loads(package.read("document.json"))
+        graphic_frames = sum(1 for spread in saved_document.get("spreads", []) for item in spread.get("items", [])
+                             if item.get("content", {}).get("type") == "graphic")
+    except (OSError, KeyError, ValueError, zipfile.BadZipFile) as error:
+        raise RuntimeError(f"DesignCraft copy is not a readable native project: {error}") from error
+    if graphic_frames < len(transferred):
+        raise RuntimeError(f"Copied DesignCraft project contains {graphic_frames} graphic frame(s), expected at least {len(transferred)}.")
+    verify_calls = [{"name": "open_document", "arguments": {"path": str(portable)}},
+                    {"name": "inspect_document", "arguments": {}}]
+    verify_calls.extend({"name": "render_page", "arguments": {"page": index, "path": str(path), "scale": 1}}
+                        for index, path in enumerate(previews))
+    result = call(svc, "designcraft", verify_calls)
+    failed = [r for r in result["results"] if r["is_error"]]
+    if failed:
+        raise RuntimeError(f"DesignCraft reopen verification failed at {failed[0]['name']}: {failed[0]['result']}")
+    if not all(path.is_file() and path.stat().st_size > 1000 for path in previews):
+        raise RuntimeError("DesignCraft did not render every page after reopening the copied editable document.")
     inspection = next((r.get("result", {}).get("content", [{}])[0].get("text", "{}") for r in reversed(result["results"])
                        if r["name"] == "inspect_document" and r.get("result", {}).get("content")
                        and r["result"]["content"][0].get("type") == "text"), "{}")
@@ -159,11 +229,13 @@ def create_handout(svc: Any, deck: dict[str, Any]) -> dict[str, Any]:
     except (TypeError, ValueError): inspected = {}
     if inspected.get("pageCount") != pages:
         raise RuntimeError(f"DesignCraft produced {inspected.get('pageCount')} pages, expected {pages}.")
+    overset = [story for story in inspected.get("stories", []) if story.get("overset")]
+    if overset:
+        raise RuntimeError(f"DesignCraft handout has {len(overset)} overset text frame(s); shorten the slide copy or split the slide before retrying.")
     compact = {"pageCount": inspected.get("pageCount"),
                "stories": [{"id": story.get("id"), "preview": story.get("preview"), "overset": story.get("overset")}
                            for story in inspected.get("stories", [])]}
-    from . import decks as store
-    editable_export = store.add_export(svc, deck["id"], "designcraft", native.read_bytes(), deck["title"] + " handout")
+    editable_export = store.add_export(svc, deck["id"], "designcraft", portable.read_bytes(), deck["title"] + " handout")
     editable_path, _ = store.export_file(svc, editable_export["id"])
     image_exports = [store.add_export(svc, deck["id"], "png", path.read_bytes(), f"{deck['title']} handout page {index + 1}")
                      for index, path in enumerate(previews)]
@@ -172,7 +244,8 @@ def create_handout(svc: Any, deck: dict[str, Any]) -> dict[str, Any]:
             "preview_path": str(image_files[0]), "preview_url": image_exports[0]["url"],
             "preview_paths": [str(path) for path in image_files], "preview_urls": [item["url"] for item in image_exports],
             "pages": pages, "editable": True, "preview_format": "png", "inspection": compact,
-            "image_transfer": "captions_only", "chart_transfer": "text_values",
+            "image_transfer": "embedded_raster_frames", "images_transferred": transferred,
+            "portable_copy_verified": True, "chart_transfer": "text_values",
             "overset_text_frames": sum(bool(story.get("overset")) for story in compact["stories"])}
 
 
