@@ -171,7 +171,7 @@ def create_handout(svc: Any, deck: dict[str, Any]) -> dict[str, Any]:
             {"name": "execute", "arguments": {"command": "frame.create", "params": {
                 "spread": index, "rect": title_rect, "content": "text", "text": slide.get("title", "")[:1000]}}},
             {"name": "execute", "arguments": {"command": "frame.create", "params": {
-                "spread": index, "rect": body_rect, "content": "text", "text": body[:12000]}}},
+                "spread": index, "rect": body_rect, "content": "text", "text": body}}},
         ])
         if slide_images and image_rect:
             cols = min(2, len(slide_images))
