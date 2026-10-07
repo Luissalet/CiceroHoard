@@ -45,6 +45,8 @@ def test_real_vectorcraft_svg_becomes_slide_figure_and_pptx_svg(client):
     assert all(not item["is_error"] for item in raw["results"])
     result = call_tool(services, "vector_figure_create", {"deck_id": deck["id"], "slide_id": slide["id"], "title": "Editable star"})
     assert Path(result["native_path"]).is_file() and Path(result["svg_path"]).is_file() and Path(result["preview_path"]).is_file()
+    assert result['native_editable'] and not result['pptx_native_shapes']
+    assert result['pptx_embedding']=='svg_picture_with_png_fallback'
     assert client.get(result["native_url"]).status_code == 200
     assert client.get(result["svg_url"]).headers["content-type"].startswith("image/svg+xml")
     assert client.get(result["preview_url"]).headers["content-type"].startswith("image/png")
@@ -91,6 +93,7 @@ def test_real_designcraft_handout_contains_deck_text_and_rendered_preview(servic
     assert native.suffix == ".designcraft" and native.is_file()
     assert preview.suffix == ".png" and preview.is_file() and preview.stat().st_size > 1000
     assert result["editable"] is True and result["pages"] == 2 and len(result["preview_paths"]) == 2
+    assert result['image_transfer']=='captions_only' and result['chart_transfer']=='text_values'
     assert result["url"].startswith("/api/exports/") and len(result["preview_urls"]) == 2
     assert result["overset_text_frames"] == 0
     rendered_content = " ".join(story["preview"] or "" for story in result["inspection"]["stories"])

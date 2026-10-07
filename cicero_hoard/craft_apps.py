@@ -172,6 +172,7 @@ def create_handout(svc: Any, deck: dict[str, Any]) -> dict[str, Any]:
             "preview_path": str(image_files[0]), "preview_url": image_exports[0]["url"],
             "preview_paths": [str(path) for path in image_files], "preview_urls": [item["url"] for item in image_exports],
             "pages": pages, "editable": True, "preview_format": "png", "inspection": compact,
+            "image_transfer": "captions_only", "chart_transfer": "text_values",
             "overset_text_frames": sum(bool(story.get("overset")) for story in compact["stories"])}
 
 
@@ -222,7 +223,8 @@ def create_vector_figure(svc: Any, deck_id: str, slide_id: str, *, shape: str = 
             "native_url": f"/api/assets/{asset['asset_id']}/native", "svg_path": str(asset_path),
             "svg_url": f"/api/assets/{asset['asset_id']}", "preview_path": str(asset_path.with_suffix(".png")),
             "preview_url": f"/api/assets/{asset['asset_id']}/preview", "editable": True,
-            "pptx_contains_svg": True}
+            "pptx_contains_svg": True, "native_editable": True,
+            "pptx_embedding": "svg_picture_with_png_fallback", "pptx_native_shapes": False}
 
 
 def _slide_text(slide: dict[str, Any], *, include_title: bool = True) -> str:

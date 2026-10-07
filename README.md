@@ -224,4 +224,6 @@ Tool names: `craft_discover`, `craft_call`, `vector_figure_create`, and `deck_ha
 
 As an alternative to environment variables, store executable paths in the local, untracked `data/craft-engines.json`: `{"vectorcraft":{"executable":"..."},"designcraft":{"executable":"..."}}`. Each `craft_call` batch opens a fresh native process. Keep dependent commands in one batch and save the native document before returning; selection and undo history do not persist between batches. Gutenberg provides persistent editorial sessions for longer publishing workflows.
 
+The vector source is editable in VectorCraft. PPTX embeds the SVG as a picture with PNG fallback, not native PowerPoint shape geometry; the tool reports this distinction. Handout image blocks contribute captions and chart blocks contribute text values, rather than embedded pictures or native charts.
+
 `deck_handout_designcraft(deck_id)` creates one editable A4 DesignCraft page per slide with separate heading and body frames, then renders a PNG preview for every page. Text and speaker notes are carried over deterministically; image blocks contribute their captions and charts their values. It reports text frames that overflow. The `.designcraft` file and each PNG are downloadable from the deck's export list. It does not claim PDF export or branded layout parity with the source deck.
