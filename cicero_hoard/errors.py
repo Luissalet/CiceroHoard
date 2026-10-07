@@ -25,6 +25,11 @@ class NotFound(AppError, LookupError):
         super().__init__("not_found", message)
 
 
+class RevisionConflict(CiceroError):
+    code = "conflict"
+    default_status = 409
+
+
 class Refused(CiceroError):
     """Blocked by a safety rule (HTTP 403)."""
 

@@ -7,6 +7,7 @@ file looks like the preview. Nothing is rasterised: every piece of text stays ed
 from __future__ import annotations
 
 import io
+from pathlib import Path
 from typing import Any, Callable, Optional
 
 from lxml import etree
@@ -113,12 +114,19 @@ def _add_chart(slide: Any, box: Box, theme: dict[str, Any], lang: str) -> None:
     ctype = {"bar": XL_CHART_TYPE.COLUMN_CLUSTERED, "line": XL_CHART_TYPE.LINE_MARKERS, "pie": XL_CHART_TYPE.PIE}.get(kind, XL_CHART_TYPE.COLUMN_CLUSTERED)
     frame = slide.shapes.add_chart(ctype, _emu(box.x), _emu(box.y), _emu(box.w), _emu(box.h), data)
     chart = frame.chart
+    # Axis IDs are unsigned 32-bit in OOXML. Some python-pptx chart templates
+    # emit signed IDs; normalize definitions and references together so strict
+    # readers can open the chart without changing its data or axis pairing.
+    for element in chart._chartSpace.iter():
+        if element.tag in (qn("c:axId"), qn("c:crossAx")):
+            element.set("val", str(int(element.get("val")) & 0xFFFFFFFF))
     values = [v for s in series for v in (s.get("values") or []) if isinstance(v, (int, float))]
     # Grouped thousands; the viewer's locale draws the separator (a point in Spanish), as the preview does.
     number_format = "#,##0" if all(float(v).is_integer() for v in values) else "#,##0.0#"
     text_hex, muted_hex = _color(theme, "text"), _color(theme, "muted")
     palette = series_colors(theme)
-    chart.font.size = Pt(11)
+    font_scale = theme.get('chart_font_scale', 1)
+    chart.font.size = Pt(11 * font_scale)
     chart.font.name = theme["fonts"]["body"]
     chart.font.color.rgb = _rgb(text_hex)
     chart.has_title = False
@@ -127,7 +135,7 @@ def _add_chart(slide: Any, box: Box, theme: dict[str, Any], lang: str) -> None:
         chart.has_legend = True
         chart.legend.position = XL_LEGEND_POSITION.RIGHT
         chart.legend.include_in_layout = False
-        chart.legend.font.size = Pt(12)
+        chart.legend.font.size = Pt(12 * font_scale)
         chart.legend.font.color.rgb = _rgb(text_hex)
         plot.vary_by_categories = True
         ser = plot.series[0]
@@ -137,7 +145,7 @@ def _add_chart(slide: Any, box: Box, theme: dict[str, Any], lang: str) -> None:
             pt.format.fill.fore_color.rgb = _rgb(palette[i % len(palette)])
         plot.has_data_labels = True
         plot.data_labels.show_value = True
-        plot.data_labels.font.size = Pt(11)
+        plot.data_labels.font.size = Pt(11 * font_scale)
         plot.data_labels.font.color.rgb = _rgb(text_hex)
         plot.data_labels.position = XL_LABEL_POSITION.OUTSIDE_END
         plot.data_labels.number_format = number_format
@@ -147,7 +155,7 @@ def _add_chart(slide: Any, box: Box, theme: dict[str, Any], lang: str) -> None:
         if chart.has_legend:
             chart.legend.position = XL_LEGEND_POSITION.TOP
             chart.legend.include_in_layout = False
-            chart.legend.font.size = Pt(12)
+            chart.legend.font.size = Pt(12 * font_scale)
             chart.legend.font.color.rgb = _rgb(text_hex)
         for i, ser in enumerate(plot.series):
             col = _rgb(palette[i % len(palette)])
@@ -164,7 +172,7 @@ def _add_chart(slide: Any, box: Box, theme: dict[str, Any], lang: str) -> None:
         if len(cats) * len(series) <= 14:
             plot.has_data_labels = True
             plot.data_labels.show_value = True
-            plot.data_labels.font.size = Pt(11)
+            plot.data_labels.font.size = Pt(11 * font_scale)
             plot.data_labels.font.color.rgb = _rgb(text_hex)
             plot.data_labels.position = XL_LABEL_POSITION.OUTSIDE_END if kind == "bar" else XL_LABEL_POSITION.ABOVE
             plot.data_labels.number_format = number_format
@@ -173,7 +181,7 @@ def _add_chart(slide: Any, box: Box, theme: dict[str, Any], lang: str) -> None:
         val_axis.tick_labels.number_format = number_format
         val_axis.tick_labels.number_format_is_linked = False
         for axis in (cat_axis, val_axis):
-            axis.tick_labels.font.size = Pt(11)
+            axis.tick_labels.font.size = Pt(11 * font_scale)
             axis.tick_labels.font.color.rgb = _rgb(muted_hex if axis is val_axis else text_hex)
             axis.format.line.color.rgb = _rgb(muted_hex)
         val_axis.has_major_gridlines = True
@@ -214,6 +222,12 @@ def _add_box(slide: Any, box: Box, theme: dict[str, Any], lang: str, assets: Ass
         if not info:
             return None
         source: Any = str(info["path"])
+        vector_data = None
+        if info.get("mime") == "image/svg+xml":
+            vector_data = info["path"].read_bytes()
+            source = str(info.get("fallback_path") or "")
+            if not source or not Path(source).is_file():
+                raise ValueError("SVG slide figures need their PNG fallback; re-import the VectorCraft graphic.")
         if info.get("mime") == "image/webp":  # python-pptx cannot embed WEBP: convert to PNG
             from PIL import Image
 
@@ -221,10 +235,35 @@ def _add_box(slide: Any, box: Box, theme: dict[str, Any], lang: str, assets: Ass
             Image.open(info["path"]).save(buf, format="PNG")
             buf.seek(0)
             source = buf
-        pic = slide.shapes.add_picture(source, _emu(box.x), _emu(box.y), _emu(box.w), _emu(box.h))
+        # Template body frames may scale x and y differently. Fit the original
+        # figure inside the resulting box rather than distorting its geometry.
+        width, height = info['width'], info['height']
+        scale = min(box.w / width, box.h / height)
+        w, h = width * scale, height * scale
+        x, y = box.x + (box.w - w) / 2, box.y + (box.h - h) / 2
+        pic = slide.shapes.add_picture(source, _emu(x), _emu(y), _emu(w), _emu(h))
         alt = box.image.get("alt") or ""
         pic._element.nvPicPr.cNvPr.set("descr", alt)
         pic.name = "Picture"
+        if vector_data is not None:
+            # Office's SVG extension keeps a real vector image part alongside
+            # the PNG fallback used by readers that do not understand SVG.
+            from pptx.opc.constants import RELATIONSHIP_TYPE as RT
+            from pptx.opc.packuri import PackURI
+            from pptx.parts.image import ImagePart
+            from pptx.oxml import parse_xml
+            package = slide.part.package
+            svg_part = ImagePart(package.next_image_partname("svg"), "image/svg+xml", package, vector_data, filename="figure.svg")
+            rel_id = slide.part.relate_to(svg_part, RT.IMAGE)
+            blip = pic._element.blipFill.blip
+            extension = parse_xml(
+                '<a:extLst xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" '
+                'xmlns:asvg="http://schemas.micro' + 'soft.com/office/drawing/2016/SVG/main" '
+                'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">\n'
+                f'  <a:ext uri="{{96DAC541-7B7A-43D3-8B79-37D633B846F1}}">'
+                f'<asvg:svgBlip r:embed="{rel_id}"/></a:ext>\n</a:extLst>'
+            )
+            blip.append(extension)
         return pic
     if box.kind == "chart" and box.chart:
         _add_chart(slide, box, theme, lang)
@@ -233,6 +272,9 @@ def _add_box(slide: Any, box: Box, theme: dict[str, Any], lang: str, assets: Ass
 
 
 def build_pptx(deck: dict[str, Any], *, assets: AssetLookup) -> bytes:
+    if deck.get('template'):
+        from .template_pptx import build_template_pptx
+        return build_template_pptx(deck, assets=assets)
     theme = theme_of(deck)
     lang = deck.get("language", "es")
     prs = Presentation()

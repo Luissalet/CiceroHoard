@@ -24,12 +24,13 @@ export default function Export() {
   return (
     <div className="max-w-4xl space-y-4">
       <Section title={t("export_title")}>
+        {deck.template && <p className="help mb-3">{t("template_export_help", { name: deck.template.name })}</p>}
         {slides.length === 0 && <p className="help mb-2">{t("export_no_slides")}</p>}
         {slides.length > 0 && pending > 0 && <p className="help mb-2">{t("export_pending", { n: pending })}</p>}
         <div className="grid gap-2 sm:grid-cols-2">
           {EXPORT_FORMATS.map((f) => (
             <div key={f} className="rounded-md border p-3" style={{ borderColor: "var(--line)" }}>
-              <button type="button" className="btn btn-primary" disabled={!!busy || slides.length === 0} onClick={() => create(f)}>{t(`export_${f}`)}</button>
+              <button type="button" className="btn btn-primary" disabled={!!busy || slides.length === 0 || (deck.template && ["pdf", "html"].includes(f))} onClick={() => create(f)}>{t(`export_${f}`)}</button>
               <p className="help mt-1.5">{t(`export_${f}_help`)}</p>
             </div>
           ))}

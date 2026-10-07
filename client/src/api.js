@@ -82,6 +82,12 @@ export const api = {
   assetUrl: (assetId) => `/api/assets/${e(assetId)}`,
 
   themes: () => request("GET", "/api/themes"),
+  templateUpload: (id, file) => {
+    const form = new FormData();
+    form.append("file", file);
+    return request("POST", `${deckBase(id)}/template`, { form });
+  },
+  templateClear: (id) => request("POST", `${deckBase(id)}/template`, { body: { clear: true } }),
   designSystems: () => request("GET", "/api/themes/design-systems"),
   themeFromTokens: (tokens_id, mode) => request("POST", "/api/themes/from-tokens", { body: { tokens_id, mode } }),
   check: (id) => request("GET", `${deckBase(id)}/check`),

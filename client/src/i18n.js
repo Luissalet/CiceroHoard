@@ -1,6 +1,12 @@
 // UI strings. Spanish is the default; English is used only when the browser language is English.
 const DICT = {
   es: {
+    "template_title": "Plantilla PPTX",
+    "template_help": "Carga una presentación de referencia para conservar su tamaño, fondos, logotipos y tipografías al exportar a PPTX. Cicero guarda una copia para reutilizarla aunque cambie el archivo original.",
+    "template_upload": "Cargar plantilla PPTX",
+    "template_clear": "Quitar plantilla",
+    "template_preview_help": "La vista previa muestra el contenido con el tema de Cicero. Abre el PPTX exportado para revisar la plantilla aplicada.",
+    "template_export_help": "Plantilla: {name}. Se aplica al PPTX; Markdown conserva el contenido. PDF y HTML con esta plantilla aún no están disponibles.",
     "about": "Acerca de",
     "actions": "Acciones",
     "add_item": "Añadir elemento",
@@ -289,6 +295,12 @@ const DICT = {
     "what_slides": "Diapositivas",
   },
   en: {
+    "template_title": "PPTX template",
+    "template_help": "Upload a reference presentation to retain its size, backgrounds, logos and fonts in the PPTX export. Cicero stores a copy for reuse even if the original file changes.",
+    "template_upload": "Upload PPTX template",
+    "template_clear": "Remove template",
+    "template_preview_help": "The preview shows the content with Cicero's theme. Open the exported PPTX to review the applied template.",
+    "template_export_help": "Template: {name}. It applies to PPTX; Markdown retains the content. PDF and HTML with this template are not yet available.",
     "about": "About",
     "actions": "Actions",
     "add_item": "Add item",

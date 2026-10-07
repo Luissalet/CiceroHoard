@@ -16,6 +16,8 @@ MEDIA_TYPES = {
     "pdf": "application/pdf",
     "html": "text/html; charset=utf-8",
     "md": "text/markdown; charset=utf-8",
+    "designcraft": "application/vnd.designcraft+zip",
+    "png": "image/png",
 }
 
 

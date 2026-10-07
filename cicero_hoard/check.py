@@ -1,7 +1,8 @@
 """Deck review: text that will not fit, over-long bullets, numbers that no source contains, missing notes and more.
 
 Pure functions over the deck as the API returns it. The number check is what keeps a generated deck honest: every
-figure on a slide must appear somewhere in the deck's sources (or in the brief the person wrote).
+figure on a cited slide must appear in its cited sources. Without citations,
+the legacy check uses the deck's sources and brief.
 """
 
 from __future__ import annotations
@@ -217,6 +218,11 @@ def check_deck(deck: dict[str, Any], sources: list[dict[str, Any]], assets: Asse
         own = [deck.get("title", ""), deck.get("brief", ""), deck.get("audience", ""), deck.get("tone", "")]
         reference = all_number_values([s["text"] for s in sources] + own)
     for slide in slides:
+        # Explicit citations define the evidence for this slide. A dummy
+        # template figure, or an agent-written brief, cannot validate it.
+        cited = set(slide.get('sources') or [])
+        slide_reference = (all_number_values(s['text'] for s in sources if s.get('id') in cited)
+                           if cited else reference)
         if _is_empty(slide):
             add(slide, "empty_slide", "warning", "empty_slide")
         plan = build_plan(slide, deck_title=deck.get("title", ""), theme=theme, number=slide["position"], total=len(slides), lang=lang, assets=assets)
@@ -247,8 +253,8 @@ def check_deck(deck: dict[str, Any], sources: list[dict[str, Any]], assets: Asse
                             add(slide, "chart_mismatch", "warning", "chart_mismatch", name=s.get("name") or "?", n=len(s.get("values", [])), cats=len(cats))
                     if b.get("chart") == "pie" and len(series) > 1:
                         add(slide, "chart_pie_series", "info", "chart_pie_series")
-                    if reference is not None:
-                        bad = chart_values_unsourced(b, reference)
+                    if slide_reference is not None:
+                        bad = chart_values_unsourced(b, slide_reference)
                         if bad:
                             add(slide, "unsourced_chart", "warning", "unsourced_chart", numbers=", ".join(bad[:8]))
             if t == "image" and assets(b.get("asset_id", "")) is None:
@@ -260,8 +266,8 @@ def check_deck(deck: dict[str, Any], sources: list[dict[str, Any]], assets: Asse
             elif not _is_empty(slide) or expected != "image":
                 if not (expected == "columns" and len(slide.get("blocks", [])) >= 2):
                     add(slide, "layout_content", "info", "layout_content", layout=slide["layout"], expected=expected)
-        if reference is not None:
-            bad_numbers = unsourced(" \n".join(slide_text_parts(slide)), reference)
+        if slide_reference is not None:
+            bad_numbers = unsourced(" \n".join(slide_text_parts(slide)), slide_reference)
             if bad_numbers:
                 add(slide, "unsourced_numbers", "warning", "unsourced_numbers", numbers=", ".join(bad_numbers[:8]))
         if not (slide.get("notes") or "").strip():

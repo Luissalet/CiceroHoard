@@ -88,6 +88,7 @@ export default function Preview({ deckId, query }) {
   const idx = slides.indexOf(slide);
   return (
     <div className="space-y-3">
+      {deck.template && <p className="help">{t("template_preview_help")}</p>}
       <div className="flex flex-wrap items-center gap-2">
         <a href={`#/deck/${deckId}/slides?slide=${encodeURIComponent(slide.id)}`} className="btn btn-sm">← {t("preview_back")}</a>
         <h1 className="min-w-0 flex-1 truncate text-[16px] font-semibold">{deck.title}</h1>

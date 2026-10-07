@@ -8,6 +8,11 @@ construidas con el mismo código, de modo que no pueden discrepar.
 
 ## Qué hace
 
+- **Tus plantillas PPTX**: carga una presentación de referencia en Tema, o usa `template_inspect` y
+  `deck_template` por MCP. El PPTX editable conserva tamaño, patrones, diseños, fondos, logotipos y
+  tipografías. Una copia guardada permite reutilizarla aunque cambie el original. Notas y gráficos salen
+  de la presentación nueva. Puedes asignar diapositivas modelo y formas concretas a cada diseño de Cicero.
+
 - **Presentaciones**: título, encargo (brief), público, tono, idioma (español o inglés), número de diapositivas (de 3 a
   40) y tema. El estado se deduce, nunca se escribe a mano: `draft` (nada todavía), `outline` (hay guion), `review`
   (hay diapositivas y alguna sin aprobar), `ready` (todas aprobadas).
@@ -125,6 +130,12 @@ herramientas de la aplicación en marcha y reenvía cada llamada. Si la aplicaci
 | `slide_revert` | listar las revisiones de una diapositiva o restaurar una como revisión nueva |
 | `deck_check` | revisión: desbordes, cifras que no están en las fuentes, notas ausentes, diapositivas sin aprobar |
 | `deck_theme` | listar los temas (los de serie y los hechos desde sistemas de diseño) o aplicar uno |
+| `asset_import` | copiar una figura local PNG/JPEG/WEBP; usar su ID en un bloque de imagen; repetir la importación reutiliza la imagen de esta presentación |
+| `slides_add` | añadir lotes de borradores de forma atómica; repetir la misma clave y contenido devuelve los IDs originales |
+| `slide_edit_text` | editar un título, subtítulo, nota o viñeta conservando los demás bloques |
+| `slide_set_image` | añadir o reemplazar una figura importada o su pie; conserva los demás bloques y notas; los reintentos idénticos mantienen la revisión |
+| `deck_rehearsal` | planificar turnos y estimar la duración desde las notas; no afirma haber medido un ensayo |
+| `template_inspect`, `deck_template` | inspeccionar un PPTX local, adjuntarlo con asignaciones opcionales por diseño, consultar la plantilla o quitarla con `clear=true` |
 | `theme_from_tokens` | crear un tema desde un sistema de diseño (`tokens_id`, `mode` claro u oscuro, `deck_id` opcional para aplicarlo); sin `tokens_id` lista los sistemas de diseño |
 | `deck_export` | exportar a `pptx`, `pdf`, `html` o `md`; devuelve la ruta del archivo y la URL de descarga |
 | `slide_image` | generar una imagen para una diapositiva con el estudio de imágenes |
@@ -174,6 +185,11 @@ herramienta que el estudio no tiene.
 
 ## Límites
 
+- Con plantilla adjunta, la vista previa muestra el tema incorporado. Abre el PPTX exportado para revisar
+  la plantilla aplicada. PDF/HTML con plantilla aún no están disponibles; Markdown exporta el contenido.
+  No se copian animaciones ni transiciones del original. La selección automática de formas es un punto
+  de partida; para referencias complejas, inspecciona sus IDs y asigna las formas explícitamente.
+
 - Una imagen tarda lo que el estudio tarde en renderizarla; la petición espera hasta `CICERO_IMAGE_TIMEOUT` segundos.
   Si pasa ese tiempo, el render sigue en marcha en el estudio y no se vuelve a enviar. Solo se toma una imagen por
   petición, de un estudio de este mismo equipo; se rechazan las imágenes de más de 15 MB o que no sean PNG, JPEG ni
@@ -191,3 +207,31 @@ herramienta que el estudio no tiene.
 ## Licencia
 
 Consulta `LICENSE`.
+
+## Lotes para presentaciones grandes
+
+`slides_add(deck_id, batch_key, slides)` añade varias diapositivas en borrador, con notas, gráficos y fuentes, en una transacción. Repetir la misma clave y contenido tras una respuesta interrumpida devuelve los IDs originales. La misma clave con contenido distinto se rechaza. Conserva las diapositivas y aprobaciones existentes; no aprueba el lote. Si falla una diapositiva, no se guarda ninguna del lote.
+
+Cuando una diapositiva cita fuentes concretas, `deck_check` comprueba sus cifras contra esas fuentes. Los números de ejemplo de otra fuente o del encargo no sirven como evidencia. Comprueba la presencia de cifras, no el significado de una afirmación; sigue siendo necesaria la revisión del contenido.
+
+`slide_edit_text` cambia un título, subtítulo, nota o viñeta sin reconstruir los demás bloques. La edición de una viñeta usa índices de bloque y elemento desde cero; conserva gráficos y otras viñetas, y crea una revisión normal en borrador.
+
+Para una figura existente, usa `asset_import` y después `slide_set_image(deck_id, slide_id, asset_id, caption?)`. Selecciona la primera imagen por defecto; `image_index` cuenta solo bloques de imagen y un índice igual al número de imágenes añade otra. Omitir el pie lo conserva; `null` explícito lo borra. Conserva los otros bloques, notas, título, fuentes y diseño. Un reintento idéntico no duplica imágenes ni revisiones. Los cambios crean revisiones en borrador y se deshacen con `slide_revert`. `expected_revision` opcional detecta una edición concurrente (409 `conflict`); vuelve a leer la diapositiva antes de reintentar.
+
+### Plan de ensayo cronometrado
+
+`deck_rehearsal(deck_id, duration_minutes, words_per_minute, pause_seconds, main_slides)` prepara un horario por diapositiva a partir de las notas. `main_slides` selecciona las primeras diapositivas de la exposición; las restantes quedan como apoyo. Los turnos suman exactamente el objetivo, y una estimación separada indica si el guion cabe al ritmo elegido, incluyendo pausas. Si faltan notas, la duración total estimada queda desconocida. No afirma haber medido un ensayo oral ni modifica notas, revisiones o aprobaciones.
+
+### VectorCraft y DesignCraft locales
+
+Configura `CICERO_VECTORCRAFT_CLI` y `CICERO_DESIGNCRAFT_CLI` con las rutas a los ejecutables portátiles instalados. Cicero inicia cada app como servidor MCP local sin interfaz y guarda sus datos de aplicación dentro de `data/craft-runs` de Cicero. Las pruebas actuales usan los paquetes portátiles verificados VectorCraft 0.3.1 y DesignCraft 0.2.1; las demás versiones compatibles se descubren en tiempo de ejecución. No requiere cuentas ni servicios remotos.
+
+`craft_discover(app)` devuelve el catálogo MCP nativo completo y los esquemas de entrada. `craft_call(app, calls)` despacha las herramientas nativas con sus nombres y argumentos originales, en orden, y devuelve todo el contenido de texto o imagen. Así Cicero conserva la superficie MCP disponible de cada app.
+
+Herramientas: `craft_discover`, `craft_call`, `vector_figure_create` y `deck_handout_designcraft`. El descubrimiento incluye herramientas, prompts, recursos y plantillas de recursos nativos cuando la app los ofrece. El despacho acepta `kind: "tool"`, `"prompt"` o `"resource"`; si el servidor no implementa un método MCP opcional, devuelve un catálogo vacío para ese método.
+
+`vector_figure_create(deck_id, slide_id, title, shape, fill, stroke, replace_block_index?)` crea un documento VectorCraft editable, SVG y vista PNG, guarda una copia gestionada y la añade a la diapositiva como figura. Para corregir una figura existente, pasa su `block_index` devuelto como `replace_block_index`; se conservan los demás bloques, título y notas. El PPTX incluye la imagen SVG y una imagen PNG de compatibilidad. Los archivos `.vectorcraft`, `.svg` y `.png` quedan en los recursos de la presentación; no se modifica el original.
+
+Como alternativa a las variables de entorno, guarda las rutas en el archivo local no versionado `data/craft-engines.json`: `{"vectorcraft":{"executable":"..."},"designcraft":{"executable":"..."}}`. Cada lote `craft_call` abre un proceso nativo nuevo. Agrupa los comandos dependientes en un solo lote y guarda el documento antes de terminar; la selección y el historial de deshacer no persisten entre lotes. Gutenberg ofrece sesiones editoriales persistentes para trabajos de publicación más largos.
+
+`deck_handout_designcraft(deck_id)` crea una página A4 editable de DesignCraft por diapositiva, con marcos separados para título y cuerpo, y renderiza una vista PNG por página. Transfiere texto y notas del orador de forma determinista; usa los pies de figura y valores de los gráficos. Informa de marcos de texto desbordados. El `.designcraft` y cada PNG se descargan desde la lista de exportaciones. No afirma exportar PDF ni igualar la maquetación de marca de la presentación original.

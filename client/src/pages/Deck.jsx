@@ -122,6 +122,7 @@ export default function Deck({ deckId, tab, query }) {
           </div>
         </div>
         <Tabs tabs={tabs} active={active} onChange={changeTab} label={t("deck_sections")} />
+        {deck.template && active !== "theme" && active !== "export" && <p className="help">{t("template_preview_help")}</p>}
         <Busy label={busy} />
         {error && (
           <div className="flex items-start justify-between gap-3 rounded-md border p-3 text-[13px]" style={{ background: "var(--danger-bg)", borderColor: "#e5534b66" }} role="alert">

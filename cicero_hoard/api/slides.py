@@ -5,7 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Request
 
 from .. import decks as store
-from ..models import RegenerateBody, ReorderBody, RevertBody, SlideAddBody, SlideImageBody, SlidePatch, SlidesGenerateBody
+from ..models import RegenerateBody, ReorderBody, RevertBody, SlideAddBody, SlideImageBody, SlidePatch, SlideSetImageBody, SlidesGenerateBody
 from .deps import services, tool
 
 router = APIRouter(prefix="/api")
@@ -70,3 +70,11 @@ def slide_revert(request: Request, deck_id: str, slide_id: str, body: RevertBody
 @router.post("/decks/{deck_id}/slides/{slide_id}/image")
 def slide_image(request: Request, deck_id: str, slide_id: str, body: SlideImageBody | None = None):
     return tool(request, "slide_image", deck_id=deck_id, slide_id=slide_id, prompt=(body.prompt if body else None))
+
+
+@router.put("/decks/{deck_id}/slides/{slide_id}/image")
+def slide_set_image(request: Request, deck_id: str, slide_id: str, body: SlideSetImageBody):
+    from ..agent_tools import call_tool
+    # This endpoint distinguishes omitted caption from an explicit null.
+    return call_tool(services(request), "slide_set_image",
+                     {"deck_id": deck_id, "slide_id": slide_id, **body.model_dump(exclude_unset=True)}, cap=False)

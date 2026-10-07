@@ -93,6 +93,16 @@ export default function Theme() {
   const items = themes.data?.items || [];
   const slides = (deck.slides || []).slice().sort((a, b) => a.position - b.position);
   const first = slides[0];
+  const uploadTemplate = (file) => file && run(t("busy_uploading"), async () => {
+    const res = await api.templateUpload(deckId, file);
+    setDeck(res.deck || res);
+    return true;
+  });
+  const clearTemplate = () => run(t("busy_saving"), async () => {
+    const res = await api.templateClear(deckId);
+    setDeck(res.deck || res);
+    return true;
+  });
 
   const choose = (id) => run(t("busy_saving"), async () => {
     const res = await api.deckUpdate(deckId, { theme: id });
@@ -103,6 +113,21 @@ export default function Theme() {
   if (themes.error) return <Empty>{themes.error.message}</Empty>;
   return (
     <div className="space-y-4">
+      <Section title={t("template_title")}>
+        <p className="help mb-3">{t("template_help")}</p>
+        <div className="flex flex-wrap items-center gap-3">
+          <label className="btn">
+            {t("template_upload")}
+            <input type="file" accept=".pptx" aria-label={t("template_upload")} className="sr-only-live" disabled={!!busy}
+              onChange={(e) => { uploadTemplate(e.target.files[0]); e.target.value = ""; }} />
+          </label>
+          {deck.template && <>
+            <span className="min-w-0 [overflow-wrap:anywhere]" role="status">{deck.template.name}</span>
+            <button type="button" className="btn" disabled={!!busy} onClick={clearTemplate}>{t("template_clear")}</button>
+          </>}
+        </div>
+        {deck.template && <p className="help mt-3">{t("template_preview_help")}</p>}
+      </Section>
       <Section title={t("theme_choose")} right={<span className="help">{t("theme_help")}</span>}>
         <div role="radiogroup" aria-label={t("theme_choose")} className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {items.map((th) => (
@@ -121,6 +146,7 @@ export default function Theme() {
       <FromDesignSystems deckId={deckId} setDeck={setDeck} run={run} busy={busy} onCreated={themes.reload} />
       {first && (
         <Section title={t("theme_real")}>
+          {deck.template && <p className="help mb-3">{t("template_preview_help")}</p>}
           <div className="max-w-2xl"><SlideFrame deckId={deckId} slide={first} theme={deck.theme} title={t("theme_real")} /></div>
         </Section>
       )}

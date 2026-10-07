@@ -340,7 +340,7 @@ def test_themes_and_settings(client):
 
 def test_agent_endpoints_require_the_token(client):
     tools = client.get("/api/agent/tools").json()
-    assert len(tools["tools"]) == 26 and tools["instructions"]
+    assert len(tools["tools"]) == 37 and tools["instructions"]
     assert client.post("/api/agent/call", json={"name": "deck_list"}).status_code == 401
     assert client.post("/api/agent/call", json={"name": "deck_list"}, headers={"Authorization": "Bearer wrong"}).status_code == 401
     good = {"Authorization": f"Bearer {client.svc.token}"}

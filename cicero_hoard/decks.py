@@ -16,7 +16,7 @@ from typing import Any, Optional
 
 from .errors import CiceroError, NotFound, Refused
 from .extract import extract_bytes, kind_for
-from .models import Block, DeckCreate, DeckPatch, LAYOUTS, OutlineItemIn, dump_blocks
+from .models import Block, DeckCreate, DeckPatch, LAYOUTS, MAX_SLIDES, OutlineItemIn, dump_blocks
 from . import custom_themes
 from .themes import DEFAULT_THEME
 from .hoard_link.atomic import write_bytes_atomic
@@ -94,6 +94,8 @@ def deck_view(svc: Any, deck_id: str) -> dict[str, Any]:
     }
     if custom:  # a theme made from a design system: the renderers read the definition from here
         view["theme_def"] = custom
+    if row['template']:
+        view['template'] = jload(row['template'], {})
     return view
 
 
@@ -139,6 +141,9 @@ def delete_deck(svc: Any, deck_id: str, confirm: bool) -> dict[str, Any]:
         conn.execute("DELETE FROM decks WHERE id = ?", (deck_id,))
     for a in assets:
         (svc.config.assets_dir / f"{a['id']}.{a['ext']}").unlink(missing_ok=True)
+        if a["ext"] == "svg":
+            (svc.config.assets_dir / f"{a['id']}.png").unlink(missing_ok=True)
+            (svc.config.assets_dir / f"{a['id']}.vectorcraft").unlink(missing_ok=True)
     for e in exports:
         shutil.rmtree(svc.config.exports_dir / e["id"], ignore_errors=True)
     svc.emit("cicero.deck.deleted", {"id": deck_id, "title": clip(row["title"], 80)})
@@ -321,6 +326,28 @@ def add_slide(svc: Any, deck_id: str, *, after_id: Optional[str] = None, layout:
     return get_slide(svc, deck_id, slide_id)
 
 
+def add_slide_batch(svc: Any, deck_id: str, batch_key: str, slides: list[dict[str, Any]]) -> dict[str, Any]:
+    """Append drafts atomically; retrying the same batch returns its real IDs."""
+    digest = sha256_hex(jdump(slides))
+    with svc.db.transaction() as conn:
+        _deck_row(svc, deck_id)
+        receipt = conn.execute("SELECT * FROM slide_batches WHERE deck_id=? AND batch_key=?",
+                               (deck_id, batch_key)).fetchone()
+        if receipt:
+            if receipt['payload_sha256'] != digest:
+                raise CiceroError("This batch_key already names different content; choose a new batch_key.")
+            ids = jload(receipt['slide_ids'], [])
+            current = [get_slide(svc, deck_id, sid) for sid in ids]
+            return {"deck_id": deck_id, "batch_key": batch_key, "replayed": True, "slides": current}
+        count = conn.execute("SELECT COUNT(*) FROM slides WHERE deck_id=?", (deck_id,)).fetchone()[0]
+        if not slides or count + len(slides) > MAX_SLIDES:
+            raise CiceroError(f"A batch must be nonempty and the deck may contain at most {MAX_SLIDES} slides.")
+        created = [add_slide(svc, deck_id, **slide) for slide in slides]
+        conn.execute("INSERT INTO slide_batches VALUES (?,?,?,?)",
+                     (deck_id, batch_key, digest, jdump([s['id'] for s in created])))
+    return {"deck_id": deck_id, "batch_key": batch_key, "replayed": False, "slides": created}
+
+
 def patch_slide(svc: Any, deck_id: str, slide_id: str, patch: dict[str, Any], *, reason: str = "edited") -> dict[str, Any]:
     """Apply a partial edit; the slide gets a new revision and goes back to draft."""
     row = _slide_row(svc, deck_id, slide_id)
@@ -438,12 +465,81 @@ def add_asset(svc: Any, deck_id: str, data: bytes, filename: str = "") -> dict[s
         buf = io.BytesIO()
         fixed.save(buf, format=fmt, **({"quality": 92} if fmt in ("JPEG", "WEBP") else {}))
         data, img = buf.getvalue(), fixed
-    asset_id = new_id()
-    svc.config.assets_dir.mkdir(parents=True, exist_ok=True)
-    write_bytes_atomic(svc.config.assets_dir / f"{asset_id}.{ext}", data, fsync=False)
-    svc.db.execute("INSERT INTO assets(id, deck_id, filename, mime, ext, width, height, bytes, sha256, created_ts) VALUES (?,?,?,?,?,?,?,?,?,?)",
-                   (asset_id, deck_id, clip(filename, 200), mime, ext, img.width, img.height, len(data), sha256_hex(data), svc.clock()))
+    digest = sha256_hex(data)
+    with svc.db.transaction():
+        existing = svc.db.one('SELECT * FROM assets WHERE deck_id=? AND sha256=? ORDER BY created_ts,id LIMIT 1', (deck_id, digest))
+        if existing is not None and asset_info(svc, existing['id']) is not None:
+            return {'asset_id':existing['id'], 'width':existing['width'], 'height':existing['height'],
+                    'mime':existing['mime'], 'bytes':existing['bytes'], 'reused':True}
+        asset_id = new_id()
+        svc.config.assets_dir.mkdir(parents=True, exist_ok=True)
+        write_bytes_atomic(svc.config.assets_dir / f"{asset_id}.{ext}", data, fsync=False)
+        svc.db.execute("INSERT INTO assets(id, deck_id, filename, mime, ext, width, height, bytes, sha256, created_ts) VALUES (?,?,?,?,?,?,?,?,?,?)",
+                       (asset_id, deck_id, clip(filename, 200), mime, ext, img.width, img.height, len(data), digest, svc.clock()))
     return {"asset_id": asset_id, "width": img.width, "height": img.height, "mime": mime, "bytes": len(data)}
+
+
+def add_svg_asset(svc: Any, deck_id: str, data: bytes, filename: str = "vector.svg", *, fallback_png: bytes = b"", native_data: bytes = b"") -> dict[str, Any]:
+    """Store a checked SVG as a normal deck image asset for browser and PPTX use."""
+    import xml.etree.ElementTree as ET
+    _deck_row(svc, deck_id)
+    if not data or len(data) > svc.config.max_image_bytes:
+        raise CiceroError("The SVG is empty or exceeds the image size limit.")
+    try:
+        root = ET.fromstring(data)
+    except ET.ParseError as error:
+        raise CiceroError(f"The SVG is not valid XML: {error}") from error
+    if root.tag.rsplit("}", 1)[-1].lower() != "svg":
+        raise CiceroError("The vector file must have an SVG root element.")
+    if fallback_png:
+        from PIL import Image, UnidentifiedImageError
+        try:
+            image = Image.open(io.BytesIO(fallback_png)); image.verify()
+            if image.format != "PNG": raise CiceroError("The SVG fallback must be a PNG image.")
+        except (UnidentifiedImageError, OSError, SyntaxError, ValueError) as error:
+            raise CiceroError(f"The SVG fallback is not a valid PNG: {error}") from error
+    forbidden = {"script", "foreignobject", "iframe", "audio", "video"}
+    for element in root.iter():
+        tag = element.tag.rsplit("}", 1)[-1].lower()
+        if tag in forbidden or any(k.lower().startswith("on") for k in element.attrib):
+            raise CiceroError("The SVG contains active content and cannot be embedded.")
+        for key, value in element.attrib.items():
+            if key.rsplit("}", 1)[-1].lower() in {"href", "src"} and not value.startswith("#"):
+                raise CiceroError("The SVG contains an external resource reference.")
+    width = _svg_dimension(root.attrib.get("width"), 512)
+    height = _svg_dimension(root.attrib.get("height"), 384)
+    digest = sha256_hex(data)
+    with svc.db.transaction():
+        existing = svc.db.one("SELECT * FROM assets WHERE deck_id=? AND sha256=? ORDER BY created_ts,id LIMIT 1", (deck_id, digest))
+        if existing is not None and asset_info(svc, existing["id"]) is not None:
+            asset_path = svc.config.assets_dir / f"{existing['id']}.svg"
+            if fallback_png and not asset_path.with_suffix(".png").is_file(): write_bytes_atomic(asset_path.with_suffix(".png"), fallback_png, fsync=False)
+            if native_data and not asset_path.with_suffix(".vectorcraft").is_file(): write_bytes_atomic(asset_path.with_suffix(".vectorcraft"), native_data, fsync=False)
+            return {"asset_id": existing["id"], "width": existing["width"], "height": existing["height"], "mime": existing["mime"], "bytes": existing["bytes"], "reused": True}
+        asset_id = new_id()
+        svc.config.assets_dir.mkdir(parents=True, exist_ok=True)
+        asset_path = svc.config.assets_dir / f"{asset_id}.svg"
+        try:
+            write_bytes_atomic(asset_path, data, fsync=False)
+            if fallback_png: write_bytes_atomic(asset_path.with_suffix(".png"), fallback_png, fsync=False)
+            if native_data: write_bytes_atomic(asset_path.with_suffix(".vectorcraft"), native_data, fsync=False)
+        except Exception:
+            asset_path.unlink(missing_ok=True)
+            asset_path.with_suffix(".png").unlink(missing_ok=True)
+            asset_path.with_suffix(".vectorcraft").unlink(missing_ok=True)
+            raise
+        svc.db.execute("INSERT INTO assets(id,deck_id,filename,mime,ext,width,height,bytes,sha256,created_ts) VALUES (?,?,?,?,?,?,?,?,?,?)",
+                       (asset_id, deck_id, clip(filename, 200), "image/svg+xml", "svg", width, height, len(data), digest, svc.clock()))
+    return {"asset_id": asset_id, "width": width, "height": height, "mime": "image/svg+xml", "bytes": len(data)}
+
+
+def _svg_dimension(value: Any, default: int) -> int:
+    import re
+    match = re.match(r"^\s*(\d+(?:\.\d+)?)", str(value or ""))
+    number = float(match.group(1)) if match else float(default)
+    if not 1 <= number <= 20000:
+        raise CiceroError("The SVG dimensions must be between 1 and 20000.")
+    return round(number)
 
 
 def asset_info(svc: Any, asset_id: str) -> Optional[dict[str, Any]]:
@@ -453,7 +549,13 @@ def asset_info(svc: Any, asset_id: str) -> Optional[dict[str, Any]]:
     path = svc.config.assets_dir / f"{row['id']}.{row['ext']}"
     if not path.is_file():
         return None
-    return {"id": row["id"], "deck_id": row["deck_id"], "width": row["width"], "height": row["height"], "mime": row["mime"], "path": path}
+    result = {"id": row["id"], "deck_id": row["deck_id"], "width": row["width"], "height": row["height"], "mime": row["mime"], "path": path}
+    if row["ext"] == "svg":
+        fallback = path.with_suffix(".png")
+        if fallback.is_file(): result["fallback_path"] = fallback
+        native = path.with_suffix(".vectorcraft")
+        if native.is_file(): result["native_path"] = native
+    return result
 
 
 # ---------------- exports ----------------

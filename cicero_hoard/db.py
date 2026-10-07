@@ -100,6 +100,18 @@ MIGRATIONS: list[str] = [
     );
     CREATE INDEX custom_themes_source ON custom_themes(source_ref, source_revision);
     """,
+    # 3: retryable draft batches; the receipt and slides commit together.
+    """
+    CREATE TABLE slide_batches (
+      deck_id TEXT NOT NULL REFERENCES decks(id) ON DELETE CASCADE,
+      batch_key TEXT NOT NULL,
+      payload_sha256 TEXT NOT NULL,
+      slide_ids TEXT NOT NULL,
+      PRIMARY KEY (deck_id, batch_key)
+    );
+    """,
+    # 4: immutable local PPTX template snapshot and semantic slide bindings.
+    "ALTER TABLE decks ADD COLUMN template TEXT;",
 ]
 
 

@@ -8,6 +8,11 @@ code, so the two cannot disagree.
 
 ## What it does
 
+- **Your PPTX templates**: upload a reference deck on the Theme tab, or use `template_inspect` and
+  `deck_template` over MCP. The editable PPTX keeps its dimensions, masters, layouts, backgrounds, logos
+  and fonts. A saved snapshot survives changes to the original file. Notes and charts come from the new deck.
+  Layout-to-source-slide bindings let an assistant choose precise title/body slots for unusual templates.
+
 - **Decks**: title, brief, audience, tone, language (Spanish or English), number of slides (3 to 40) and theme.
   The status is derived, never typed: `draft` (nothing yet), `outline` (an outline exists), `review` (slides exist,
   some not approved), `ready` (every slide approved).
@@ -35,7 +40,7 @@ code, so the two cannot disagree.
   the HTML and the PPTX.
 - **Exports**:
   - PPTX with real text boxes, bullet paragraphs, speaker notes and native charts (editable in the office suite),
-    16:9.
+    16:9 by default, or the attached template's size.
   - PDF, one page per slide, rendered by a local Chromium.
   - HTML, one self-contained file (styles, script and images inline) with arrow-key navigation. Speaker notes are
     left out on purpose because the file is meant to be shared.
@@ -122,9 +127,15 @@ turns that off; the slow tools publish how long the bridge waits for them). Regi
 | `slide_revert` | list a slide's revisions, or restore one as a new revision |
 | `deck_check` | review: overflow, figures not in the sources, missing notes, unapproved slides |
 | `deck_theme` | list the themes (built-in and made from design systems) or apply one |
+| `template_inspect`, `deck_template` | inspect a local PPTX, attach it with optional per-layout bindings, read the attachment, or detach it with `clear=true` |
 | `theme_from_tokens` | make a theme from a design system (`tokens_id`, `mode` light or dark, optional `deck_id` to apply it); without `tokens_id` it lists the design systems |
 | `deck_export` | export to `pptx`, `pdf`, `html` or `md`; returns the file path and the download URL |
 | `slide_image` | generate a picture for a slide with the image studio |
+| `asset_import` | copy an existing local PNG/JPEG/WEBP figure; use its returned asset ID in an image block; repeated imports reuse the image within this deck |
+| `slides_add` | atomic draft batches with a reusable batch key; retrying identical content returns the original IDs |
+| `slide_edit_text` | edit one title, subtitle, note or bullet while preserving the other blocks |
+| `slide_set_image` | add or replace one imported figure or its caption; preserve all other blocks and notes; identical retries keep the revision |
+| `deck_rehearsal` | plan time slots and estimate speaking duration from notes; no claim of measured rehearsal |
 
 Results sent to an assistant are trimmed to about 20 KB with a hint to narrow the request. Approving a slide is the
 person's decision: an assistant should not approve slides on its own.
@@ -166,6 +177,11 @@ stopped when it could not read its token, and an image call to a tool the studio
 
 ## Limits
 
+- With an attached template, the browser preview shows the built-in theme. Open the exported PPTX to review
+  the applied template. Template PDF/HTML export is not yet available; Markdown exports content only.
+  Source animations and transitions are not copied. Automatic slot selection is a starting point; use the
+  inspected shape IDs and explicit bindings for complex reference decks.
+
 - A picture takes as long as the studio needs to render it; the request waits up to `CICERO_IMAGE_TIMEOUT` seconds.
   If that time passes the render keeps running in the studio and is not submitted again. Only one image is taken
   per request, from a studio on this machine; images over 15 MB or not PNG, JPEG or WEBP are refused.
@@ -181,3 +197,31 @@ stopped when it could not read its token, and an image call to a tool the studio
 ## License
 
 See `LICENSE`.
+
+## Draft batches for large presentations
+
+`slides_add(deck_id, batch_key, slides)` appends several draft slides, with their notes, charts and source IDs, in one transaction. Retry the same key and content after an interrupted response to recover the original slide IDs. A reused key with different content is rejected. Existing slides and approvals are preserved; the batch does not approve slides. The whole batch rolls back if any slide fails validation.
+
+When a slide cites specific sources, `deck_check` checks its figures against those sources. Example numbers in another source or in the brief do not count as evidence for that slide. This checks numeric presence, not the meaning of a claim; factual review remains necessary.
+
+`slide_edit_text` changes one title, subtitle, note or bullet item without rebuilding the other blocks. Editing a bullet uses zero-based block/item indices; charts and other bullets remain intact, and the edit creates a normal draft revision.
+
+For an existing figure, use `asset_import`, then `slide_set_image(deck_id, slide_id, asset_id, caption?)`. The first image is selected by default; `image_index` counts only image blocks, and an index equal to the image count appends. Omitted captions stay unchanged; explicit `null` clears one. Other blocks, notes, title, sources and layout are preserved. An identical retry creates no extra image or revision. Changes create draft revisions and can be undone with `slide_revert`. Optional `expected_revision` detects a concurrent edit (409 `conflict`); read the slide again before retrying.
+
+### Timed rehearsal planning
+
+`deck_rehearsal(deck_id, duration_minutes, words_per_minute, pause_seconds, main_slides)` creates a per-slide schedule from speaker notes. `main_slides` selects the leading slides of the talk; the rest are listed as support. The slots sum exactly to the target, while a separate estimate reports whether the notes fit at the chosen pace, including pauses. Missing notes leave the total estimate unknown. Planning never claims an oral rehearsal has been measured and does not modify notes, revisions or approvals.
+
+### Local VectorCraft and DesignCraft
+
+Set `CICERO_VECTORCRAFT_CLI` and `CICERO_DESIGNCRAFT_CLI` to the installed portable executable paths. Cicero starts each app as a local headless MCP server and places its app data under Cicero's own `data/craft-runs` folder. The current real artifact tests use the verified VectorCraft 0.3.1 and DesignCraft 0.2.1 portable builds; other compatible releases are discovered at runtime. No account or remote service is required.
+
+`craft_discover(app)` returns the full native MCP tool list and input schemas. `craft_call(app, calls)` dispatches native tools by their original names and arguments, in order, and returns the complete text or image content. This keeps the apps' existing MCP surface available through Cicero.
+
+Tool names: `craft_discover`, `craft_call`, `vector_figure_create`, and `deck_handout_designcraft`. Discovery includes native tools, prompts, resources, and resource templates when the installed app exposes them. Dispatch accepts `kind: "tool"`, `"prompt"`, or `"resource"`; a server which does not implement an optional MCP method reports an empty inventory for that method.
+
+`vector_figure_create(deck_id, slide_id, title, shape, fill, stroke, replace_block_index?)` creates an editable VectorCraft document, SVG, and PNG preview, stores a managed copy, and adds it to the slide as a figure. To correct an existing figure, pass its returned `block_index` as `replace_block_index`; the other blocks, title and notes remain intact. PPTX contains the SVG picture and a PNG compatibility image. The generated `.vectorcraft`, `.svg`, and `.png` files live in the deck's assets; source files are not edited.
+
+As an alternative to environment variables, store executable paths in the local, untracked `data/craft-engines.json`: `{"vectorcraft":{"executable":"..."},"designcraft":{"executable":"..."}}`. Each `craft_call` batch opens a fresh native process. Keep dependent commands in one batch and save the native document before returning; selection and undo history do not persist between batches. Gutenberg provides persistent editorial sessions for longer publishing workflows.
+
+`deck_handout_designcraft(deck_id)` creates one editable A4 DesignCraft page per slide with separate heading and body frames, then renders a PNG preview for every page. Text and speaker notes are carried over deterministically; image blocks contribute their captions and charts their values. It reports text frames that overflow. The `.designcraft` file and each PNG are downloadable from the deck's export list. It does not claim PDF export or branded layout parity with the source deck.

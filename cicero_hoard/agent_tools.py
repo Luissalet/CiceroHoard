@@ -10,12 +10,14 @@ from pydantic import BaseModel, Field
 from . import decks as store
 from . import generate as gen
 from . import images as images_mod
-from .errors import CiceroError
+from .errors import CiceroError, RevisionConflict
 from .hoard_link import agentkit
 from .hoard_link.agentkit import Empty, Tool, ann as _ann
-from .models import (Block, DeckCreate, DeckPatch, ExportFormat, Language, Layout, MAX_BLOCKS, MAX_SLIDES, OutlineItemIn, SlidePatch)
+from .models import (Block, DeckCreate, DeckPatch, ExportFormat, Language, Layout, MAX_BLOCKS, MAX_SLIDES, OutlineItemIn, SlidePatch, SlideSetImageBody)
 from .services import Services
 from . import custom_themes
+from . import craft_apps
+from .templates import TemplateBinding
 
 AGENT_INSTRUCTIONS = """Cicero's Hoard builds presentations that a person can review slide by slide. Work in this order: deck_create (title, brief,
 audience, tone, language, number of slides) -> source_add (paste the text you may use, or a document the user names; figures on slides must come from
@@ -27,7 +29,8 @@ from numbers in the sources. Every edit creates a revision and slide_revert undo
 draft slides are rewritten. Without a reachable model the outline and slides come from the sources by fixed rules ("generator": "fallback"), and
 slide_regenerate says so instead of pretending. Speaker notes are part of the deliverable: write them. Deletes (deck_delete, slide_delete,
 source_remove) need confirm=true; ask the user first. Replacing the outline (outline_generate, outline_update) or drafts (slides_generate) discards
-what they held: ask when the user has edited them. deck_export returns the file path on disk and the download URL."""
+what they held: ask when the user has edited them. To place an existing figure, use asset_import then slide_set_image; it preserves the other
+blocks and notes. Correct a figure caption with slide_set_image and one title/note/bullet with slide_edit_text. deck_export returns the file path on disk and the download URL."""
 
 
 DeckId = Field(..., min_length=1, max_length=40, description="Deck id (from deck_list or deck_create).")
@@ -73,6 +76,21 @@ class DeckIdArgs(BaseModel):
     deck_id: str = DeckId
 
 
+class RehearsalArgs(DeckIdArgs):
+    duration_minutes: float = Field(15, ge=1, le=180)
+    words_per_minute: int = Field(130, ge=80, le=240)
+    pause_seconds: int = Field(10, ge=0, le=120, description="Planning allowance per main slide, for pauses and transitions.")
+    main_slides: Optional[int] = Field(None, ge=1, le=MAX_SLIDES,
+                                     description="Number of leading slides in the timed talk. Remaining slides are support; omit for all.")
+
+
+def run_deck_rehearsal(svc: Services, a: RehearsalArgs) -> dict:
+    from .rehearsal import rehearsal_plan
+    return rehearsal_plan(store.deck_view(svc, a.deck_id), duration_minutes=a.duration_minutes,
+                          words_per_minute=a.words_per_minute, pause_seconds=a.pause_seconds,
+                          main_slides=a.main_slides)
+
+
 class OutlineUpdateArgs(BaseModel):
     deck_id: str = DeckId
     items: list[OutlineItemIn] = Field(..., max_length=MAX_SLIDES, description="The whole outline: {id?, title, purpose, points[], layout_hint?} in order.")
@@ -95,6 +113,67 @@ class SlideUpdateArgs(SlidePatch):
 
 class SlideRegenerateArgs(SlideRefArgs):
     feedback: str = Field("", max_length=2000, description="What to change, in the person's words.")
+
+
+class SlideSetImageArgs(SlideSetImageBody):
+    deck_id: str = DeckId
+    slide_id: str = Field(..., min_length=1, max_length=40)
+
+
+def run_slide_set_image(svc: Services, a: SlideSetImageArgs) -> dict:
+    # Read, validate and revise under one transaction; retries keep both the
+    # image count and the revision stable when the desired state already exists.
+    with svc.db.transaction():
+        slide = store.get_slide(svc, a.deck_id, a.slide_id)
+        if a.expected_revision is not None and slide['revision'] != a.expected_revision:
+            raise RevisionConflict('The slide changed; read its current revision before editing.')
+        blocks = slide['blocks']
+        positions = [i for i, b in enumerate(blocks) if b.get('type') == 'image']
+        if a.image_index > len(positions):
+            raise CiceroError('That image does not exist; use the image count to append.')
+        position = positions[a.image_index] if a.image_index < len(positions) else len(blocks)
+        image = dict(blocks[position]) if position < len(blocks) else {'type': 'image'}
+        image['asset_id'] = a.asset_id
+        if 'caption' in a.model_fields_set:
+            if a.caption is None:
+                image.pop('caption', None)
+            else:
+                image['caption'] = a.caption
+        if position < len(blocks) and image == blocks[position]:
+            return {**slide, 'changed': False, 'block_index': position}
+        if position == len(blocks):
+            blocks.append(image)
+        else:
+            blocks[position] = image
+        patch = SlidePatch(blocks=blocks).model_dump(exclude_none=True)
+        result = store.patch_slide(svc, a.deck_id, a.slide_id, patch, reason='targeted image edit')
+        return {**result, 'changed': True, 'block_index': position}
+
+
+class SlideEditTextArgs(SlideRefArgs):
+    field: Literal['title', 'subtitle', 'notes', 'bullet']
+    text: str = Field(..., max_length=6000)
+    block_index: int = Field(0, ge=0, description="For bullet edits: zero-based block index.")
+    item_index: int = Field(0, ge=0, description="For bullet edits: zero-based item index.")
+
+
+def run_slide_edit_text(svc: Services, a: SlideEditTextArgs) -> dict:
+    # Keep the read and write together, so a concurrent edit cannot be lost.
+    with svc.db.transaction():
+        slide = store.get_slide(svc, a.deck_id, a.slide_id)
+        if a.field == 'bullet':
+            blocks = slide['blocks']
+            if a.block_index >= len(blocks) or blocks[a.block_index].get('type') != 'bullets':
+                raise CiceroError('That index does not identify a bullet block.')
+            items = blocks[a.block_index].get('items', [])
+            if a.item_index >= len(items):
+                raise CiceroError('That bullet item does not exist.')
+            items[a.item_index] = a.text
+            patch = SlidePatch(blocks=blocks)
+        else:
+            patch = SlidePatch(**{a.field: a.text})
+        return store.patch_slide(svc, a.deck_id, a.slide_id, patch.model_dump(exclude_none=True),
+                                reason='targeted text edit')
 
 
 class SlideApproveArgs(SlideRefArgs):
@@ -121,6 +200,27 @@ class SlideDeleteArgs(SlideRefArgs):
     confirm: bool = Field(False, description="Required to delete the slide and its revisions.")
 
 
+class SlideDraftArgs(BaseModel):
+    layout: Layout = "bullets"
+    title: str = Field("", max_length=200)
+    subtitle: Optional[str] = Field(None, max_length=300)
+    blocks: list[Block] = Field(default_factory=list, max_length=MAX_BLOCKS)
+    notes: str = Field("", max_length=6000)
+    sources: list[int] = Field(default_factory=list, max_length=50)
+
+
+class SlidesAddArgs(BaseModel):
+    deck_id: str = DeckId
+    batch_key: str = Field(..., min_length=1, max_length=100,
+                           description="Unique batch label; retry the same label and content after an interrupted response.")
+    slides: list[SlideDraftArgs] = Field(..., min_length=1, max_length=MAX_SLIDES)
+
+
+def run_slides_add(svc: Services, a: SlidesAddArgs) -> dict:
+    return store.add_slide_batch(svc, a.deck_id, a.batch_key,
+                                 [s.model_dump(exclude_none=True) for s in a.slides])
+
+
 class ReorderArgs(BaseModel):
     deck_id: str = DeckId
     order: list[str] = Field(..., min_length=1, max_length=MAX_SLIDES * 3, description="Every slide id, in the new order.")
@@ -142,8 +242,87 @@ class ExportArgs(BaseModel):
     format: ExportFormat
 
 
+class TemplateInspectArgs(BaseModel):
+    path: str = Field(..., min_length=1, max_length=1000)
+
+
+class DeckTemplateArgs(DeckIdArgs):
+    path: Optional[str] = Field(None, max_length=1000, description='Attach a local PPTX template; omit to read the current attachment.')
+    bindings: Optional[dict[str, TemplateBinding]] = None
+    clear: bool = False
+
+
+def run_template_inspect(svc: Services, a: TemplateInspectArgs) -> dict:
+    from .templates import read_template, inspect_bytes
+    return inspect_bytes(read_template(svc,a.path))
+
+
+def run_deck_template(svc: Services, a: DeckTemplateArgs) -> dict:
+    from .templates import attach_template, read_template
+    from pathlib import Path
+    if a.clear:
+        if a.path or a.bindings:raise CiceroError('Use clear alone to detach a template.')
+        store._deck_row(svc,a.deck_id)
+        svc.db.execute('UPDATE decks SET template=NULL,updated_ts=? WHERE id=?',(svc.clock(),a.deck_id))
+        return store.deck_view(svc,a.deck_id)
+    if a.path:
+        return attach_template(svc,a.deck_id,read_template(svc,a.path),Path(a.path).name,a.bindings)
+    if a.bindings:raise CiceroError('Provide path when changing template bindings.')
+    return {'deck_id':a.deck_id,'template':store.deck_view(svc,a.deck_id).get('template')}
+
+
 class SlideImageArgs(SlideRefArgs):
     prompt: Optional[str] = Field(None, max_length=1000, description="Picture description; defaults to the slide's image_prompt.")
+
+
+class AssetImportArgs(BaseModel):
+    deck_id: str = DeckId
+    path: str = Field(..., min_length=1, max_length=1000, description='Existing local PNG, JPEG or WEBP file to copy into the presentation.')
+
+
+def run_asset_import(svc: Services, a: AssetImportArgs) -> dict:
+    from .assets import import_file
+    return import_file(svc, a.deck_id, a.path)
+
+
+class CraftDiscoverArgs(BaseModel):
+    app: Literal["vectorcraft", "designcraft"]
+
+
+class CraftCallArgs(BaseModel):
+    app: Literal["vectorcraft", "designcraft"]
+    calls: list[dict[str, Any]] = Field(..., min_length=1, max_length=80,
+        description="Ordered native MCP calls: [{kind?: tool|prompt|resource, name, arguments}]. Use names and schemas from craft_discover.")
+
+
+class HandoutArgs(BaseModel):
+    deck_id: str = DeckId
+
+
+class VectorFigureArgs(BaseModel):
+    deck_id: str = DeckId
+    slide_id: str = Field(..., min_length=1, max_length=40)
+    title: str = Field("Vector figure", min_length=1, max_length=100)
+    shape: Literal["star", "rectangle", "ellipse", "triangle", "polygon"] = "star"
+    fill: str = Field("#d59b32", pattern=r"^#[0-9a-fA-F]{6}$")
+    stroke: str = Field("#162f43", pattern=r"^#[0-9a-fA-F]{6}$")
+    replace_block_index: Optional[int] = Field(None,ge=0,le=7,description='Replace an existing image block in place instead of adding another figure. Other slide blocks and notes are preserved.')
+
+
+def run_craft_discover(svc: Services, a: CraftDiscoverArgs) -> dict:
+    return craft_apps.discover(svc, a.app)
+
+
+def run_craft_call(svc: Services, a: CraftCallArgs) -> dict:
+    return craft_apps.call(svc, a.app, a.calls)
+
+
+def run_handout(svc: Services, a: HandoutArgs) -> dict:
+    return craft_apps.create_handout(svc, store.deck_view(svc, a.deck_id))
+
+
+def run_vector_figure(svc: Services, a: VectorFigureArgs) -> dict:
+    return craft_apps.create_vector_figure(svc, a.deck_id, a.slide_id, title=a.title, shape=a.shape, fill=a.fill, stroke=a.stroke,replace_block_index=a.replace_block_index)
 
 
 # ---------------- runners ----------------
@@ -356,6 +535,12 @@ TOOLS: list[Tool] = [
          "Edit a slide; makes a new revision and returns it to draft. Editar diapositiva.\n"
          "Blocks: bullets, text, quote, columns, chart, image. Sinónimos: cambiar texto, corregir, añadir notas.\nKeywords: edit slide, blocks.",
          SlideUpdateArgs, _ann(False, False, True), run_slide_update),
+    Tool("slide_set_image",
+         "Add or replace one imported image or its caption, preserving text, notes, charts and other images.\n"
+         "Use asset_import first, then pass its asset_id. image_index counts only images (default first); use the image count to append.\n"
+         "Omit caption to preserve it; null clears it. Identical retries make no new revision. Layout remains unchanged.\n"
+         "Keywords: insert figure, correct caption, preserve blocks. Añadir figura sin reescribir la diapositiva.",
+         SlideSetImageArgs, _ann(False, False, True), run_slide_set_image),
     Tool("slide_regenerate",
          "Rewrite one slide with the model from the person's feedback; needs a model. Regenerar diapositiva.\n"
          "Sinónimos: rehacer, reescribir con indicaciones, mejorar esta slide.\nKeywords: regenerate, feedback, rewrite.",
@@ -368,6 +553,14 @@ TOOLS: list[Tool] = [
          "List a slide's revisions, or restore one as a new revision. Revisiones y deshacer.\n"
          "Sinónimos: versiones, volver atrás, deshacer cambios, historial.\nKeywords: revisions, revert, undo, history.",
          SlideRevertArgs, _ann(False, False, False), run_slide_revert),
+    Tool("slides_add", "Append draft slides in one atomic batch, including notes, charts and sources.\n"
+         "The same batch_key and content returns original IDs; changed content needs a new key. No approval is applied.\n"
+         "Keywords: batch slides, bulk draft, add several slides. Añadir varias diapositivas con notas.",
+         SlidesAddArgs, _ann(False, False, True), run_slides_add),
+    Tool("slide_edit_text", "Edit one title, subtitle, note or bullet item, preserving every other field and chart.\n"
+         "For a bullet, give block_index and item_index (zero-based). Every edit creates a draft revision.\n"
+         "Keywords: edit one bullet, change notes, preserve chart. Editar texto sin reescribir otros bloques.",
+         SlideEditTextArgs, _ann(False, False, False), run_slide_edit_text),
     Tool("slide_add",
          "Add a slide (blank or with content) after a given slide or at the end. Añadir diapositiva.\n"
          "Sinónimos: nueva slide, insertar diapositiva.\nKeywords: add slide, insert.",
@@ -380,6 +573,10 @@ TOOLS: list[Tool] = [
          "Reorder the slides: pass every slide id in the new order. Reordenar diapositivas.\n"
          "Sinónimos: mover, cambiar el orden, subir, bajar.\nKeywords: reorder, move, order.",
          ReorderArgs, _ann(False, False, True), run_slides_reorder),
+    Tool("deck_rehearsal", "Plan a timed rehearsal from speaker notes; separate the main talk from support slides.\n"
+         "Returns an exact target schedule and a speech estimate at the requested pace. Does not measure actual speech or change the deck.\n"
+         "Keywords: rehearsal, timed talk, speaker schedule. Ensayo, guion cronometrado, diapositivas de apoyo.",
+         RehearsalArgs, _ann(True, False, True), run_deck_rehearsal),
     Tool("deck_check",
          "Review the deck: overflow, numbers absent from sources, missing notes, unapproved. Revisar.\n"
          "Sinónimos: comprobar, validar, errores, qué falta, cifras sin fuente.\nKeywords: check, review, issues, overflow.",
@@ -393,10 +590,27 @@ TOOLS: list[Tool] = [
          "Colours are adjusted to read (contrast 4.5:1); a font that is not a Windows font is replaced. Sinónimos: usar mi marca, identidad visual, paleta corporativa, design system, tokens.\n"
          "Keywords: theme, design system, tokens, brand, palette, vitruvius.",
          ThemeFromTokensArgs, _ann(False, False, True, True), run_theme_from_tokens),
+    Tool("template_inspect", "Inspect a PPTX template: dimensions, layouts, source slides and editable shape IDs.\n"
+         "Use these IDs to map title, subtitle and content slots for any presentation. Inspeccionar una plantilla.",
+         TemplateInspectArgs, _ann(True, False, True), run_template_inspect),
+    Tool("deck_template", "Attach, inspect or clear a reusable PPTX template snapshot for a presentation.\n"
+         "Optional bindings map Cicero layout names to source_slide, title_shape, subtitle_shape, content_frame, keep_text_shapes and remove_shapes. All IDs come from template_inspect. PPTX export retains the template masters, size and branding; other exports do not render PPTX templates.",
+         DeckTemplateArgs, _ann(False, False, True), run_deck_template),
     Tool("deck_export",
          "Export to pptx (editable, native charts), pdf, html or md; returns the file path and download URL. Exportar.\n"
          "PDF needs Chromium. Sinónimos: descargar, guardar, generar archivo, pptx, PDF.\nKeywords: export, pptx, pdf, html, markdown.",
          ExportArgs, _ann(False, False, False), run_deck_export),
+    Tool("asset_import", "Import an existing local figure or photo; returns an asset_id usable in image blocks.\n"
+         "Repeated imports of the same image into this deck reuse its stored asset. Importar imagen local.",
+         AssetImportArgs, _ann(False, False, True, False), run_asset_import),
+    Tool("craft_discover", "Discover full VectorCraft or DesignCraft MCP tool, prompt, and resource schemas.",
+         CraftDiscoverArgs, _ann(True, False, True), run_craft_discover, capped=False),
+    Tool("craft_call", "Dispatch native VectorCraft or DesignCraft MCP tools, prompts, and resource reads.",
+         CraftCallArgs, _ann(False, False, False), run_craft_call, capped=False),
+    Tool("deck_handout_designcraft", "Create an editable DesignCraft handout from the deck and render PNG previews.",
+         HandoutArgs, _ann(False, False, True), run_handout),
+    Tool("vector_figure_create", "Create a VectorCraft figure and place its editable SVG on a slide.\nPPTX contains SVG and PNG compatibility content.",
+         VectorFigureArgs, _ann(False, False, True), run_vector_figure),
     Tool("slide_image",
          "Generate a picture for a slide with the family image studio (optional). Generar imagen.\n"
          "Fails with image_studio_unavailable when no studio runs. Sinónimos: ilustración, foto, imagen para la slide.\nKeywords: image, picture, studio.",

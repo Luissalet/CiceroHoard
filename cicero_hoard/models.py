@@ -217,6 +217,16 @@ class SlideImageBody(_Body):
     prompt: Optional[str] = Field(None, max_length=1000)
 
 
+class SlideSetImageBody(_Body):
+    asset_id: str = Field(..., min_length=1, max_length=64)
+    caption: Optional[str] = Field(None, max_length=300,
+                                   description="Omit to preserve an existing caption; null clears it.")
+    image_index: int = Field(0, ge=0, le=MAX_BLOCKS,
+                             description="Zero-based image number, excluding other block types. Use the image count to append.")
+    expected_revision: Optional[int] = Field(None, ge=1,
+                                            description="Optional revision from slide_get; stale edits return conflict.")
+
+
 class SettingsBody(_Body):
     model: Optional[str] = Field(None, max_length=200)
     default_language: Optional[Language] = None

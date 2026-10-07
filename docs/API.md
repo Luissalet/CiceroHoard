@@ -90,6 +90,7 @@ when there is no brief and no source to work from. When no model is reachable it
 | `GET /api/decks/{id}/slides/{slide}/revisions` | | `{items: [{slide_id, revision, created_at, reason, snapshot}]}`, newest first |
 | `POST /api/decks/{id}/slides/{slide}/revert` | `{revision}` | the slide, restored as a new revision with reason `reverted` |
 | `POST /api/decks/{id}/slides/{slide}/image` | `{prompt?}` | the slide with the generated picture; 400 `image_studio_unavailable` without a studio |
+| `PUT /api/decks/{id}/slides/{slide}/image` | `{asset_id, caption?, image_index?: 0, expected_revision?}` | the slide plus `changed` and `block_index`; adds/replaces one image only, preserves other blocks and notes; same state creates no revision; stale revision returns 409 `conflict` |
 
 A slide: `{id, position, layout, title, subtitle, blocks[], notes, status ("draft"|"approved"), revision, sources[],
 image_prompt, outline_id}`. Revision reasons: `generated`, `edited`, `regenerated`, `reverted`.
@@ -114,7 +115,10 @@ An `image` block must reference an asset that exists.
 | method and path | body | answer |
 | --- | --- | --- |
 | `POST /api/decks/{id}/assets` | multipart, `file` part: PNG, JPEG or WEBP, at most 15 MB and 50 megapixels | 201, `{asset_id, width, height, mime, bytes}`; EXIF orientation is applied |
+| `POST /api/decks/{id}/assets/import` | `{path}`: existing local PNG/JPEG/WEBP, same limits and `CICERO_FILE_ROOTS` as local sources | 201, `{asset_id, width, height, mime, bytes, reused?}`; identical normalized images in this deck return the existing ID |
 | `GET /api/assets/{asset_id}` | | the image (`nosniff`, private cache) |
+| `GET /api/assets/{asset_id}/native` | | Editable VectorCraft source download when present |
+| `GET /api/assets/{asset_id}/preview` | | PNG compatibility preview when present |
 
 ## Exports
 
@@ -128,6 +132,27 @@ Errors: 400 `no_slides` when the deck has no slides; 400 `pdf_unavailable` when 
 formats do not depend on it). Files live in `<data>/exports/<export id>/`. The HTML export leaves speaker notes out.
 
 ## Themes and settings
+
+### Presentation templates
+
+| method and path | body | answer |
+| --- | --- | --- |
+| `POST /api/templates/inspect` | `{path}` or multipart `file`: PPTX | Dimensions, master count, layouts and source slides with shape IDs, text and frames |
+| `GET /api/decks/{id}/template` | | Attached template descriptor, or `template: null` |
+| `POST /api/decks/{id}/template` | Multipart `file`, or `{path, bindings?}`, or `{clear: true}` | Updated deck; copies the template into `data/templates/` |
+
+`bindings` maps Cicero layout names to `{source_slide, title_shape?, subtitle_shape?, keep_text_shapes?,
+remove_shapes?, content_frame?, prefix?}`. Source slide numbers and shape IDs are one-based; `content_frame`
+is `[x, y, width, height]` in CSS pixels. Inspect the file before selecting slots. Defaults infer cover,
+body and closing examples. Explicit IDs override the inference for unusual templates.
+
+PPTX export uses the saved snapshot, keeps source masters/layouts, backgrounds, decorative shapes and related
+media, and replaces content with editable text, native charts and new speaker notes. Template examples are
+not appended to the authored deck. Source animations and transitions are not copied. The browser preview
+uses the built-in theme; template PDF/HTML exports return `template_format_not_supported`. Markdown remains
+available. Detaching changes the deck only; it does not delete the original file or template snapshot.
+
+### Themes
 
 | method and path | body | answer |
 | --- | --- | --- |
@@ -144,7 +169,20 @@ formats do not depend on it). Files live in `<data>/exports/<export id>/`. The H
 | `GET /api/agent/tools` | `{instructions, tools: [{name, description, annotations, inputSchema}]}` |
 | `POST /api/agent/call` | body `{name, arguments?, caller?}` with `Authorization: Bearer <contents of data/mcp-token>`; answers the tool result (trimmed to about 20 KB); 401 without the token, 404 for an unknown tool, 400 for invalid arguments or a domain error, 403 for a refused path |
 
-The 26 tools are listed in `README.md`. The REST routes above and the tools share one implementation.
+The 37 tools are listed in `README.md`. The REST routes above and the tools share one implementation.
+
+## VectorCraft and DesignCraft MCP bridge
+
+| tool | input | result |
+| --- | --- | --- |
+| `craft_discover` | `{app: "vectorcraft" | "designcraft"}` | Complete installed MCP tool, prompt, resource and resource-template inventories |
+| `craft_call` | `{app, calls: [{kind?: "tool" | "prompt" | "resource", name, arguments}]}` | Ordered native MCP dispatch with complete results |
+| `vector_figure_create` | `{deck_id, slide_id, title?, shape?, fill?, stroke?, replace_block_index?}` | Editable VectorCraft file plus an SVG figure attached to the slide; replace one image block without changing text/notes; PPTX embeds SVG and PNG fallback |
+| `deck_handout_designcraft` | `{deck_id}` | Editable `.designcraft` handout, PNG preview paths, page count |
+
+Set `CICERO_VECTORCRAFT_CLI` and `CICERO_DESIGNCRAFT_CLI` to portable executable paths. MCP schemas are discovered at runtime, so Cicero does not filter the native command catalogue. Craft app data is isolated under the configured Cicero data directory. Handout pages preserve slide text, notes, chart values and figure captions; previews are PNG. PDF and source-deck brand parity are not claimed for this workflow.
+
+Local executable configuration can also be read from `<data>/craft-engines.json` using `{app: {executable: path}}`. A raw `craft_call` batch starts a fresh native process; state-dependent operations belong in that batch, and documents must be saved before it ends. In-memory selection and undo do not survive separate batches.
 
 ## PWA and client
 

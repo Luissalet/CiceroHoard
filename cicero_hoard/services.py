@@ -185,6 +185,9 @@ class Services:
         deck = store.deck_view(self, deck_id)
         if not deck["slides"]:
             raise CiceroError("The presentation has no slides to export.", code="no_slides")
+        if deck.get('template') and fmt in ('html','pdf'):
+            raise CiceroError('The attached PPTX template is supported by PPTX export. Clear it to use the built-in HTML/PDF theme.',
+                              code='template_format_not_supported')
         assets = self.assets_lookup()
         if fmt == "pptx":
             from .export_pptx import build_pptx

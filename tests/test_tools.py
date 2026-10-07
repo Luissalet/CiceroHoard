@@ -17,13 +17,14 @@ ROOT = Path(__file__).resolve().parent.parent
 
 REQUIRED = {"cicero_status", "deck_list", "deck_create", "deck_get", "deck_update", "deck_delete", "source_add", "source_list", "source_get", "source_remove",
             "outline_generate", "outline_update", "slides_generate", "slide_get", "slide_update", "slide_regenerate", "slide_approve", "slide_revert", "slide_add",
-            "slide_delete", "slides_reorder", "deck_check", "deck_theme", "theme_from_tokens", "deck_export", "slide_image"}
-READ_ONLY = {"cicero_status", "deck_list", "deck_get", "source_list", "source_get", "slide_get", "deck_check"}
+            "asset_import", "template_inspect", "deck_template", "deck_rehearsal", "slide_delete", "slides_add", "slide_edit_text", "slide_set_image", "slides_reorder", "deck_check", "deck_theme", "theme_from_tokens", "deck_export", "slide_image",
+            "craft_discover", "craft_call", "vector_figure_create", "deck_handout_designcraft"}
+READ_ONLY = {"cicero_status", "deck_list", "deck_get", "source_list", "source_get", "slide_get", "deck_check", "deck_rehearsal", "template_inspect", "craft_discover"}
 
 
 def test_catalogue_has_every_tool_once():
     names = [t.name for t in at.TOOLS]
-    assert set(names) == REQUIRED and len(names) == len(set(names)) == 26
+    assert set(names) == REQUIRED and len(names) == len(set(names)) == 37
 
 
 def test_descriptions_are_short_first_lines_and_neutral():

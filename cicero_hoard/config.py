@@ -29,6 +29,8 @@ class Config:
     image_timeout: float = 600.0  # CICERO_IMAGE_TIMEOUT: seconds to wait for a render in the studio
     max_upload_bytes: int = MAX_UPLOAD_BYTES
     max_image_bytes: int = MAX_IMAGE_BYTES
+    vectorcraft_cli: str = ""  # CICERO_VECTORCRAFT_CLI: local portable executable
+    designcraft_cli: str = ""  # CICERO_DESIGNCRAFT_CLI: local portable executable
 
     @property
     def paths(self) -> AppPaths:
@@ -63,6 +65,10 @@ class Config:
     def exports_dir(self) -> Path:
         return self.data_dir / "exports"
 
+    @property
+    def templates_dir(self) -> Path:
+        return self.data_dir / "templates"
+
     @classmethod
     def from_env(cls) -> "Config":
         raw_dir = env_str("CICERO_DATA_DIR") or ""
@@ -79,4 +85,6 @@ class Config:
             file_roots=roots,
             image_studio_url=(env_str("CICERO_IMAGE_STUDIO_URL") or "").rstrip("/"),
             image_timeout=env_float("CICERO_IMAGE_TIMEOUT", default=600.0, minimum=10.0, maximum=86400.0),
+            vectorcraft_cli=env_str("CICERO_VECTORCRAFT_CLI") or "",
+            designcraft_cli=env_str("CICERO_DESIGNCRAFT_CLI") or "",
         )
