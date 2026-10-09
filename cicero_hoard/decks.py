@@ -10,6 +10,7 @@ no slides), ``review`` (slides, not all approved) and ``ready`` (slides, all app
 from __future__ import annotations
 
 import io
+import json
 import shutil
 from pathlib import Path
 from typing import Any, Optional
@@ -434,6 +435,86 @@ def revert_slide(svc: Any, deck_id: str, slide_id: str, revision: int) -> dict[s
     _write_revision(svc, slide_id, "reverted")
     _refresh_status(svc, deck_id)
     return get_slide(svc, deck_id, slide_id)
+
+
+# ---------------- restoring state (undo of an agent session) ----------------
+
+SLIDE_CONTENT_FIELDS = ("layout", "title", "subtitle", "blocks", "notes", "sources", "image_prompt", "status")
+
+
+def slide_etag(slide: dict[str, Any]) -> str:
+    """A fingerprint of what a slide says (not of its revision number or position): two states with the same text, blocks, sources
+    and approval have the same etag, so undoing the newest of two edits gives back the etag the older one left."""
+    content = {key: slide.get(key) for key in SLIDE_CONTENT_FIELDS}
+    return sha256_hex(json.dumps(content, sort_keys=True, ensure_ascii=False, separators=(",", ":")))[:16]
+
+
+def restore_slide(svc: Any, deck_id: str, slide_id: str, state: dict[str, Any], *, reason: str = "restored") -> dict[str, Any]:
+    """Put a slide back to ``state`` (a slide as ``get_slide`` returned it earlier), as a new revision. Pictures and sources that
+    no longer exist are left out, as ``revert_slide`` does."""
+    _slide_row(svc, deck_id, slide_id)
+    blocks = [b for b in (state.get("blocks") or [])
+              if b.get("type") != "image" or svc.db.one("SELECT 1 FROM assets WHERE id = ?", (b.get("asset_id"),))]
+    sources = [i for i in (state.get("sources") or []) if svc.db.one("SELECT 1 FROM sources WHERE id = ? AND deck_id = ?", (i, deck_id))]
+    status = "approved" if state.get("status") == "approved" else "draft"
+    with svc.db.transaction() as conn:
+        conn.execute(
+            "UPDATE slides SET layout = ?, title = ?, subtitle = ?, blocks = ?, notes = ?, sources = ?, image_prompt = ?, status = ?, "
+            "revision = revision + 1, updated_ts = ? WHERE id = ?",
+            (state.get("layout") or "bullets", state.get("title") or "", state.get("subtitle"), jdump(blocks), state.get("notes") or "",
+             jdump(sources), state.get("image_prompt"), status, svc.clock(), slide_id))
+    _write_revision(svc, slide_id, reason)
+    _refresh_status(svc, deck_id)
+    return get_slide(svc, deck_id, slide_id)
+
+
+def reinsert_slide(svc: Any, deck_id: str, state: dict[str, Any], *, reason: str = "restored") -> dict[str, Any]:
+    """Bring a deleted slide back with its id, at its old position (its older revisions are gone with the delete)."""
+    _deck_row(svc, deck_id)
+    if svc.db.one("SELECT 1 FROM slides WHERE id = ?", (state["id"],)) is not None:
+        raise CiceroError(f"Slide {state['id']} exists already.", code="conflict")
+    count = svc.db.one("SELECT COUNT(*) c FROM slides WHERE deck_id = ?", (deck_id,))["c"]
+    position = max(1, min(count + 1, int(state.get("position") or count + 1)))
+    sources = [i for i in (state.get("sources") or []) if svc.db.one("SELECT 1 FROM sources WHERE id = ? AND deck_id = ?", (i, deck_id))]
+    blocks = [b for b in (state.get("blocks") or [])
+              if b.get("type") != "image" or svc.db.one("SELECT 1 FROM assets WHERE id = ?", (b.get("asset_id"),))]
+    ts = svc.clock()
+    with svc.db.transaction() as conn:
+        conn.execute("UPDATE slides SET position = position + 1 WHERE deck_id = ? AND position >= ?", (deck_id, position))
+        conn.execute(
+            "INSERT INTO slides(id, deck_id, position, layout, title, subtitle, blocks, notes, status, revision, sources, image_prompt, outline_id, created_ts, updated_ts) "
+            "VALUES (?,?,?,?,?,?,?,?,?,1,?,?,?,?,?)",
+            (state["id"], deck_id, position, state.get("layout") or "bullets", state.get("title") or "", state.get("subtitle"), jdump(blocks),
+             state.get("notes") or "", "approved" if state.get("status") == "approved" else "draft", jdump(sources), state.get("image_prompt"),
+             state.get("outline_id"), ts, ts))
+    _write_revision(svc, state["id"], reason)
+    _refresh_status(svc, deck_id)
+    return get_slide(svc, deck_id, state["id"])
+
+
+def reinsert_source(svc: Any, deck_id: str, row: dict[str, Any], citing: dict[str, list[int]]) -> dict[str, Any]:
+    """Bring a removed source back with its id and text, and the references the slides that cited it had."""
+    _deck_row(svc, deck_id)
+    if svc.db.one("SELECT 1 FROM sources WHERE id = ?", (row["id"],)) is not None:
+        raise CiceroError(f"Source {row['id']} exists already.", code="conflict")
+    with svc.db.transaction() as conn:
+        conn.execute("INSERT INTO sources(id, deck_id, title, kind, chars, text, sha256, truncated, created_ts) VALUES (?,?,?,?,?,?,?,?,?)",
+                     (row["id"], deck_id, row["title"], row["kind"], row["chars"], row["text"], row["sha256"], row["truncated"], row["created_ts"]))
+        for slide_id, ids in citing.items():
+            current = conn.execute("SELECT sources FROM slides WHERE id = ? AND deck_id = ?", (slide_id, deck_id)).fetchone()
+            if current is None:
+                continue
+            have = jload(current["sources"], [])
+            if row["id"] not in have:
+                known = {r["id"] for r in conn.execute("SELECT id FROM sources WHERE deck_id = ?", (deck_id,)).fetchall()}
+                conn.execute("UPDATE slides SET sources = ? WHERE id = ?", (jdump([i for i in ids if i in known]), slide_id))
+        conn.execute("UPDATE decks SET updated_ts = ? WHERE id = ?", (svc.clock(), deck_id))
+    return _source_dict(svc.db.one("SELECT * FROM sources WHERE id = ?", (row["id"],)))
+
+
+def delete_batch_receipt(svc: Any, deck_id: str, batch_key: str) -> None:
+    """Forget a ``slides_add`` batch, so that a retry with its key adds the slides again instead of replaying ids that no longer exist."""
+    svc.db.execute("DELETE FROM slide_batches WHERE deck_id = ? AND batch_key = ?", (deck_id, batch_key))
 
 
 # ---------------- assets ----------------
