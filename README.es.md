@@ -143,6 +143,34 @@ herramientas de la aplicación en marcha y reenvía cada llamada. Si la aplicaci
 Los resultados que se envían a un asistente se recortan a unos 20 KB con una pista para acotar la petición. Aprobar
 una diapositiva es decisión de la persona: un asistente no debería aprobar por su cuenta.
 
+### Sesiones de agente, motivos y deshacer
+
+Toda escritura que un asistente hace por el puente MCP (o `POST /api/agent/call`) deja rastro. La interfaz web no es un agente y
+queda al margen de todo esto.
+
+- **Quién.** El puente envía el nombre del agente y la sesión que lee de `HOARD_AGENT_ID` / `HOARD_AGENT_SESSION` (cabeceras
+  `X-Agent-Id` / `X-Agent-Session`; también sirven `caller` / `_session` en el cuerpo). Un token con alcance fija el nombre del agente
+  digan lo que digan las cabeceras.
+- **Por qué.** Toda herramienta que no sea de solo lectura exige un argumento `reason` de 3 a 300 caracteres (si falta,
+  `400 reason_required` con una pista). Las de lectura no lo necesitan.
+- **Qué.** Cada escritura es una línea de `data/agent_journal.jsonl` (herramienta, agente, sesión, motivo, huella y resumen enmascarado
+  de los argumentos, ids devueltos, hora, ok o error); el archivo rota hacia los 5 MB. `GET /api/agent/journal?session=&agent=&limit=`
+  (con token) lo lee, y el evento `agent.write` llega a la familia.
+- **Deshacer una sesión entera.** `POST /api/agent/undo {"session": "...", "dry_run": true}` dice qué se deshará; con
+  `{"confirm": true, "reason": "..."}` lo hace, de la última escritura a la primera. Revierte la creación de presentaciones, sus
+  campos y su tema, el guion, añadir y quitar fuentes, toda edición de diapositivas (texto, imagen, regenerar, aprobar, revertir),
+  añadir, borrar y reordenar diapositivas, los lotes de `slides_add` (también su recibo, para poder reutilizar la clave) y
+  `slides_generate`. Informa de lo que no pudo deshacer: herramientas sin vuelta atrás (`deck_delete`, `deck_export`, `asset_import`,
+  `slide_image`, `deck_template`, `theme_from_tokens`, las de VectorCraft y DesignCraft) y lo cambiado después. Nunca toca lo que
+  escribió otra sesión: si otra sesión, o la persona en la interfaz, editó después la misma diapositiva, esa escritura se señala como
+  conflicto y se deja como está.
+- **Perfiles.** `python -m hoard_link.tokens mint --app-data-dir data --agent borrador --profile drafts` imprime un token (se muestra
+  una vez; `data/agent_tokens.json` solo guarda huellas). Perfiles: `read_only` (herramientas de lectura), `drafts` (además las que crean
+  o editan borradores: `deck_create`, `deck_update`, `deck_theme`, `source_add`, `slide_add`, `slides_add`, `slide_update`,
+  `slide_edit_text`, `slide_set_image`, `slide_regenerate`, `slide_image`, `asset_import`, `slides_reorder`, `theme_from_tokens`; nunca
+  borrar, aprobar, exportar ni generar la presentación entera) y `all`. Una llamada bloqueada responde `403 profile_forbidden`. La
+  pestaña «Sesiones de agente» del Hub muestra las sesiones de todas las apps, las deshace y crea o revoca tokens.
+
 ## Familia
 
 Cicero funciona solo. Las presentaciones se pueden direccionar como `hoard://cicero/deck/<id>`. Emite

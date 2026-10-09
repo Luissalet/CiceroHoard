@@ -167,7 +167,10 @@ available. Detaching changes the deck only; it does not delete the original file
 | method and path | answer |
 | --- | --- |
 | `GET /api/agent/tools` | `{instructions, tools: [{name, description, annotations, inputSchema}]}` |
-| `POST /api/agent/call` | body `{name, arguments?, caller?}` with `Authorization: Bearer <contents of data/mcp-token>`; answers the tool result (trimmed to about 20 KB); 401 without the token, 404 for an unknown tool, 400 for invalid arguments or a domain error, 403 for a refused path |
+| `POST /api/agent/call` | body `{name, arguments?, reason?, caller?}` with `Authorization: Bearer <contents of data/mcp-token>`; answers the tool result (trimmed to about 20 KB); 401 without the token, 404 for an unknown tool, 400 for invalid arguments or a domain error, 403 for a refused path or a token profile that does not allow the tool (`profile_forbidden`); every tool that is not read-only needs `reason` (3 to 300 characters, else 400 `reason_required`); identity from `X-Agent-Id` / `X-Agent-Session` |
+| `GET /api/agent/journal?session=&agent=&limit=&kind=&since=` | `{entries: [{id, kind: "write" \| "undo", tool, agent, session, reason, args_digest, args_summary, ids, objects, ok, error, undoable, undone, ts}], count, undo_tools}`; same Bearer token |
+| `POST /api/agent/undo` | body `{session, agent?, dry_run?, confirm?, reason?}`; `{undone \| would_undo, conflicts, not_undoable, already_undone, complete, counts}`; `confirm: true` and `reason` are required unless `dry_run`; 404 `session_not_found` |
+| `GET/POST /api/agent/tokens`, `DELETE /api/agent/tokens/{id}` | scoped agent tokens `{agent, profile: read_only \| drafts \| all}` (main token only; a minted token is shown once) |
 
 The 37 tools are listed in `README.md`. The REST routes above and the tools share one implementation.
 

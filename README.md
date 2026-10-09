@@ -140,6 +140,32 @@ turns that off; the slow tools publish how long the bridge waits for them). Regi
 Results sent to an assistant are trimmed to about 20 KB with a hint to narrow the request. Approving a slide is the
 person's decision: an assistant should not approve slides on its own.
 
+### Agent sessions, reasons and undo
+
+Every write an assistant makes through the MCP bridge (or `POST /api/agent/call`) is accountable. The web interface is not an agent and
+is exempt from all of this.
+
+- **Who.** The bridge sends the agent name and session it reads from `HOARD_AGENT_ID` / `HOARD_AGENT_SESSION` (headers `X-Agent-Id` /
+  `X-Agent-Session`; a body `caller` / `_session` also works). A scoped token fixes the agent name whatever the headers say.
+- **Why.** Every tool that is not read-only needs a `reason` argument of 3 to 300 characters (`400 reason_required` with a hint
+  otherwise). Reading tools need none.
+- **What.** Each write is a line of `data/agent_journal.jsonl` (tool, agent, session, reason, a digest and a masked summary of the
+  arguments, the ids it returned, time, ok or error); the file rotates at about 5 MB. `GET /api/agent/journal?session=&agent=&limit=`
+  (Bearer token) reads it, and the event `agent.write` goes to the family.
+- **Undo a whole session.** `POST /api/agent/undo {"session": "...", "dry_run": true}` says what would be taken back; with
+  `{"confirm": true, "reason": "..."}` it does it, newest write first. It reverses presentation creation, presentation fields and
+  theme, the outline, adding and removing sources, every slide edit (text, image, regenerate, approve, revert), adding, deleting and
+  reordering slides, `slides_add` batches (their receipt too, so the same batch key can be used again) and `slides_generate`. It reports
+  what it could not undo: tools without a way back (`deck_delete`, `deck_export`, `asset_import`, `slide_image`, `deck_template`,
+  `theme_from_tokens`, the VectorCraft and DesignCraft tools) and anything changed afterwards. It never touches another session's writes:
+  if another session, or the person in the interface, edited the same slide later, that write is reported as a conflict and left as it is.
+- **Profiles.** `python -m hoard_link.tokens mint --app-data-dir data --agent drafter --profile drafts` prints a token (shown once;
+  the file `data/agent_tokens.json` keeps only hashes). Profiles: `read_only` (reading tools), `drafts` (also the tools that create or edit
+  drafts: `deck_create`, `deck_update`, `deck_theme`, `source_add`, `slide_add`, `slides_add`, `slide_update`, `slide_edit_text`,
+  `slide_set_image`, `slide_regenerate`, `slide_image`, `asset_import`, `slides_reorder`, `theme_from_tokens`; never deleting, approving,
+  exporting or generating a whole deck) and `all`. A blocked call answers `403 profile_forbidden`. The Hub tab "Sesiones de agente" shows the sessions
+  of every app and undoes them, and mints and revokes tokens.
+
 ## Family
 
 Cicero works alone. Decks are addressable as `hoard://cicero/deck/<id>`. It emits `cicero.deck.created`,
