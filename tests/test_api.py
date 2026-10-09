@@ -349,9 +349,13 @@ def test_agent_endpoints_require_the_token(client):
     assert client.post("/api/agent/call", json={"name": "nope"}, headers=good).status_code == 404
     assert client.post("/api/agent/call", json={"name": "deck_get", "arguments": {}}, headers=good).status_code == 400
     assert client.post("/api/agent/call", json={"name": "deck_get", "arguments": {"deck_id": "ghost"}}, headers=good).status_code == 404
-    d = client.post("/api/agent/call", json={"name": "deck_create", "arguments": {"title": "Vía agente"}, "caller": "test"}, headers=good).json()
+    missing = client.post("/api/agent/call", json={"name": "deck_create", "arguments": {"title": "Vía agente"}, "caller": "test"}, headers=good)
+    assert missing.status_code == 400 and missing.json()["code"] == "reason_required"
+    d = client.post("/api/agent/call", json={"name": "deck_create", "arguments": {"title": "Vía agente"}, "caller": "test",
+                                             "reason": "Test of the agent bridge"}, headers=good).json()
     assert d["title"] == "Vía agente"
-    assert client.post("/api/agent/call", json={"name": "source_add", "arguments": {"deck_id": d["id"], "path": "/etc/hostname"}}, headers=good).status_code in (400, 403)
+    assert client.post("/api/agent/call", json={"name": "source_add", "arguments": {"deck_id": d["id"], "path": "/etc/hostname"},
+                                                         "reason": "Read a local file"}, headers=good).status_code in (400, 403)
 
 
 def test_token_is_persistent(tmp_path):

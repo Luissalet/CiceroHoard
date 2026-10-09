@@ -17,6 +17,7 @@ from .models import (Block, DeckCreate, DeckPatch, ExportFormat, Language, Layou
 from .services import Services
 from . import custom_themes
 from . import craft_apps
+from . import agent_undo
 from .templates import TemplateBinding
 
 AGENT_INSTRUCTIONS = """Cicero's Hoard builds presentations that a person can review slide by slide. Work in this order: deck_create (title, brief,
@@ -621,6 +622,32 @@ TOOLS: list[Tool] = [
 # takes far longer than the bridge's default
 _WAIT_S = {"outline_generate": 300.0, "slides_generate": 900.0, "slide_regenerate": 300.0, "deck_export": 240.0, "slide_image": 660.0}
 TOOLS = [dataclasses.replace(t, timeout_s=_WAIT_S[t.name]) if t.name in _WAIT_S else t for t in TOOLS]
+
+
+
+def _track_with_ctx(fn):
+    """``track(args, result, ctx=)`` is what the router calls; the hooks in agent_undo take the services first."""
+    def track(args, result, ctx=None):
+        return fn(ctx, args, result)
+    return track
+
+
+def _accountable(tool: Tool) -> Tool:
+    """Attach the capture / track / undo hooks and the draft-safe flag (see agent_undo.py)."""
+    hooks = agent_undo.HOOKS.get(tool.name, {})
+    changes: dict[str, Any] = {}
+    if "capture" in hooks:
+        changes["capture"] = hooks["capture"]
+    if "track" in hooks:
+        changes["track"] = _track_with_ctx(hooks["track"])
+    if "undo" in hooks:
+        changes["undo"] = hooks["undo"]
+    if tool.name in agent_undo.DRAFT_SAFE:
+        changes["annotations"] = {**tool.annotations, "draftSafeHint": True}
+    return dataclasses.replace(tool, **changes) if changes else tool
+
+
+TOOLS = [_accountable(t) for t in TOOLS]
 
 TOOLS_BY_NAME = {t.name: t for t in TOOLS}
 

@@ -50,21 +50,28 @@ def test_the_shared_bridge_lists_and_calls_the_tools_of_the_running_app(running_
     monkeypatch.setenv("CICERO_DATA_DIR", str(running_app["data"]))
     monkeypatch.setenv("CICERO_URL", f"http://127.0.0.1:{running_app['port']}")
     monkeypatch.setenv("CICERO_BRIDGE_AUTOSTART", "0")
+    monkeypatch.setenv("HOARD_AGENT_ID", "agent-a")
+    monkeypatch.setenv("HOARD_AGENT_SESSION", "session-1")
     bridge = CatalogBridge(app="cicero", service="cicero-hoard", package="cicero_hoard", default_port=5194,
                            data_dir_env="CICERO_DATA_DIR", title="Cicero's Hoard", root=str(ROOT / "mcp_server.py"))
 
     async def go():
         tools = await bridge.tools()
-        created = await bridge.call("deck_create", {"title": "Vía puente"})
+        no_reason = await bridge.call("deck_create", {"title": "Vía puente"})
+        created = await bridge.call("deck_create", {"title": "Vía puente", "reason": "Test of the shared bridge"})
         missing = await bridge.call("deck_get", {"deck_id": "nope"})
-        refused = await bridge.call("deck_delete", {"deck_id": created.body["id"]})
-        return tools, created, missing, refused
+        refused = await bridge.call("deck_delete", {"deck_id": created.body["id"], "reason": "Test of the shared bridge"})
+        return tools, no_reason, created, missing, refused
 
-    tools, created, missing, refused = asyncio.run(go())
+    tools, no_reason, created, missing, refused = asyncio.run(go())
+    assert no_reason.is_error and no_reason.body["code"] == "reason_required"
     assert len(tools) == 37 and next(t for t in tools if t["name"] == "slides_generate")["x-timeout-s"] >= 600
     assert not created.is_error and created.body["title"] == "Vía puente"
     assert missing.is_error and missing.body["code"] == "not_found"
     assert refused.is_error and refused.body["code"] == "confirm_required"
+    journal = httpx.get(f"http://127.0.0.1:{running_app['port']}/api/agent/journal", params={"session": "session-1"}, trust_env=False,
+                        headers={"Authorization": "Bearer " + (running_app["data"] / "mcp-token").read_text(encoding="utf-8")}).json()
+    assert [(e["tool"], e["agent"]) for e in journal["entries"] if e["ok"]] == [("deck_create", "agent-a")]       # the bridge sent the identity from its env
 
 
 def test_errors_share_one_envelope_with_a_code(client):

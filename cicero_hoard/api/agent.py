@@ -6,7 +6,7 @@ from typing import Any
 
 from fastapi import Request
 
-from ..agent_tools import AGENT_INSTRUCTIONS, call_tool, tool_catalog
+from ..agent_tools import AGENT_INSTRUCTIONS, TOOLS, call_tool, tool_catalog
 from ..hoard_link.agentkit import make_agent_router
 from .deps import services
 
@@ -22,4 +22,8 @@ router = make_agent_router(
     token_fn=lambda request: services(request).token,
     instructions=AGENT_INSTRUCTIONS,
     app_name="cicero",
+    reasons=True,                                          # an agent says why for every write; the web UI is not an agent and is exempt
+    data_dir=lambda request: services(request).config.data_dir,
+    tools=TOOLS,
+    ctx_fn=lambda request: services(request),
 )
