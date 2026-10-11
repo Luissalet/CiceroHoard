@@ -29,6 +29,6 @@ export default function TransitionEditor(){
    <Field label={t('motion_mode')}><select className="field" value={motion.mode} disabled={!!busy} onChange={e=>setMotion({...motion,mode:e.target.value})}>{catalog.modes.map(v=><option key={v} value={v}>{t('motion_mode_'+v)}</option>)}{Object.entries(catalog.effects).map(([group,values])=><optgroup key={group} label={group}>{values.map(v=><option key={v} value={v}>{v}</option>)}</optgroup>)}</select></Field>
    <Field label={t('motion_trigger')}><select className="field" value={motion.trigger} disabled={!!busy} onChange={e=>setMotion({...motion,trigger:e.target.value})}>{catalog.triggers.map(v=><option key={v} value={v}>{t('trigger_'+v)}</option>)}</select></Field>
    <Field label={t('motion_seconds')}><input className="field" type="number" min=".05" max="10" step=".05" value={motion.duration} disabled={!!busy} onChange={e=>setMotion({...motion,duration:Number(e.target.value)})}/></Field>
-  </div><button className="btn mt-2" type="button" disabled={!!busy} onClick={()=>run(t('busy_saving'),async()=>{setMotion(await api.animationsSet(deckId,motion));return true})}><Save size={16}/>{t('save')}</button></details>}
+  </div><button className="btn mt-2" type="button" disabled={!!busy} onClick={()=>run(t('busy_saving'),async()=>{setMotion(await api.animationsSet(deckId,{mode:motion.mode,trigger:motion.trigger,duration:motion.duration}));return true})}><Save size={16}/>{t('save')}</button></details>}
  </Section>;
 }
