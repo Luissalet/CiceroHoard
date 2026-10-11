@@ -51,6 +51,24 @@ def test_error_retains_last_good_and_manual_data_edit_not_overwritten(services,t
     assert dl.inspect(services,dl.RefArgs(deck_id=deck['id']))['items'][0]['bindings'][0]['error']
 
 
+def test_notes_only_save_preserves_feed_and_stale_visual_edit_conflicts(services, tmp_path):
+    from cicero_hoard.agent_tools import call_tool
+    deck, path, link, old = setup(services, tmp_path, enabled=False)
+    path.write_text('Region,Value\nNorth,99\nSouth,20\n', encoding='utf-8')
+    dl.refresh(services, deck['id'], link['link_id'])
+    with pytest.raises(RevisionConflict):
+        call_tool(services, 'slide_update', {'deck_id':deck['id'], 'slide_id':old['id'],
+            'blocks':old['blocks'], 'expected_revision':old['revision']}, cap=False)
+    saved = call_tool(services, 'slide_update', {'deck_id':deck['id'], 'slide_id':old['id'], 'notes':'New notes'}, cap=False)
+    assert saved['blocks'][1]['series'][0]['values'][0] == 99
+    path.write_text('Region,Value\nNorth,101\nSouth,20\n', encoding='utf-8')
+    refreshed = dl.refresh(services, deck['id'], link['link_id'])
+    assert not refreshed['bindings'][0].get('error')
+    latest = decks.get_slide(services, deck['id'], old['id'])
+    assert latest['notes'] == 'New notes'
+    assert latest['blocks'][1]['series'][0]['values'][0] == 101
+
+
 def test_group_recipe_pause_resume_unlink_preserves_snapshot(services,tmp_path):
     deck,path,link,slide=setup(services,tmp_path,enabled=False,interval_s=.01)
     dl.bind(services,dl.BindArgs(deck_id=deck['id'],link_id=link['link_id'],slide_id=slide['id'],block_index=1,

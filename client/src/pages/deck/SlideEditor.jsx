@@ -83,15 +83,17 @@ export default function SlideEditor({ slide, onDeleted }) {
     setDraft({ ...draft, blocks });
   };
 
-  const patchBody = () => ({
-    title: draft.title,
-    subtitle: draft.subtitle,
-    layout: draft.layout,
-    notes: draft.notes,
-    image_prompt: draft.image_prompt,
-    blocks: draft.blocks.map((b, i) => blockToApi(b, t, i + 1)),
-    sources:draft.sources,
-  });
+  const patchBody = () => {
+    const patch = {};
+    for (const key of Object.keys(initial)) {
+      if (JSON.stringify(draft[key]) !== JSON.stringify(initial[key])) {
+        patch[key] = key === 'blocks' ? draft.blocks.map((b, i) => blockToApi(b, t, i + 1)) : draft[key];
+      }
+    }
+    // Notes-only saves do not resend stale visuals from a live data feed.
+    if (['blocks', 'sources', 'layout'].some(key => key in patch)) patch.expected_revision = slide.revision;
+    return patch;
+  };
   const saveInner = async () => { await api.slideUpdate(deckId, slide.id, patchBody()); await reload(); };
 
   const save = () => run(t("busy_saving"), async () => { await saveInner(); notify(t("saved")); return true; });

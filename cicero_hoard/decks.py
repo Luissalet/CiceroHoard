@@ -15,7 +15,7 @@ import shutil
 from pathlib import Path
 from typing import Any, Optional
 
-from .errors import CiceroError, NotFound, Refused
+from .errors import CiceroError, NotFound, Refused, RevisionConflict
 from .extract import extract_bytes, kind_for
 from .models import Block, DeckCreate, DeckPatch, LAYOUTS, MAX_SLIDES, OutlineItemIn, dump_blocks
 from . import custom_themes
@@ -397,11 +397,16 @@ def patch_slide(svc: Any, deck_id: str, slide_id: str, patch: dict[str, Any], *,
         sets.append(f"{key} = ?")
         params.append(jdump(value) if key in ("blocks", "sources") else value)
     with svc.db.transaction() as conn:
+        current = conn.execute('SELECT revision,blocks FROM slides WHERE id=? AND deck_id=?', (slide_id, deck_id)).fetchone()
+        if current is None:
+            raise NotFound(f'Slide {slide_id} no longer exists.')
+        if patch.get('expected_revision') is not None and current['revision'] != patch['expected_revision']:
+            raise RevisionConflict('The slide changed while editing. Your draft is retained; reload the latest slide before applying visual changes.')
         if 'sources' in fields and reason not in ('linked visual', 'linked data refresh'):
             bindings = conn.execute('SELECT block_id,definition FROM data_bindings WHERE slide_id=?', (slide_id,)).fetchall()
             linked_ids = {b['block_id'] for b in bindings}
             owned = {sid for b in bindings for sid in jload(b['definition'], {}).get('source_ids', [])}
-            old_blocks = jload(row['blocks'], [])
+            old_blocks = jload(current['blocks'], [])
             static_changed = ([b for b in fields.get('blocks', old_blocks) if b.get('id') not in linked_ids]
                               != [b for b in old_blocks if b.get('id') not in linked_ids])
             previous = svc.db.get_setting('manual_citations:' + slide_id, [])

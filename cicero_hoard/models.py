@@ -368,6 +368,7 @@ class SlideAddBody(_Body):
 
 
 class SlidePatch(_Body):
+    expected_revision: Optional[int] = Field(None, ge=1)
     title: Optional[str] = Field(None, max_length=200)
     subtitle: Optional[str] = Field(None, max_length=300)
     layout: Optional[Layout] = None
