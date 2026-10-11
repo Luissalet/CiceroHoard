@@ -57,7 +57,8 @@ def test_live_routes_separate_notes_and_reject_changed_session(client):
  assert "media.play().then(clearMediaNotice)" in response.text
  assert "error.name==='NotAllowedError'" in response.text
  assert "mediaNotice.style.display='block'" in response.text
- assert "currentSlide" not in response.text or 'pendingMedia' in response.text
+ assert "!deck.getCurrentSlide().contains(pendingMedia)" in response.text
+ assert "media.pause();clearMediaNotice()" in response.text
  assert client.post(path+'/control',json={'action':'blackout','blackout':True}).json()['blackout']
  decks.patch_slide(client.svc,deck['id'],first['id'],{'title':'Changed'})
  assert client.get(path+'/state').status_code==409
