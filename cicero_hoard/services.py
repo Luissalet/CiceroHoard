@@ -10,6 +10,7 @@ import dataclasses
 import logging
 import time
 import threading
+from pathlib import Path
 from typing import Any, Callable, Optional
 
 from . import APP_ID, SERVICE, __version__
@@ -55,6 +56,7 @@ class Services:
         self._family_call_fn = family_call_fn
         self._refs_link_fn = refs_link_fn
         self._native_render_fn = native_render_fn
+        self._visual_measure_fn = None  # tests replace the browser measurement
         from .presentation import Sessions
         self.presentations=Sessions(clock_fn)
         from .data_links import Worker
@@ -310,6 +312,42 @@ class Services:
         _, report = motion.apply(build_pptx(deck, assets=self.assets_lookup()), self.animations_get(deck_id), [s['id'] for s in deck['slides']],
                                   transitions={s['id']:s['transition'] for s in deck['slides'] if s.get('transition')})
         return report
+
+    # ---------------- visual review ----------------
+    def visual_review_dir(self, deck_id: str) -> Path:
+        return self.config.data_dir / "visual_review" / deck_id
+
+    def visual_review(self, deck_id: str, *, fix: bool = False) -> dict[str, Any]:
+        """Render every slide in the browser, keep a PNG of each and apply the hard rules; with ``fix`` apply the
+        allowed automatic fix (minimum font size on slides whose text overflows) and review again."""
+        from . import visual_review as vr
+        deck = store.deck_view(self, deck_id)
+        if not deck["slides"]:
+            raise CiceroError("The presentation has no slides to export.", code="no_slides")
+        folder = self.visual_review_dir(deck_id)
+        result = vr.review(deck, assets=self.assets_lookup(), png_dir=folder, measure_fn=self._visual_measure_fn)
+        if fix:
+            fixed = []
+            for entry in result["slides"]:
+                if any(f["rule"] == "text_overflow" for f in entry["findings"]):
+                    slide = next(s for s in deck["slides"] if s["id"] == entry["slide_id"])
+                    blocks = vr.shrink_patch(slide)
+                    if blocks is not None:
+                        store.patch_slide(self, deck_id, slide["id"], {"blocks": blocks}, reason="visual review: minimum font size")
+                        fixed.append({"slide_id": slide["id"], "position": entry["position"], "fix": f"font_size {vr.MIN_FONT} on text and bullets"})
+            if fixed:
+                before = {"errors": result["errors"], "warnings": result["warnings"]}
+                result = vr.review(store.deck_view(self, deck_id), assets=self.assets_lookup(), png_dir=folder,
+                                   measure_fn=self._visual_measure_fn)
+                result["fixed"] = fixed
+                result["before"] = before
+            else:
+                result["fixed"] = []
+        for entry in result["slides"]:
+            if entry.get("png"):
+                entry["png_url"] = f"/api/decks/{deck_id}/visual-review/{Path(entry['png']).name}"
+        self.emit("cicero.deck.reviewed", {"id": deck_id, "errors": result["errors"], "warnings": result["warnings"]})
+        return result
 
     def base_url(self) -> str:
         return f"http://127.0.0.1:{self.config.port}" if self.config.port else ""

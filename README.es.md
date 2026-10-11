@@ -94,7 +94,14 @@ tabla con barrido, imagen con zoom, tarjetas y texto que entran volando, y despu
 o cualquiera de los 203 efectos nativos --, `trigger` (tras el anterior o al clic), `duration`, `transition`
 (ninguna o cualquiera de las 48, Morph incluida) y `transition_duration`, para todo el deck o por diapositiva. Los
 pies y las formas de fondo nunca se animan. El XML de animaciones y transiciones viene de PPT Master (MIT, copiado
-en `cicero_hoard/vendor/ppt_master` con su licencia) y cada exportación se relee con sus validadores. PDF contiene el estado estático completo.
+en `cicero_hoard/vendor/ppt_master` con su licencia) y cada exportación se relee con sus validadores.
+
+Antes de exportar, `deck_visual_review` (`POST /api/decks/{id}/visual-review`, PNG en
+`/api/decks/{id}/visual-review/slide-NN.png`) renderiza cada diapositiva en el navegador y mide lo que quedó: objetos
+fuera de la diapositiva, texto cuyas líneas se salen de su caja, objetos de contenido que se tapan, contraste del texto
+contra lo que de verdad tiene detrás (4,5:1, 3:1 en texto grande), imágenes que no cargan y título, gráfico o imagen que
+faltan para el diseño. Cada aviso trae su arreglo; `fix: true` aplica el único arreglo automático que permiten las reglas
+(letra mínima en las diapositivas cuyo texto desborda) y vuelve a revisar. PDF contiene el estado estático completo.
 La ventana local se puede compartir durante una presentación remota, sin publicar el documento.
 
 ## Datos Y Presentacion En Vivo
@@ -202,6 +209,7 @@ herramientas de la aplicación en marcha y reenvía cada llamada. Si la aplicaci
 | `theme_from_tokens` | crear un tema desde un sistema de diseño (`tokens_id`, `mode` claro u oscuro, `deck_id` opcional para aplicarlo); sin `tokens_id` lista los sistemas de diseño |
 | `deck_export` | exportar a `pptx`, `pdf`, `html` o `md`; devuelve la ruta del archivo y la URL de descarga |
 | `deck_animations` | animaciones y transiciones nativas del PPTX exportado: leer, fijar, quitar, previsualizar, listar |
+| `deck_visual_review` | renderiza cada diapositiva en el navegador, guarda un PNG de cada una y aplica reglas duras antes de exportar; `fix` pone la letra mínima donde el texto desborda |
 | `slide_image` | generar una imagen para una diapositiva con el estudio de imágenes |
 
 Los resultados que se envían a un asistente se recortan a unos 20 KB con una pista para acotar la petición. Aprobar

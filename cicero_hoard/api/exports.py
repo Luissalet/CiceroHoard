@@ -67,3 +67,20 @@ def animations_reset(request: Request, deck_id: str):
 def animations_preview(request: Request, deck_id: str):
     return services(request).animations_preview(deck_id)
 
+
+@router.post("/decks/{deck_id}/visual-review")
+def visual_review(request: Request, deck_id: str, body: dict | None = None):
+    return services(request).visual_review(deck_id, fix=bool((body or {}).get("fix")))
+
+
+@router.get("/decks/{deck_id}/visual-review/{name}")
+def visual_review_png(request: Request, deck_id: str, name: str):
+    import re
+    from fastapi import HTTPException
+    if not re.fullmatch(r"slide-\d{2,3}\.png", name):
+        raise HTTPException(status_code=404, detail="not found")
+    path = services(request).visual_review_dir(deck_id) / name
+    if not path.is_file():
+        raise HTTPException(status_code=404, detail="not found")
+    return FileResponse(path, media_type="image/png")
+

@@ -93,7 +93,14 @@ picture zoom, cards and text fly in, then the click stages), `mixed`, `none` or 
 `trigger` (after-previous or on-click), `duration`, `transition` (none or any of 48, Morph included) and
 `transition_duration`, deck-wide or per slide. Footers and background shapes never animate. The animation and
 transition XML comes from PPT Master (MIT, vendored in `cicero_hoard/vendor/ppt_master` with its licence) and every
-export is read back with its validators. PDF represents the complete static state. The user can share
+export is read back with its validators.
+
+Before exporting, `deck_visual_review` (`POST /api/decks/{id}/visual-review`, PNGs at
+`/api/decks/{id}/visual-review/slide-NN.png`) renders every slide in the browser and measures what was laid out: objects
+off the slide, text whose lines leave their box, content objects covering each other, text contrast against what is really
+behind it (4.5:1, 3:1 for large text), pictures that do not load, and a missing title, chart or picture for the layout.
+Each finding says its fix; `fix: true` applies the one automatic fix the rules allow (minimum font size on the slides
+whose text overflows) and reviews again. PDF represents the complete static state. The user can share
 their local presentation window remotely; no publication is necessary.
 
 ## Data And Live Presentation
@@ -192,6 +199,7 @@ turns that off; the slow tools publish how long the bridge waits for them). Regi
 | `theme_from_tokens` | make a theme from a design system (`tokens_id`, `mode` light or dark, optional `deck_id` to apply it); without `tokens_id` it lists the design systems |
 | `deck_export` | export to `pptx`, `pdf`, `html` or `md`; returns the file path and the download URL |
 | `deck_animations` | native animations and transitions of the exported PPTX: get, set, reset, preview, list |
+| `deck_visual_review` | render every slide in the browser, keep a PNG of each and check hard rules before exporting; `fix` applies the minimum font size where text overflows |
 | `slide_image` | generate a picture for a slide with the image studio |
 | `asset_import` | copy an existing local PNG/JPEG/WEBP figure; use its returned asset ID in an image block; repeated imports reuse the image within this deck |
 | `slides_add` | atomic draft batches with a reusable batch key; retrying identical content returns the original IDs |

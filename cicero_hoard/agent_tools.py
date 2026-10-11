@@ -529,6 +529,16 @@ def run_deck_animations(svc: Services, a: AnimationsArgs) -> dict:
     return svc.animations_set(a.deck_id, settings)
 
 
+
+class VisualReviewArgs(BaseModel):
+    deck_id: str = DeckId
+    fix: bool = Field(False, description="Apply the allowed automatic fix (minimum font size where text overflows) and review again.")
+
+
+def run_deck_visual_review(svc: Services, a: VisualReviewArgs) -> dict:
+    return svc.visual_review(a.deck_id, fix=a.fix)
+
+
 TOOLS: list[Tool] = [
     Tool("cicero_status",
          "Health and counts: decks, sources, slides, exports; model and PDF availability. Estado de Cicero.\n"
@@ -660,6 +670,11 @@ TOOLS: list[Tool] = [
          "mode builds (click stages only), auto (cover zoom, title fade, chart/table wipe, picture zoom, cards fly), mixed, none or any of 203\n"
          "native effects; transition none or any of 48 (fade, push, morph...). Per-slide overrides. Sinónimos: animar, transiciones, efectos.",
          AnimationsArgs, _ann(False, False, True), run_deck_animations),
+    Tool("deck_visual_review",
+         "Render every slide in the browser and check hard rules before exporting; PNG per slide. Revisión visual.\n"
+         "Rules: off the slide, text overflow, overlap, contrast, broken image, missing title/chart/picture; fix=true sets the minimum\n"
+         "font size where text overflows and reviews again. Sinónimos: revisar diseño, comprobar antes de exportar, capturas.",
+         VisualReviewArgs, _ann(False, False, False), run_deck_visual_review),
     Tool("asset_import", "Import an existing local figure or photo; returns an asset_id usable in image blocks.\n"
          "Repeated imports of the same image into this deck reuse its stored asset. Importar imagen local.",
          AssetImportArgs, _ann(False, False, True, False), run_asset_import),
