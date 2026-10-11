@@ -169,3 +169,21 @@ def test_session_undo_preview_preserves_external_parent_citation(client):
  current=decks.deck_view(client.svc,deck['id'])
  assert [s['id'] for s in current['sources']]==[parent['id']]
  assert [s['id'] for s in current['slides']]==[external['id']]
+
+@pytest.mark.parametrize('new_cites',[True,False])
+def test_session_undo_preview_accounts_for_restored_generation_citations(client,new_cites):
+ from test_agent_accountability import agent_call,ok,undo
+ from conftest import FakeLink,slide_json
+ deck=new_deck(client.svc);ident=deck['id'];session='restored-generation'
+ parent=ok(agent_call(client,'dataset_import',{'deck_id':ident,'text':'Name,Value\nA,2'},session=session))
+ items=decks.set_outline(client.svc,ident,[{'title':'Old','purpose':'Old evidence','points':[]},{'title':'New','purpose':'New evidence','points':[]}])
+ old=decks.add_slide(client.svc,ident,title='Old',sources=[parent['id']],outline_id=items['outline'][0]['id'])
+ client.svc.link=FakeLink([slide_json('Old regenerated',sources=[]),slide_json('New',sources=[parent['id']] if new_cites else [])])
+ ok(agent_call(client,'slides_generate',{'deck_id':ident},session=session))
+ preview=ok(undo(client,session,dry_run=True))
+ assert not preview['complete'] and len(preview['conflicts'])==1
+ result=ok(undo(client,session,confirm=True))
+ assert not result['complete'] and len(result['conflicts'])==1
+ state=decks.deck_view(client.svc,ident)
+ assert [s['id'] for s in state['sources']]==[parent['id']]
+ assert len(state['slides'])==1 and state['slides'][0]['id']==old['id'] and state['slides'][0]['sources']==[parent['id']]
