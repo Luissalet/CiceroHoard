@@ -11,7 +11,7 @@ from datetime import date,datetime
 from pathlib import Path
 from zipfile import BadZipFile
 from typing import Literal,Optional,Any
-from pydantic import BaseModel,Field
+from pydantic import BaseModel,Field,model_validator
 from openpyxl import load_workbook
 from openpyxl.utils.exceptions import InvalidFileException
 from . import decks as store
@@ -62,7 +62,7 @@ class VisualArgs(BaseModel):
     kind:Literal['chart','table']='chart'
     chart:Literal['bar','bar_horizontal','line','area','pie','donut','scatter','bubble','dot','dumbbell','band','heatmap','waterfall','funnel']='bar'
     category_column:Optional[str]=None
-    series_columns:list[str]=Field(default_factory=list,max_length=6)
+    series_columns:list[str]=Field(default_factory=list,max_length=10)
     x_column:Optional[str]=None
     lower_column:Optional[str]=None
     upper_column:Optional[str]=None
@@ -72,13 +72,19 @@ class VisualArgs(BaseModel):
     unit:str=''
     title:str=''
 
+    @model_validator(mode='after')
+    def chart_series_limit(self):
+        if self.kind=='chart' and len(self.series_columns)>6:
+            raise ValueError('Charts support at most six value series; tables support ten columns.')
+        return self
+
 def numeric(value,mode='auto'):
     if value is None or value=='':return None
     if isinstance(value,bool):return None
     if isinstance(value,(int,float)):
         return float(value) if math.isfinite(value) else None
     t=str(value).strip().replace('\u2212','-').replace('\u00a0','').replace('\u202f','')
-    if not re.fullmatch(r'[+-]?(?:\d[\d.,]*|\.\d+)(?:[eE][+-]?\d+)?',t):return None
+    if not re.fullmatch(r'[+-]?(?:\d[\d.,]*|[.,]\d+)(?:[eE][+-]?\d+)?',t):return None
     if mode=='es':
         if not re.fullmatch(r'[+-]?(?:(?:\d+|\d{1,3}(?:\.\d{3})+)(?:,\d+)?|,\d+)(?:[eE][+-]?\d+)?',t):return None
         t=t.replace('.','').replace(',','.')
@@ -263,6 +269,11 @@ def track(svc,args,result):
     return track_source_add(svc,args,result)
 
 def undo(svc,record,dry_run=False):
-    from .agent_undo import undo_source_add
+    from .agent_undo import undo_source_add,_id_of,_conflict
     if record.get('etag')=='reused':return {'unchanged':True}
-    return undo_source_add(svc,record,dry_run)
+    deck_id=_id_of(record,'deck_id');source_id=int(_id_of(record,'source_id') or 0)
+    with svc.db.transaction():
+        children=svc.db.query("SELECT id,text FROM sources WHERE deck_id=? AND kind='dataset'",(deck_id,))
+        if any(json.loads(row['text']).get('origin',{}).get('derived_from')==source_id for row in children):
+            raise _conflict('Derived datasets still use this source; undo those derived datasets first.')
+        return undo_source_add(svc,record,dry_run)

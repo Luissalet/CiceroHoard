@@ -62,6 +62,7 @@ def start(svc,args):
         return sessions.public(room)|{
             'presenter_url':svc.base_url()+f"/#/presenter/{args.deck_id}",
             'audience_url':svc.base_url()+f"/api/decks/{args.deck_id}/live/{room['session_id']}/audience.html",
+            'audience_path':f"/api/decks/{args.deck_id}/live/{room['session_id']}/audience.html",
             'persistence':'local memory until server restart; restart=true adopts deck edits'}
 
 def state(svc,args):

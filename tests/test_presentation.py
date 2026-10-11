@@ -46,6 +46,7 @@ def test_retry_start_and_version_conflicts(services):
 def test_live_routes_separate_notes_and_reject_changed_session(client):
  deck,first,_=talk(client.svc);base=f"/api/decks/{deck['id']}/live"
  room=client.post(base,json={}).json();path=base+'/'+room['session_id']
+ assert room['audience_path']==path+'/audience.html'
  response=client.get(path+'/audience.html')
  assert response.status_code==200 and 'PRIVATE-NOTES' not in response.text
  assert "connect-src 'self'" in response.headers['content-security-policy'] and path+'/speaker' not in response.text

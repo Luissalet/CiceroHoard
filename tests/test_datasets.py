@@ -98,3 +98,29 @@ def test_agent_mapping_keeps_complete_large_numeric_arrays(services):
  result=call_tool(services,'dataset_visual',{'deck_id':deck['id'],'source_id':data['id'],'category_column':'Name','series_columns':['Value'],'limit':2000},cap=True)
  assert len(result['block']['categories'])==2000 and result['block']['series'][0]['values']==list(range(2000))
  assert not result.get('truncated')
+
+@pytest.mark.parametrize('raw,value', [(',5',.5),('-,5',-.5),('+,5',.5)])
+def test_spanish_leading_decimal_separator(raw,value):
+ assert ds.numeric(raw,'es')==value
+
+def test_tables_map_ten_columns_but_charts_keep_six_series(services):
+ from pydantic import ValidationError
+ columns=list('ABCDEFGHIJ')
+ deck,data=imported(services,text=','.join(columns)+'\n'+','.join(str(i) for i in range(10)))
+ args=ds.VisualArgs(deck_id=deck['id'],source_id=data['id'],kind='table',series_columns=columns)
+ result=ds.visual(services,args)
+ assert result['block']['headers']==columns and len(result['block']['rows'][0])==10
+ with pytest.raises(ValidationError):
+  ds.VisualArgs(deck_id=deck['id'],source_id=data['id'],series_columns=columns[:7])
+
+def test_undo_preserves_original_with_derived_data_in_use(services):
+ deck,data=imported(services,text='Region,Amount\nA,1\nA,2')
+ derived=ds.transform(services,ds.TransformArgs(deck_id=deck['id'],source_id=data['id'],group_by=['Region'],aggregations=[{'column':'Amount','operation':'sum'}]))
+ record=ds.track(services,ds.ImportArgs(deck_id=deck['id']),data)
+ for dry_run in (False,True):
+  with pytest.raises(AppError):ds.undo(services,record,dry_run=dry_run)
+ slide=decks.add_slide(services,deck['id'],blocks=[{'type':'text','text':'Keep'}],sources=[derived['id']])
+ with pytest.raises(AppError):ds.undo(services,record)
+ assert ds.load(services,deck['id'],data['id'])['rows']==[['A','1'],['A','2']]
+ assert ds.load(services,deck['id'],derived['id'])['origin']['derived_from']==data['id']
+ assert decks.deck_view(services,deck['id'])['slides'][0]['sources']==[derived['id']]

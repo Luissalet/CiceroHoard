@@ -26,7 +26,7 @@ export default function Presenter({deckId}){
  const button=(Icon,label,action,extra={})=><button type="button" className="btn btn-icon" title={label} aria-label={label} disabled={busy||!room} onClick={()=>command(action,extra)}><Icon size={20}/></button>;
  return <main className="presenter" id="main" tabIndex={-1}>
    <header className="presenter-toolbar"><a className="btn btn-icon" href={`#/deck/${deckId}/slides`} title={t('back')} aria-label={t('back')}><ArrowLeft size={20}/></a><h1>{t('presenter_console')}</h1>
-     {room&&<a className="btn" href={room.audience_url} target="_blank" rel="noreferrer"><ExternalLink size={16}/>{t('audience')}</a>}
+     {room&&<a className="btn" href={room.audience_path} target="_blank" rel="noreferrer"><ExternalLink size={16}/>{t('audience')}</a>}
      <button className="btn btn-icon" type="button" title={t('restart_session')} aria-label={t('restart_session')} disabled={busy} onClick={restart}><RotateCcw size={18}/></button>
    </header>
    {error&&<p role="alert" className="presenter-error">{error}</p>}
@@ -44,7 +44,7 @@ export default function Presenter({deckId}){
       <label>{t('main_slides')}<input className="field" type="number" min="1" max={room.slides.length} defaultValue={room.main_slide_count} onBlur={e=>{const v=Number(e.target.value);if(Number.isInteger(v)&&v>=1&&v<=room.slides.length)command('main',{main_slide_count:v})}}/></label>
     </div></div>
     <div className="presenter-workspace"><section className="presenter-current" aria-label={t('current_slide')}>
-       <iframe key={room.session_id} src={room.audience_url} title={t('current_slide')} allow="fullscreen"/>
+       <iframe key={room.session_id} src={room.audience_path} title={t('current_slide')} allow="fullscreen"/>
        <h2>{current.title}</h2>
     </section><aside className="presenter-notes"><h2>{t('notes')}</h2><div className="presenter-note-text" tabIndex={0}>{notes.find(n=>n.id===current.id)?.notes||t('notes_empty')}</div>
        <h2>{t('next_slide')}</h2>{next?<iframe src={api.slidePreviewUrl(deckId,next.id,next.revision)} title={t('next_slide')}/>:<p>{t('end_presentation')}</p>}

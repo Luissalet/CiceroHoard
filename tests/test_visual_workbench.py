@@ -17,6 +17,18 @@ from conftest import new_deck
 
 KINDS=['bar','bar_horizontal','line','area','pie','donut','scatter','bubble','dot','dumbbell','band','heatmap','waterfall','funnel']
 
+def test_band_upper_bound_stays_in_the_packaged_chart_canvas():
+ import xml.etree.ElementTree as ET
+ block={'chart':'band','categories':['A','B'],'series':[{'name':'Range','values':[2,3],'x_values':[1,2],'lower':[1,1],'upper':[100,100]}]}
+ svg=chart_svg(block,1000,500,get_theme('claro'),'en','Arial')
+ root=ET.fromstring(svg)
+ polygons=root.findall('.//{http://www.w3.org/2000/svg}polygon')
+ assert polygons
+ for polygon in polygons:
+  points=[float(value) for value in polygon.attrib['points'].replace(',', ' ').split()]
+  assert len(points)>=6 and len(points)%2==0
+  assert all(0<=y<=500 for y in points[1::2])
+
 def chart(kind):
     b={'type':'chart','chart':kind,'categories':['First','Second','Third'],'unit':'kPa',
        'series':[{'name':'Measured','values':[3.49,4.26,6.03]}]}

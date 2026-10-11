@@ -27,7 +27,8 @@ if(req.kind==='diagram'){
  yAxis:{type:horizontal?'category':'value',data:horizontal?cats:undefined,inverse:horizontal,
  name:horizontal?'':(b.y_label||b.unit||''),nameTextStyle:{fontSize:18,color:p.text},
  axisLabel:{fontSize:18,color:p.text,formatter:horizontal?undefined:fmt},axisLine:{show:false},axisTick:{show:false},
- splitLine:{show:!horizontal,lineStyle:{color:'#DFE6EB'}},min:horizontal?undefined:limits[0]},series:[]};
+ splitLine:{show:!horizontal,lineStyle:{color:'#DFE6EB'}},min:horizontal?undefined:limits[0],
+ max:b.chart==='band'?limits[1]:undefined},series:[]};
  const label={show:b.show_values??(cats.length*series.length<=14),fontSize:19,color:p.text,formatter:arg=>fmt(Array.isArray(arg.value)?arg.value[1]:arg.value)};
  const refs=(b.references||[]).map(r=>({[horizontal?'xAxis':'yAxis']:r.value,name:r.label}));
  for(let i=0;i<series.length;i++){
