@@ -36,7 +36,10 @@ Web controls and cover cropping are browser features, not a promise of identical
 
 `deck_media_control` sends play/pause/seek/volume/mute to the selected media_index on the current live slide.
 Commands carry the slide and asset identity and are cleared on navigation. The presenter console has equivalent controls.
-Browsers can require a user click for unmuted playback. Audience state contains no notes.
+Browsers can require a first user click for playback, particularly audio. The audience view keeps an actionable
+playback notice with an activation/retry button until playback succeeds, is paused or the slide changes.
+That button supplies the browser's required user gesture; subsequent commands still use the console/MCP.
+Audience state contains no notes.
 
 ## Automatic Data
 

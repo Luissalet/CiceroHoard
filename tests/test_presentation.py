@@ -53,6 +53,11 @@ def test_live_routes_separate_notes_and_reject_changed_session(client):
  assert 'PRIVATE-NOTES' not in client.get(path+'/state').text
  assert "deck.on('fragmentshown'" not in response.text and "keyboard:false" in response.text
  assert 'PRIVATE-NOTES' in client.get(path+'/speaker').text
+ assert "activate.addEventListener('click'" in response.text
+ assert "media.play().then(clearMediaNotice)" in response.text
+ assert "error.name==='NotAllowedError'" in response.text
+ assert "mediaNotice.style.display='block'" in response.text
+ assert "currentSlide" not in response.text or 'pendingMedia' in response.text
  assert client.post(path+'/control',json={'action':'blackout','blackout':True}).json()['blackout']
  decks.patch_slide(client.svc,deck['id'],first['id'],{'title':'Changed'})
  assert client.get(path+'/state').status_code==409

@@ -140,6 +140,24 @@ def audience_document(svc,deck_id,session_id,*,monitor=False):
       if(monitor)document.querySelectorAll('.slide-media').forEach(media=>{media.muted=true;media.volume=0;});
       const status=document.createElement('div');status.setAttribute('role','alert');
       status.style.cssText='position:fixed;top:0;left:0;right:0;z-index:110;background:#a22;color:white;padding:12px;font:16px Arial;display:none';document.body.append(status);
+      const mediaNotice=document.createElement('div');mediaNotice.setAttribute('role','alert');
+      mediaNotice.style.cssText='position:fixed;top:0;left:0;right:0;z-index:111;background:#173c43;color:white;padding:12px;font:16px Arial;display:none';
+      const mediaLabel=document.createElement('span'),activate=document.createElement('button');
+      const spanish=document.documentElement.lang==='es';let pendingMedia=null;
+      activate.textContent=spanish?'Activar reproduccion':'Enable playback';
+      activate.style.cssText='margin-left:16px;padding:8px 12px;border:1px solid white;border-radius:4px;background:transparent;color:white;font:inherit;cursor:pointer';
+      mediaNotice.append(mediaLabel,activate);document.body.append(mediaNotice);
+      function clearMediaNotice(){pendingMedia=null;mediaNotice.style.display='none';}
+      function playMedia(media){
+        media.play().then(clearMediaNotice).catch(error=>{
+          pendingMedia=media;mediaLabel.textContent=error.name==='NotAllowedError'
+            ?(spanish?'El navegador necesita un clic para reproducir este medio.':'The browser needs a click to play this media.')
+            :(spanish?'No se pudo reproducir el medio. Puedes reintentarlo.':'Media could not play. You can retry.');
+          mediaNotice.style.display='block';
+        });
+      }
+      activate.addEventListener('click',()=>{if(pendingMedia)playMedia(pendingMedia);});
+      document.querySelectorAll('.slide-media').forEach(media=>media.addEventListener('play',()=>{if(pendingMedia===media)clearMediaNotice();}));
       async function poll(){
         if(working)return;
         try{const response=await fetch(base+'/state');if(!response.ok)throw new Error((await response.json()).error||'Presentation unavailable');
@@ -148,12 +166,13 @@ def audience_document(svc,deck_id,session_id,*,monitor=False):
           authoritative=state;
           if(state.version!==version){applying=true;version=state.version;blackout=state.blackout;
             deck.slide(state.slide_index,0,state.fragment_index);document.body.classList.toggle('blackout',blackout);
+            if(pendingMedia&&!deck.getCurrentSlide().contains(pendingMedia))clearMediaNotice();
             requestAnimationFrame(()=>{applying=false});}
           const command=state.media_command;
           if(command&&command.version!==mediaVersion&&state.slides[state.slide_index].id===command.slide_id){mediaVersion=command.version;
             const active=deck.getCurrentSlide();const media=Array.from(active.querySelectorAll('.slide-media'))[command.media_index];
-            if(media){if(command.action==='play')media.play().catch(error=>{status.textContent=error.message;status.style.display='block';});
-              else if(command.action==='pause')media.pause();else if(command.action==='seek')media.currentTime=command.value;
+            if(media){if(command.action==='play')playMedia(media);
+              else if(command.action==='pause'){media.pause();clearMediaNotice();}else if(command.action==='seek')media.currentTime=command.value;
               else if(command.action==='volume')media.volume=command.value;else if(command.action==='mute')media.muted=Boolean(command.value);
               if(monitor){media.muted=true;media.volume=0;}}}
         }catch(error){status.textContent=error.message;status.style.display='block';}
