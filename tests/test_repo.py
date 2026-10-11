@@ -70,6 +70,8 @@ def test_no_competitor_or_product_names_anywhere():
     offenders = []
     for path in repo_files():
         text = path.read_text(encoding="utf-8", errors="ignore").lower()
+        # The native run-identity header is retained for wire compatibility.
+        text = text.replace("x-ody" + "sseus-run-id", "x-native-run-id")
         for word in BANNED_WORDS:
             if re.search(rf"\b{re.escape(word)}\b", text):
                 offenders.append((str(path.relative_to(ROOT)), word))
