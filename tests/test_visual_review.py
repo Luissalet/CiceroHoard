@@ -65,7 +65,8 @@ def test_real_browser_review_writes_pngs_and_finds_real_problems(services, clien
     decks.add_slide(services, deck["id"], title="Fine", blocks=[{"type": "bullets", "items": ["Uno", "Dos"]}])
     decks.add_slide(services, deck["id"], title="Crowded", layout="freeform",
                     blocks=[{"type": "text", "text": "palabra " * 300, "frame": [0, 0, 0.2, 0.08]},
-                            {"type": "text", "text": "encima", "frame": [0.1, 0.0, 0.5, 0.3]}])
+                            {"type": "text", "text": "encima", "frame": [0.1, 0.0, 0.5, 0.3]},
+                            {"type": "text", "text": "fuera", "frame": [0.9, 0.5, 0.3, 0.1]}])
     try:
         out = services.visual_review(deck["id"])
     except PdfUnavailable:
@@ -73,7 +74,12 @@ def test_real_browser_review_writes_pngs_and_finds_real_problems(services, clien
     assert len(out["slides"]) == 2 and all(s["png_url"].endswith(".png") for s in out["slides"])
     assert not [f for f in out["slides"][0]["findings"] if f["severity"] == "error"]
     rules = {f["rule"] for f in out["slides"][1]["findings"]}
-    assert {"off_slide", "overlap"} <= rules, out["slides"][1]["findings"]
+    # the long text grew past the bottom: overflow with the automatic fix; the box past the right edge is off the slide
+    assert {"off_slide", "overlap", "text_overflow"} <= rules, out["slides"][1]["findings"]
+    grown = next(f for f in out["slides"][1]["findings"] if f["rule"] == "text_overflow")
+    assert grown["auto_fix"] and "the slide leaves" in grown["detail"]
+    off = [f for f in out["slides"][1]["findings"] if f["rule"] == "off_slide"]
+    assert [f["where"] for f in off] == ["fuera"], off
     assert (services.visual_review_dir(deck["id"]) / "slide-01.png").is_file()
 
 

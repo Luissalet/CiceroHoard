@@ -65,9 +65,14 @@ _PROBE = r"""
       const isChart = !!el.querySelector(':scope > svg') && !el.classList.contains('diagram-node');
       const isTable = !!el.querySelector('table');
       const label = isText ? (el.innerText || '').trim().slice(0, 60) : isImg ? 'picture' : isChart ? 'chart' : isTable ? 'table' : 'shape';
-      if (r.x < -2 || r.y < -2 || r.x + r.w > 1282 || r.y + r.h > 722) found.push({rule: 'off_slide', where: label,
+      // a text box that starts inside the slide and only runs past the bottom grew with its text: that is overflow
+      // (and the minimum-font fix applies), not an object placed off the slide
+      const grewDown = isText && r.x >= -2 && r.y >= -2 && r.x + r.w <= 1282 && r.y < 720 && r.y + r.h > 722;
+      if (grewDown) found.push({rule: 'text_overflow', where: label,
+        detail: `needs ${Math.round(r.h)}px, the slide leaves ${Math.round(720 - r.y)}px`, need: Math.round(r.h), have: Math.round(720 - r.y)});
+      else if (r.x < -2 || r.y < -2 || r.x + r.w > 1282 || r.y + r.h > 722) found.push({rule: 'off_slide', where: label,
         detail: `${Math.round(r.x)},${Math.round(r.y)} ${Math.round(r.w)}x${Math.round(r.h)}`});
-      if (isText) {
+      if (isText && !grewDown) {
         // the ink of the text, not scrollHeight: a trailing paragraph margin is space, not overflow
         // line boxes of the text nodes only: element boxes carry paragraph margins that are space, not text
         const box = el.getBoundingClientRect(); const ink = {top: Infinity, bottom: -Infinity, right: -Infinity, height: 0};
