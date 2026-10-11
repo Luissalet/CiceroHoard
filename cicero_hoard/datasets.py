@@ -273,6 +273,7 @@ def undo(svc,record,dry_run=False):
         children=[row['id'] for row in svc.db.query("SELECT id FROM sources WHERE deck_id=? AND kind='dataset' AND json_extract(text,'$.origin.derived_from')=?",(deck_id,source_id))]
         if children:
             if dry_run and _session_removes_children(svc,record,deck_id,children):
+                undo_source_add(svc,record,dry_run=True)
                 return {'would_remove':source_id,'after':'derived snapshots from this session are undone first'}
             raise _conflict('Derived datasets still depend on this source. Undo those snapshots first: '+', '.join(map(str,children)))
         return undo_source_add(svc,record,dry_run)

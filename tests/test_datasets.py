@@ -154,3 +154,18 @@ def test_overflowing_aggregate_never_saves_nonfinite_snapshot(services):
  deck,data=imported(services,text='Name,Value\nA,1e308\nB,1e308',number_format='auto')
  with pytest.raises(ValueError):ds.transform(services,ds.TransformArgs(deck_id=deck['id'],source_id=data['id'],aggregations=[{'column':'Value','operation':'sum'}]))
  assert len(decks.deck_view(services,deck['id'])['sources'])==1
+
+def test_session_undo_preview_preserves_external_parent_citation(client):
+ from test_agent_accountability import agent_call,ok,undo
+ deck=new_deck(client.svc);session='data-chain-external'
+ parent=ok(agent_call(client,'dataset_import',{'deck_id':deck['id'],'text':'Name,Value\nA,2'},session=session))
+ child=ok(agent_call(client,'dataset_transform',{'deck_id':deck['id'],'source_id':parent['id'],'sort_column':'Value'},session=session))
+ ok(agent_call(client,'slide_add',{'deck_id':deck['id'],'title':'Derived','sources':[child['id']]},session=session))
+ external=decks.add_slide(client.svc,deck['id'],title='External evidence',sources=[parent['id']])
+ preview=ok(undo(client,session,dry_run=True))
+ assert not preview['complete'] and len(preview['conflicts'])==1
+ result=ok(undo(client,session,confirm=True))
+ assert not result['complete'] and len(result['conflicts'])==1
+ current=decks.deck_view(client.svc,deck['id'])
+ assert [s['id'] for s in current['sources']]==[parent['id']]
+ assert [s['id'] for s in current['slides']]==[external['id']]

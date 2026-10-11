@@ -167,17 +167,25 @@ def track_source_add(svc: Any, args: Any, result: dict) -> dict:
             "etag": _digest({k: result.get(k) for k in ("id", "title", "kind", "chars", "truncated")})}
 
 
-def _session_clears_slides(svc: Any, record: dict, deck_id: str) -> bool:
-    """A dry run checks each write on its own, but a real undo goes newest first: slides the same session made after this
-    write are gone by the time it is reached. True when such a write exists on this deck and has not been undone."""
+def _session_clears_slides(svc: Any, record: dict, deck_id: str, source_id: int, citing: list[str]) -> bool:
+    """A dry run checks each write on its own. Account for newer session writes only
+    when their undo removes every citation, preserving references made outside the session."""
     from .hoard_link.agent_journal import Journal
     try:
         rows = Journal(svc.config.data_dir).query(session=str(record.get("session") or ""), kind="write", limit=1000)
     except Exception:  # noqa: BLE001 - a preview only
         return False
-    return any(r.get("ok") and not r.get("undone") and float(r.get("ts") or 0) >= float(record.get("ts") or 0) and r.get("id") != record.get("id")
-               and r.get("tool") in ("slides_generate", "slide_add", "slides_add") and any(str(o).startswith(f"deck:{deck_id}/") for o in r.get("objects") or [])
-               for r in rows)
+    cleared = set()
+    for r in rows:
+        if not (r.get("ok") and not r.get("undone") and float(r.get("ts") or 0) >= float(record.get("ts") or 0)
+                and r.get("id") != record.get("id") and _id_of(r, "deck_id") == deck_id):
+            continue
+        if r.get("tool") in ("slide_add", "slides_add") and r.get("etag") != "replayed":
+            cleared.update(str(i).partition("=")[2] for i in r.get("ids") or [] if str(i).startswith("slide_id="))
+        elif r.get("tool") == "slides_generate":
+            before = {s["id"]: s for s in _before(r).get("slides", [])}
+            cleared.update(i for i in citing if i not in before or source_id not in before[i].get("sources", []))
+    return set(citing).issubset(cleared)
 
 
 def undo_source_add(svc: Any, record: dict, dry_run: bool = False) -> dict:
@@ -190,7 +198,7 @@ def undo_source_add(svc: Any, record: dict, dry_run: bool = False) -> dict:
         raise _conflict("The source changed after this write.")
     citing = [s["id"] for s in store.deck_view(svc, deck_id)["slides"] if source_id in s["sources"]]
     if citing:
-        if dry_run and _session_clears_slides(svc, record, deck_id):
+        if dry_run and _session_clears_slides(svc, record, deck_id, source_id, citing):
             return {"would_remove": source_id, "after": "the slides this session made are taken back first"}
         raise _conflict("Slides cite this source, so it is not removed.")
     if dry_run:
