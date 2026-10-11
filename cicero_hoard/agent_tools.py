@@ -19,6 +19,7 @@ from . import custom_themes
 from . import craft_apps
 from . import agent_undo
 from .templates import TemplateBinding
+from . import agent_visuals
 
 AGENT_INSTRUCTIONS = """Cicero's Hoard builds presentations that a person can review slide by slide. Work in this order: deck_create (title, brief,
 audience, tone, language, number of slides) -> source_add (paste the text you may use, or a document the user names; figures on slides must come from
@@ -31,7 +32,24 @@ draft slides are rewritten. Without a reachable model the outline and slides com
 slide_regenerate says so instead of pretending. Speaker notes are part of the deliverable: write them. Deletes (deck_delete, slide_delete,
 source_remove) need confirm=true; ask the user first. Replacing the outline (outline_generate, outline_update) or drafts (slides_generate) discards
 what they held: ask when the user has edited them. To place an existing figure, use asset_import then slide_set_image; it preserves the other
-blocks and notes. Correct a figure caption with slide_set_image and one title/note/bullet with slide_edit_text. deck_export returns the file path on disk and the download URL."""
+blocks and notes. Correct a figure caption with slide_set_image and one title/note/bullet with slide_edit_text. deck_export returns the file path on disk and the download URL.
+Visual capabilities: call visual_catalog(kind='summary') first, then the relevant typed schema (charts, diagrams, metrics, tables or timelines).
+For CSV/TSV/XLSX, dataset_import -> dataset_get -> optional dataset_transform -> dataset_visual.
+Resolve ambiguous separators with number_format es/en; attach returned source_ids through slide_visual_update.
+Imported and derived data are immutable snapshots, not externally live-linked charts. Reimport/remapping is explicit.
+Freeform block.frame fractions position content inside the body region; font_size is explicit. Check overlaps and fit.
+Images support contain/cover and normalized crop focus; stable block IDs identify scene objects, not inter-slide morphs.
+Do not generate positioning code: diagram nodes/edges are laid out automatically. Numeric x_values keep irregular spacing; nulls are gaps;
+band charts need lower/upper bounds, bubble charts need explicit sizes. Never turn uncertainty into invented intervals.
+Use slide_visual_update with block_index and expected_revision to replace or append one block while preserving notes and other content.
+Compare slide_variants before choosing a layout; its fit estimate is not a visual-quality score. Inspect deck_scene for object frames,
+font sizes and build steps, then deck_check for evidence/overflow warnings. Visually review native exports too: geometry checks cannot judge aesthetics.
+Use build/effect/duration_ms for meaningful click stages; effect='stages' on diagrams reveals nodes and incoming connectors together.
+Timelines can also use stages to reveal milestones. deck_live_start returns separate audience and speaker URLs.
+Share only the audience window; deck_live_state/control navigate the local session and operate its paused/resumable clock.
+Sessions live in server memory; restart=true adopts deck edits. Optional expected_version catches concurrent commands.
+deck_present returns a local playback URL. HTML is offline and interactive; PDF shows the complete static state. Native PPTX motion needs
+the optional local office renderer. Read visual_catalog export_notes for differences; do not promise identical effects across formats."""
 
 
 DeckId = Field(..., min_length=1, max_length=40, description="Deck id (from deck_list or deck_create).")
@@ -595,11 +613,11 @@ TOOLS: list[Tool] = [
          "Use these IDs to map title, subtitle and content slots for any presentation. Inspeccionar una plantilla.",
          TemplateInspectArgs, _ann(True, False, True), run_template_inspect),
     Tool("deck_template", "Attach, inspect or clear a reusable PPTX template snapshot for a presentation.\n"
-         "Optional bindings map Cicero layout names to source_slide, title_shape, subtitle_shape, content_frame, keep_text_shapes and remove_shapes. All IDs come from template_inspect. PPTX export retains the template masters, size and branding; other exports do not render PPTX templates.",
+         "Optional bindings map layouts to source_slide, title_shape, subtitle_shape, content_frame, keep_text_shapes and remove_shapes. IDs come from template_inspect. PPTX retains editable masters and branding. Web uses native furniture plus live content; PDF is static.",
          DeckTemplateArgs, _ann(False, False, True), run_deck_template),
     Tool("deck_export",
          "Export to pptx (editable, native charts), pdf, html or md; returns the file path and download URL. Exportar.\n"
-         "PDF needs Chromium. Sinónimos: descargar, guardar, generar archivo, pptx, PDF.\nKeywords: export, pptx, pdf, html, markdown.",
+         "PDF uses the local office engine for template decks, or Chromium otherwise. Sinónimos: descargar, guardar, generar archivo, pptx, PDF.\nKeywords: export, pptx, pdf, html, markdown.",
          ExportArgs, _ann(False, False, False), run_deck_export),
     Tool("asset_import", "Import an existing local figure or photo; returns an asset_id usable in image blocks.\n"
          "Repeated imports of the same image into this deck reuse its stored asset. Importar imagen local.",
@@ -621,6 +639,28 @@ TOOLS: list[Tool] = [
 # the MCP bridge waits this long for a tool (seconds): a local model writing a whole deck, a PDF render or a picture
 # takes far longer than the bridge's default
 _WAIT_S = {"outline_generate": 300.0, "slides_generate": 900.0, "slide_regenerate": 300.0, "deck_export": 240.0, "slide_image": 660.0}
+from . import datasets
+from . import presentation
+TOOLS.extend([
+    Tool('deck_live_start','Start or reuse a local session with separate audience and presenter URLs.\nTimer starts paused; restart=true adopts slide edits and resets state. Abrir consola de defensa.',presentation.StartArgs,_ann(False,False,True),presentation.start),
+    Tool('deck_live_state','Read audience-safe navigation, stages, blackout and timer state. No speaker notes. Estado de la presentacion.',presentation.StateArgs,_ann(True),presentation.state),
+    Tool('deck_live_control','Advance or reverse stages, jump slides, blackout and control the timer.\nexpected_version detects concurrent controls. Live controls do not change deck content. Controlar presentacion.',presentation.ControlArgs,_ann(False,False,False),presentation.control),
+    Tool('dataset_import','Import CSV, TSV or XLSX as an immutable, deduplicated source.\nSelect number_format es/en when separators are ambiguous. Importar datos tabulares.',datasets.ImportArgs,_ann(False,False,True),datasets.import_data),
+    Tool('dataset_get','Inspect dataset columns, numeric profiles, warnings and paginated rows. Inspeccionar datos.',datasets.GetArgs,_ann(True),datasets.inspect),
+    Tool('dataset_transform','Filter, group, aggregate and sort into a new immutable dataset with parent provenance.\nDoes not change its source. Transformar datos.',datasets.TransformArgs,_ann(False,False,True),datasets.transform),
+    Tool('dataset_visual','Map dataset columns to a typed chart or table block.\nReturns complete values and source_ids for slide_visual_update; numeric arrays are never result-capped. No slide is changed. Crear visual desde datos.',datasets.VisualArgs,_ann(True),datasets.visual,capped=False),
+    Tool('visual_catalog','Discover visual schemas and export capabilities. Catálogo de capacidades visuales.',agent_visuals.CatalogArgs,_ann(True),agent_visuals.catalog),
+    Tool('slide_visual_update','Edit one visual block, preserving other content and notes. Editar un bloque visual.',agent_visuals.VisualUpdateArgs,_ann(False,False,True),agent_visuals.update),
+    Tool('slide_variants','Compare content-preserving composition alternatives. Alternativas de composición.',agent_visuals.SceneArgs,_ann(True),agent_visuals.variants),
+    Tool('deck_scene','Inspect object geometry, typography and motion stages. Inspeccionar objetos.',agent_visuals.SceneArgs,_ann(True),agent_visuals.scene),
+    Tool('deck_present','Get the local interactive presentation URL. Presentar con animaciones.',agent_visuals.SceneArgs,_ann(True),agent_visuals.present),
+])
+_WAIT_S.update({'deck_scene':120.0,'slide_variants':60.0})
+agent_undo.HOOKS['slide_visual_update']=agent_undo.HOOKS['slide_update']
+agent_undo.DRAFT_SAFE=agent_undo.DRAFT_SAFE|{'slide_visual_update'}
+for _name in ('dataset_import','dataset_transform'):
+    agent_undo.HOOKS[_name]={'track':datasets.track,'undo':datasets.undo}
+agent_undo.DRAFT_SAFE=agent_undo.DRAFT_SAFE|{'dataset_import','dataset_transform'}
 TOOLS = [dataclasses.replace(t, timeout_s=_WAIT_S[t.name]) if t.name in _WAIT_S else t for t in TOOLS]
 
 

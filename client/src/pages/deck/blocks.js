@@ -6,7 +6,7 @@ export function blockToDraft(block) {
   if (b.type === "columns") { b.left = [...(b.left || [])]; b.right = [...(b.right || [])]; }
   if (b.type === "chart") {
     b.categories = [...(b.categories || [])];
-    b.series = (b.series || []).map((s) => ({ name: s.name || "", values: b.categories.map((_, i) => (s.values?.[i] === undefined || s.values?.[i] === null ? "" : String(s.values[i]))) }));
+    b.series = (b.series || []).map((s) => ({ ...s, name: s.name || "", values: b.categories.map((_, i) => (s.values?.[i] === undefined || s.values?.[i] === null ? "" : String(s.values[i]))) }));
   }
   return b;
 }
@@ -18,6 +18,10 @@ export function newBlock(type, t) {
     case "quote": return { type, text: "", attribution: "" };
     case "columns": return { type, left_title: "", left: [""], right_title: "", right: [""] };
     case "chart": return { type, chart: "bar", title: "", categories: ["", ""], series: [{ name: t("chart_series_n", { n: 1 }), values: ["", ""] }] };
+    case "diagram": return { type, direction: "right", nodes: [{ id: "a", label: "", detail: "" }, { id: "b", label: "", detail: "" }], edges: [{ source: "a", target: "b" }] };
+    case "metrics": return { type, items: [{ value: "", label: "", detail: "" }] };
+    case "table": return { type, headers: ["", ""], rows: [["", ""]] };
+    case 'timeline':return {type,effect:'stages',items:[{label:'',date:'',detail:''},{label:'',date:'',detail:''}]};
     default: return { type: "image", asset_id: "", caption: "" };
   }
 }
@@ -26,7 +30,7 @@ const compact = (list) => list.map((x) => x.trim()).filter(Boolean);
 const withText = (obj, key, value) => { const v = (value || "").trim(); if (v) obj[key] = v; };
 
 // Throws Error(message) with a user-facing message when a block is not valid.
-export function blockToApi(block, t, n) {
+function convertBlock(block, t, n) {
   switch (block.type) {
     case "bullets": return { type: "bullets", items: compact(block.items) };
     case "text": return { type: "text", text: block.text };
@@ -47,19 +51,35 @@ export function blockToApi(block, t, n) {
       const categories = block.categories.map((c) => c.trim());
       if (!categories.length || categories.some((c) => !c)) throw new Error(t("chart_invalid_cats", { n }));
       const series = block.series.map((s) => ({
+        ...s,
         name: s.name.trim(),
         values: s.values.map((v) => {
           const text = String(v).trim().replace(",", ".");
-          const num = text === "" ? NaN : Number(text);
+          if(text === "")return null;
+          const num = Number(text);
           if (!Number.isFinite(num)) throw new Error(t("chart_invalid_values", { n }));
           return num;
         }),
       }));
+      for(const s of series)for(const key of ['x_values','lower','upper','sizes'])if(s[key])s[key]=s[key].map(v=>{
+        const text=String(v??'').trim().replace(',','.');if(!text)return null;
+        const value=Number(text);if(!Number.isFinite(value))throw new Error(t('chart_invalid_values',{n}));return value;
+      });
       if (!series.length || series.some((s) => !s.name)) throw new Error(t("chart_invalid_series", { n }));
-      const out = { type: "chart", chart: block.chart, categories, series };
+      const out = { ...block, type: "chart", chart: block.chart, categories, series };
+      if(out.references)out.references=out.references.map(r=>({...r,value:Number(String(r.value).replace(',','.'))}));
       withText(out, "title", block.title);
       return out;
     }
     default: return block;
   }
+}
+
+export function blockToApi(block,t,n){
+  const out=convertBlock(block,t,n);
+  if(block.build!==undefined&&block.build!==null)out.build=Number(block.build);
+  if(block.effect)out.effect=block.effect;
+  if(block.duration_ms)out.duration_ms=Number(block.duration_ms);
+  for(const key of ['id','frame','font_size','fit','position'])if(block[key]!=null&&block[key]!=='')out[key]=block[key];
+  return out;
 }

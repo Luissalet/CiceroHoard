@@ -22,9 +22,15 @@ REQUIRED = {"cicero_status", "deck_list", "deck_create", "deck_get", "deck_updat
 READ_ONLY = {"cicero_status", "deck_list", "deck_get", "source_list", "source_get", "slide_get", "deck_check", "deck_rehearsal", "template_inspect", "craft_discover"}
 
 
+REQUIRED.update({'visual_catalog','slide_visual_update','slide_variants','deck_scene','deck_present'})
+READ_ONLY.update({'visual_catalog','slide_variants','deck_scene','deck_present'})
+REQUIRED.update({'dataset_import','dataset_get','dataset_transform','dataset_visual','deck_live_start','deck_live_state','deck_live_control'})
+READ_ONLY.update({'dataset_get','dataset_visual','deck_live_state'})
+
+
 def test_catalogue_has_every_tool_once():
     names = [t.name for t in at.TOOLS]
-    assert set(names) == REQUIRED and len(names) == len(set(names)) == 37
+    assert set(names) == REQUIRED and len(names) == len(set(names)) == 49
 
 
 def test_descriptions_are_short_first_lines_and_neutral():

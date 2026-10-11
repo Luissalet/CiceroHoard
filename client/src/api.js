@@ -43,6 +43,15 @@ const slideBase = (id, sid) => `${deckBase(id)}/slides/${e(sid)}`;
 
 export const api = {
   health: () => request("GET", "/api/health"),
+  liveStart:(id,body)=>request('POST',`${deckBase(id)}/live`,{body}),
+  liveState:(id,session)=>request('GET',`${deckBase(id)}/live/${e(session)}/state`),
+  liveSpeaker:(id,session)=>request('GET',`${deckBase(id)}/live/${e(session)}/speaker`),
+  liveControl:(id,session,body)=>request('POST',`${deckBase(id)}/live/${e(session)}/control`,{body}),
+  datasetImport:(id,body)=>request('POST',`${deckBase(id)}/datasets`,{body}),
+  datasetUpload:(id,file,options)=>{const form=new FormData();form.append('file',file);for(const [key,value] of Object.entries(options))if(value!==''&&value!=null)form.append(key,value);return request('POST',`${deckBase(id)}/datasets`,{form})},
+  dataset:(id,source)=>request('GET',`${deckBase(id)}/datasets/${e(source)}`),
+  datasetTransform:(id,source,body)=>request('POST',`${deckBase(id)}/datasets/${e(source)}/transform`,{body}),
+  datasetVisual:(id,source,body)=>request('POST',`${deckBase(id)}/datasets/${e(source)}/visual`,{body}),
 
   decks: () => request("GET", "/api/decks"),
   deckCreate: (body) => request("POST", "/api/decks", { body }),
@@ -65,6 +74,7 @@ export const api = {
   slidesGenerate: (id, onlyMissing) => request("POST", `${deckBase(id)}/slides/generate`, { body: { only_missing: !!onlyMissing } }),
   slideAdd: (id, body) => request("POST", `${deckBase(id)}/slides`, { body }),
   slideUpdate: (id, sid, body) => request("PATCH", slideBase(id, sid), { body }),
+  slideVariants: (id,sid) => request('GET',`${slideBase(id,sid)}/variants`),
   slideDelete: (id, sid) => request("DELETE", slideBase(id, sid)),
   slidesReorder: (id, order) => request("POST", `${deckBase(id)}/slides/reorder`, { body: { order } }),
   slideRegenerate: (id, sid, feedback) => request("POST", `${slideBase(id, sid)}/regenerate`, { body: { feedback } }),

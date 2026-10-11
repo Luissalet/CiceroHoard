@@ -18,6 +18,7 @@ dependencies = [
   "mcp>=1.10,<2",
   "python-multipart>=0.0.9",
   "python-pptx>=1.0",
+  "openpyxl>=3.1",
   "pypdf>=3.17",
   "pillow>=10",
 ]

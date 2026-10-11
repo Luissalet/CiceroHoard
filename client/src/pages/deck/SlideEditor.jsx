@@ -6,6 +6,8 @@ import { ConfirmButton, Field, Section } from "../../components/ui.jsx";
 import { BLOCK_TYPES, LAYOUTS, clock } from "../../format.js";
 import BlockEditor from "./BlockEditor.jsx";
 import { blockToApi, blockToDraft, newBlock } from "./blocks.js";
+import {Play,Eye} from 'lucide-react';
+import DataPanel from './DataPanel.jsx';
 
 const toDraft = (slide) => ({
   layout: slide.layout || "bullets",
@@ -14,6 +16,7 @@ const toDraft = (slide) => ({
   notes: slide.notes || "",
   image_prompt: slide.image_prompt || "",
   blocks: (slide.blocks || []).map(blockToDraft),
+  sources:[...(slide.sources||[])],
 });
 
 function Revisions({ slide }) {
@@ -62,6 +65,7 @@ export default function SlideEditor({ slide, onDeleted }) {
   const [draft, setDraft] = useState(initial);
   const [feedback, setFeedback] = useState("");
   const [blockType, setBlockType] = useState("bullets");
+  const [variants,setVariants]=useState(null);
   useEffect(() => setDraft(initial), [initial]);
   const dirty = JSON.stringify(draft) !== initialKey;
   useDirty(dirty);
@@ -85,6 +89,7 @@ export default function SlideEditor({ slide, onDeleted }) {
     notes: draft.notes,
     image_prompt: draft.image_prompt,
     blocks: draft.blocks.map((b, i) => blockToApi(b, t, i + 1)),
+    sources:draft.sources,
   });
   const saveInner = async () => { await api.slideUpdate(deckId, slide.id, patchBody()); await reload(); };
 
@@ -116,6 +121,7 @@ export default function SlideEditor({ slide, onDeleted }) {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
+        <a className="btn" href={`/#/presenter/${encodeURIComponent(deckId)}`} target="_blank" rel="noreferrer"><Play size={16}/>{t('present_live')}</a>
         <button type="button" className="btn btn-primary" disabled={off || !dirty} onClick={save}>{t("save")}</button>
         <button type="button" className="btn" disabled={off || !dirty} onClick={() => setDraft(initial)}>{t("discard")}</button>
         <button type="button" className={approved ? "btn" : "btn btn-active"} disabled={off || dirty} onClick={approve} title={dirty ? t("save_first") : undefined}>
@@ -125,6 +131,8 @@ export default function SlideEditor({ slide, onDeleted }) {
       </div>
 
       <Section title={t("slide_content")}>
+        <button type="button" className="btn btn-sm mb-3" disabled={off||dirty} onClick={async()=>{const result=await run(t('busy_loading'),()=>api.slideVariants(deckId,slide.id));if(result)setVariants(result.variants)}}>{t('composition_options')}</button>
+        {variants&&<div className="mb-3 flex flex-wrap gap-2">{variants.map(v=><div key={v.layout} className="flex gap-1"><button type="button" className="btn btn-sm" disabled={off} onClick={()=>setDraft({...draft,layout:v.layout})}>{t(`layout_${v.layout}`)}</button><a className="btn btn-icon" href={v.preview_url} target="_blank" rel="noreferrer" title={t('preview')} aria-label={`${t('preview')}: ${t(`layout_${v.layout}`)}`}><Eye size={16}/></a></div>)}</div>}
         <div className="space-y-3">
           <Field label={t("layout")}>
             <select className="field" value={draft.layout} disabled={off} onChange={set("layout")}>
@@ -146,6 +154,7 @@ export default function SlideEditor({ slide, onDeleted }) {
               index={i}
               count={draft.blocks.length}
               disabled={off}
+              canvas={draft.layout==='freeform'}
               onChange={(b) => setBlock(i, b)}
               onMove={(d) => moveBlock(i, d)}
               onRemove={() => setDraft({ ...draft, blocks: draft.blocks.filter((_, n) => n !== i) })}
@@ -171,6 +180,8 @@ export default function SlideEditor({ slide, onDeleted }) {
           <p className="help mt-1">{t("image_generate_help")}</p>
         </Section>
       )}
+
+      <details className="border-t pt-3" style={{borderColor:'var(--line)'}}><summary>{t('data_section')}</summary><div className="mt-3"><DataPanel disabled={off||draft.blocks.length>=8} onInsert={result=>setDraft(prev=>({...prev,blocks:[...prev.blocks,blockToDraft(result.block)],sources:[...new Set([...prev.sources,...result.source_ids])]}))}/></div></details>
 
       <Section title={t("notes")}>
         <textarea className="field" rows={5} value={draft.notes} disabled={off} aria-label={t("notes")} onChange={set("notes")} placeholder={t("notes_ph")} />

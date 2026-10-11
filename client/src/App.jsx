@@ -6,6 +6,7 @@ import Decks from "./pages/Decks.jsx";
 import Deck from "./pages/Deck.jsx";
 import Preview from "./pages/Preview.jsx";
 import Settings from "./pages/Settings.jsx";
+import Presenter from './pages/Presenter.jsx';
 
 const NAV = [
   { path: "decks", key: "nav_decks", icon: "M3 5h18v11H3zM8 20h8M12 16v4" },
@@ -83,6 +84,8 @@ export default function App() {
   else if (route.page === "preview" && route.id) body = <Preview key={route.id} deckId={route.id} query={route.query} />;
   else if (route.page === "settings") body = <Settings />;
   else body = <Decks />;
+
+  if(route.page==='presenter'&&route.id)return <AppContext.Provider value={value}><Presenter key={route.id} deckId={route.id}/><Toast message={toast} onClose={()=>setToast(null)}/></AppContext.Provider>;
 
   return (
     <AppContext.Provider value={value}>

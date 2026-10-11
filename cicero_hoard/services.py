@@ -22,6 +22,7 @@ from .hoard_link.config import LinkConfig
 from .images import ImageStudio
 from .render import render_document
 from . import custom_themes
+from . import native_slides
 from .util import clip
 
 log = logging.getLogger("cicero")
@@ -32,7 +33,8 @@ EXPORT_FORMATS = ("pptx", "pdf", "html", "md")
 class Services:
     def __init__(self, config: Config, *, link: Any = None, image_studio: Any = None, emit_fn: Optional[Callable[[str, dict], None]] = None,
                  clock_fn: Callable[[], float] = time.time, pdf_fn: Optional[Callable[..., bytes]] = None,
-                 family_call_fn: Optional[Callable[..., dict]] = None, refs_link_fn: Optional[Callable[..., dict]] = None):
+                 family_call_fn: Optional[Callable[..., dict]] = None, refs_link_fn: Optional[Callable[..., dict]] = None,
+                 native_render_fn: Optional[Callable[..., dict]] = None):
         self.config = config
         self.clock = clock_fn
         self.started_at = time.time()
@@ -51,6 +53,9 @@ class Services:
         self._pdf_fn = pdf_fn
         self._family_call_fn = family_call_fn
         self._refs_link_fn = refs_link_fn
+        self._native_render_fn = native_render_fn
+        from .presentation import Sessions
+        self.presentations=Sessions(clock_fn)
 
     # ---------------- lifecycle ----------------
     def start(self) -> None:
@@ -167,32 +172,75 @@ class Services:
     def theme_from_tokens(self, tokens_id: str, mode: str = "light") -> dict[str, Any]:
         return custom_themes.from_tokens(self, tokens_id, mode)
 
-    def preview_html(self, deck_id: str, slide_id: Optional[str] = None) -> str:
+    def preview_html(self, deck_id: str, slide_id: Optional[str] = None, mode: str = 'stacked',layout: Optional[str] = None) -> str:
         deck = store.deck_view(self, deck_id)
         if slide_id is not None:
             store.get_slide(self, deck_id, slide_id)  # NotFound when it is not in this deck
+        if layout:
+            from .models import LAYOUTS
+            if not slide_id or layout not in LAYOUTS:raise CiceroError('Choose a slide and a supported composition.')
+            for slide in deck['slides']:
+                if slide['id']==slide_id:slide['layout']=layout
+        if deck.get('template'):
+            from .template_live import document
+            return document(self,deck,slide_id=slide_id,mode='single' if slide_id else mode)
         document, _ = render_document(deck, assets=self.assets_lookup(), inline=False, mode="single" if slide_id else "stacked", only_slide=slide_id)
+        if mode=='present':
+            from .render import present_document
+            return present_document(document)
         return document
 
     def check(self, deck_id: str) -> dict[str, Any]:
         deck = store.deck_view(self, deck_id)
         sources = store.source_texts(self, deck_id)
-        return {"issues": check_deck(deck, sources, self.assets_lookup())}
+        issues=check_deck(deck, sources, self.assets_lookup())
+        result={"issues":issues}
+        if deck.get('template'):
+            folder=native_slides.cache_folder(self.config.data_dir,deck)
+            report_path=folder/'report.json'
+            if report_path.is_file():
+                import json
+                report=json.loads(report_path.read_text(encoding='utf-8-sig'))
+                extra=native_slides.layout_findings(report)
+                by_position={s['position']:s['id'] for s in deck['slides']}
+                issues.extend({**item,'slide_id':by_position.get(item['position'])} for item in extra)
+                result['native_review']={'status':'rendered','renderer':report['renderer'],'findings':len(extra)}
+            else:
+                result['native_review']={'status':'not_rendered','next':'Export PDF or open the template preview before assessing the actual layout.'}
+        return result
+
+    def _native_snapshot(self, deck: dict) -> tuple:
+        from .export_pptx import build_pptx
+        folder=native_slides.cache_folder(self.config.data_dir,deck)
+        report=(self._native_render_fn or native_slides.render)(build_pptx(deck,assets=self.assets_lookup()),folder)
+        return folder,report
 
     def export(self, deck_id: str, fmt: str) -> dict[str, Any]:
+        warnings=[]
         if fmt not in EXPORT_FORMATS:
             raise CiceroError(f"Unknown export format {fmt!r}. Use one of: {', '.join(EXPORT_FORMATS)}.")
         deck = store.deck_view(self, deck_id)
         if not deck["slides"]:
             raise CiceroError("The presentation has no slides to export.", code="no_slides")
-        if deck.get('template') and fmt in ('html','pdf'):
-            raise CiceroError('The attached PPTX template is supported by PPTX export. Clear it to use the built-in HTML/PDF theme.',
-                              code='template_format_not_supported')
         assets = self.assets_lookup()
-        if fmt == "pptx":
+        if deck.get('template') and fmt=='html':
+            from .template_live import document
+            data=document(self,deck,mode='present').encode('utf-8')
+        elif deck.get('template') and fmt=='pdf':
+            folder,report=self._native_snapshot(deck)
+            data=(folder/'slides.pdf').read_bytes()
+        elif fmt == "pptx":
             from .export_pptx import build_pptx
 
             data = build_pptx(deck, assets=assets)
+            staged=any(b.get('build') or b.get('effect')=='stages' for s in deck['slides'] for b in s['blocks'])
+            if staged:
+                from .errors import PdfUnavailable
+                try:
+                    folder,report=self._native_snapshot(deck)
+                    if (folder/'animated.pptx').is_file():data=(folder/'animated.pptx').read_bytes()
+                except PdfUnavailable:
+                    warnings.append('Native motion unavailable: editable PPTX is static. HTML retains authored click stages.')
         elif fmt == "html":
             from .export_html import build_html
 
@@ -208,7 +256,13 @@ class Services:
                 from .export_pdf import build_pdf
 
                 data = build_pdf(deck, assets=assets)
+        cache_review=None
+        if fmt=='pptx':
+            from .chart_cache import refresh_numeric_caches
+            data,cache_review=refresh_numeric_caches(data)
         export = store.add_export(self, deck_id, fmt, data, deck["title"])
+        if cache_review is not None:export['cache_review']=cache_review
+        if warnings:export['warnings']=warnings
         self.emit("cicero.deck.exported", {"id": deck_id, "format": fmt, "title": clip(deck["title"], 80)})
         return export
 

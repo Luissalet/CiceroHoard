@@ -28,9 +28,9 @@ jobs:
       - name: Install Chromium system libraries
         if: runner.os == 'Linux'
         run: python -m playwright install-deps chromium
-      - name: Run tests
-        run: python -m pytest -q
-      - name: Build the client
+      - name: Build the client and packaged visual runtimes
         run: |
           npm ci --include=dev
-          npx vite build
+          npm run build
+      - name: Run tests
+        run: python -m pytest -q

@@ -30,7 +30,7 @@ export default function Export() {
         <div className="grid gap-2 sm:grid-cols-2">
           {EXPORT_FORMATS.map((f) => (
             <div key={f} className="rounded-md border p-3" style={{ borderColor: "var(--line)" }}>
-              <button type="button" className="btn btn-primary" disabled={!!busy || slides.length === 0 || (deck.template && ["pdf", "html"].includes(f))} onClick={() => create(f)}>{t(`export_${f}`)}</button>
+              <button type="button" className="btn btn-primary" disabled={!!busy || slides.length === 0} onClick={() => create(f)}>{t(`export_${f}`)}</button>
               <p className="help mt-1.5">{t(`export_${f}_help`)}</p>
             </div>
           ))}

@@ -19,7 +19,7 @@ CHAR_BUDGET = {"title": 240, "section": 220, "bullets": 700, "two_column": 620, 
 MAX_BULLETS = 6
 MAX_BULLET_CHARS = 110
 
-_NUM = re.compile(r"(?<![\w.,])(\d[\d.,  ]*\d|\d)(\s?%)?")
+_NUM = re.compile(r"(?<![\w.,])([+\-\u2212]?(?:\d[\d.,  ]*\d|\d))(\s?%)?")
 
 MSG = {
     "es": {
@@ -65,7 +65,7 @@ MSG = {
 
 def number_variants(token: str) -> frozenset[float]:
     """Every value a printed number can mean: ``1.234`` is 1234 or 1.234, ``1,5`` is 1.5, ``1.234,5`` is 1234.5."""
-    t = token.replace(" ", "").replace(" ", "").strip(".,")
+    t = token.replace(" ", "").replace(" ", "").replace('\u2212','-').strip(".,")
     if not t:
         return frozenset()
     dots, commas = t.count("."), t.count(",")
@@ -87,7 +87,7 @@ def number_variants(token: str) -> frozenset[float]:
         head, _, tail = t.rpartition(sep)
         if count > 1:
             add(t.replace(sep, ""))
-        elif len(tail) == 3 and 1 <= len(head) <= 3:
+        elif len(tail) == 3 and 1 <= len(head.lstrip('+-')) <= 3:
             add(head + tail)  # 1.234 -> 1234
             add(head + "." + tail)  # or 1.234 as a decimal
         else:
@@ -130,11 +130,15 @@ def unsourced(text: str, reference: set[float]) -> list[str]:
 def chart_values_unsourced(block: dict[str, Any], reference: set[float]) -> list[str]:
     bad: list[str] = []
     for s in block.get("series", []):
-        for v in s.get("values", []):
+        for v in [*s.get("values", []),*(s.get('x_values') or []),*(s.get('lower') or []),*(s.get('upper') or []),*(s.get('sizes') or [])]:
+            if v is None:continue
             if round(float(v), 6) not in reference:
                 text = f"{v:g}"
                 if text not in bad:
                     bad.append(text)
+    for r in block.get('references',[]):
+        v=r['value']
+        if round(float(v),6) not in reference and f'{v:g}' not in bad:bad.append(f'{v:g}')
     return bad
 
 
@@ -154,6 +158,17 @@ def slide_text_parts(slide: dict[str, Any]) -> list[str]:
             parts += [b.get("left_title") or "", b.get("right_title") or ""] + b.get("left", []) + b.get("right", [])
         elif t == "chart":
             parts += [b.get("title") or ""] + list(b.get("categories", []))
+            parts += [a['text'] for a in b.get('annotations') or []]
+            parts += [r.get('label','') for r in b.get('references') or []]
+        elif t=='diagram':
+            parts += [b.get('title','')]+[text for node in b['nodes'] for text in [node['label'],node.get('detail','')]]
+            parts += [edge.get('label','') for edge in b.get('edges',[])]
+        elif t=='metrics':
+            parts += [text for item in b['items'] for text in [item['value'],item['label'],item.get('detail','')]]
+        elif t=='timeline':
+            parts += [b.get('title','')]+[text for item in b['items'] for text in [item['label'],item.get('date',''),item.get('detail','')]]
+        elif t=='table':
+            parts += [b.get('title','')]+b['headers']+[cell for row in b['rows'] for cell in row]
         elif t == "image":
             parts.append(b.get("caption") or "")
     return [p for p in parts if p]
@@ -173,6 +188,8 @@ def slide_char_count(slide: dict[str, Any]) -> int:
             total += sum(len(i) for i in b.get("left", []) + b.get("right", [])) + len(b.get("left_title") or "") + len(b.get("right_title") or "")
         elif t == "chart":
             total += len(b.get("title") or "")
+        elif t in ('diagram','metrics','table','timeline'):
+            total += sum(len(part) for part in slide_text_parts({'blocks':[b]}))
     return total + len(slide.get("title") or "") + len(slide.get("subtitle") or "")
 
 
@@ -192,6 +209,8 @@ def _is_empty(slide: dict[str, Any]) -> bool:
         if t == "chart" and b.get("series"):
             return False
         if t == "image":
+            return False
+        if t in ('diagram','metrics','table','timeline'):
             return False
     return True
 

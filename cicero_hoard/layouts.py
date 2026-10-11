@@ -56,6 +56,11 @@ class Box:
     image: Optional[dict[str, Any]] = None  # {"asset_id", "alt"}
     chart: Optional[dict[str, Any]] = None  # the chart block
     overflow: bool = False
+    data: Optional[dict[str, Any]] = None
+    build: Optional[int] = None
+    effect: Optional[str] = None
+    duration_ms: int = 400
+    object_id: Optional[str] = None
 
 
 def is_card(box: Box) -> bool:
@@ -123,6 +128,9 @@ def text_width(text: str, size: float, kind: str = "sans", bold: bool = False) -
 
 def count_lines(text: str, width: float, size: float, kind: str, bold: bool) -> int:
     """Greedy word wrap using the width estimate; an over-long word is broken by characters."""
+    logical = text.replace('\v', '\n')
+    if '\n' in logical:
+        return sum(count_lines(line, width, size, kind, bold) for line in logical.split('\n'))
     if width <= 0:
         return 1
     lines = 1
@@ -212,6 +220,9 @@ def _bullet_paras(items: list[str], size: float, color: str = "text") -> list[Pa
 def layout_block(block: dict[str, Any], x: float, y: float, w: float, size: int, ctx: Ctx, *, region_h: float, n_blocks: int) -> tuple[list[Box], float]:
     """Lay one block out at font size ``size``; returns its boxes and its height."""
     kind = block.get("type")
+    if kind in ('diagram','table','metrics','timeline'):
+        from .visual_layout import layout_visual
+        return layout_visual(block,x,y,w,region_h,ctx)
     if kind == "bullets":
         items = [i for i in block.get("items", []) if i]
         if not items:
@@ -246,7 +257,8 @@ def layout_block(block: dict[str, Any], x: float, y: float, w: float, size: int,
         max_h = max(60.0, max_h - cap_h)
         scale = min(w / info["width"], max_h / info["height"])
         iw, ih = info["width"] * scale, info["height"] * scale
-        boxes = [Box("image", x + (w - iw) / 2, y, iw, ih, image={"asset_id": block["asset_id"], "alt": caption or ""})]
+        if block.get('fit')=='cover':iw,ih=w,max_h
+        boxes = [Box("image", x + (w - iw) / 2, y, iw, ih, image={"asset_id": block["asset_id"], "alt": caption or "",'fit':block.get('fit','contain'),'position':block.get('position',[.5,.5])})]
         if cap_paras:
             boxes.append(_text_box(cap_paras, x, y + ih + 8, w, ctx))
         return boxes, ih + cap_h
@@ -299,7 +311,12 @@ def stack(blocks: list[dict[str, Any]], x: float, y: float, w: float, h: float, 
         boxes: list[Box] = []
         cy = 0.0
         for b in blocks:
-            got, bh = layout_block(b, 0, cy, w, size, ctx, region_h=h, n_blocks=len(blocks))
+            got, bh = layout_block(b, 0, cy, w, b.get('font_size') or size, ctx, region_h=h, n_blocks=len(blocks))
+            for j,box in enumerate(got):
+                if b.get('id'):box.object_id=f"{b['id']}-{j}"
+                if box.build is None:box.build=b.get('build')
+                if box.effect is None:box.effect=b.get('effect')
+                box.duration_ms=b.get('duration_ms') or 400
             if bh > 0:
                 boxes += got
                 cy += bh + GAP
@@ -456,7 +473,22 @@ def build_plan(slide: dict[str, Any], *, deck_title: str, theme: dict[str, Any],
         elif not title:
             top = 60
         region_h = CONTENT_BOTTOM - top
-        if layout == "two_column" and not any(b.get("type") == "columns" for b in blocks) and len(blocks) >= 2:
+        if layout == 'freeform':
+            # Preserve the whole content frame when a template maps the shared scene.
+            boxes.append(Box('anchor',MARGIN_X,top,1136,region_h))
+            frames=[]
+            for i,block in enumerate(blocks):
+                frame=block.get('frame') or [0,i/max(1,len(blocks)),1,1/max(1,len(blocks))]
+                fx,fy,fw,fh=frame
+                for previous in frames:
+                    px,py,pw,ph=previous
+                    if min(fx+fw,px+pw)>max(fx,px)+.001 and min(fy+fh,py+ph)>max(fy,py)+.001:
+                        ctx.overflow_where.append('overlapping canvas frames: block '+str(i+1))
+                frames.append(frame)
+                got,_=stack([block],MARGIN_X+fx*1136,top+fy*region_h,fw*1136,fh*region_h,ctx,
+                            smax=block.get('font_size') or BODY_MAX,smin=block.get('font_size') or 16,where='canvas block '+str(i+1))
+                boxes+=got
+        elif layout == "two_column" and not any(b.get("type") == "columns" for b in blocks) and len(blocks) >= 2:
             half = (len(blocks) + 1) // 2
             left, right = blocks[:half], blocks[half:]
             cw = 548
@@ -474,6 +506,27 @@ def build_plan(slide: dict[str, Any], *, deck_title: str, theme: dict[str, Any],
             else:
                 got, _ = stack(blocks, MARGIN_X, top, 1136, region_h, ctx, smax=BODY_MAX)
                 boxes += got
+        elif layout == 'comparison' and len(blocks)>=2:
+            middle=(len(blocks)+1)//2;cw=548
+            for offset,part in enumerate((blocks[:middle],blocks[middle:])):
+                got,_=stack(part,MARGIN_X+offset*(cw+40),top,cw,region_h,ctx,smax=28,smin=16)
+                boxes+=got
+        elif layout == 'evidence' and blocks:
+            visuals=[b for b in blocks if b.get('type') in ('chart','diagram','table','image','metrics','timeline')]
+            rest=[b for b in blocks if b not in visuals]
+            if visuals:
+                foot_h=90 if rest else 0
+                got,_=stack(visuals,MARGIN_X,top,1136,region_h-foot_h-16,ctx,smax=30)
+                boxes+=got
+                if rest:
+                    got,_=stack(rest,MARGIN_X,CONTENT_BOTTOM-foot_h,1136,foot_h,ctx,smax=23,smin=16)
+                    boxes+=got
+            else:
+                got,_=stack(blocks,MARGIN_X,top,1136,region_h,ctx,smax=BODY_MAX)
+                boxes+=got
+        elif layout == 'image_full':
+            got,_=stack(blocks,MARGIN_X,top,1136,region_h,ctx,smax=28)
+            boxes+=got
         elif layout == "chart":
             charts = [b for b in blocks if b.get("type") == "chart"]
             others = [b for b in blocks if b.get("type") != "chart"]

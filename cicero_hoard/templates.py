@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import io
+import math
 from pathlib import Path
 from typing import Optional
 
@@ -36,6 +37,12 @@ class TemplateBinding(BaseModel):
     remove_shapes: list[int] = Field(default_factory=list, max_length=100)
     content_frame: Optional[list[float]] = Field(None, min_length=4, max_length=4,
                                                 description='Optional x,y,width,height in CSS pixels.')
+    title_frame: Optional[list[float]] = Field(None, min_length=4, max_length=4)
+    subtitle_frame: Optional[list[float]] = Field(None, min_length=4, max_length=4)
+    title_font_points: Optional[float] = Field(None, ge=12, le=120, allow_inf_nan=False)
+    chart_font_points: Optional[float] = Field(None, ge=10, le=48, allow_inf_nan=False)
+    text_color: Optional[str] = Field(None, pattern=r'^#[0-9a-fA-F]{6}$')
+    muted_color: Optional[str] = Field(None, pattern=r'^#[0-9a-fA-F]{6}$')
     prefix: str = Field('', max_length=100)
 
 
@@ -114,10 +121,15 @@ def attach_template(svc, deck_id: str, data: bytes, name: str, bindings=None):
         selected=[x for x in (b.title_shape,b.subtitle_shape) if x is not None]+b.keep_text_shapes+b.remove_shapes
         if not set(selected)<=ids:raise CiceroError(f'{role}: a shape ID is absent from the selected source slide.')
         if b.title_shape is not None and b.title_shape==b.subtitle_shape:raise CiceroError('Title and subtitle must use different shapes.')
-        if b.content_frame:
-            x,y,w,h=b.content_frame
+        for field in ('content_frame', 'title_frame', 'subtitle_frame'):
+            frame = getattr(b, field)
+            if frame is None:
+                continue
+            x,y,w,h=frame
+            if not all(math.isfinite(value) for value in frame):
+                raise CiceroError(f'{role}: {field} must contain finite coordinates.')
             if not (x>=0 and y>=0 and w>0 and h>0 and x+w<=prs.slide_width/PX and y+h<=prs.slide_height/PX):
-                raise CiceroError(f'{role}: content_frame is outside the template slide.')
+                raise CiceroError(f'{role}: {field} is outside the template slide.')
     digest=hashlib.sha256(data).hexdigest();path=svc.config.templates_dir/(digest+'.pptx')
     path.parent.mkdir(parents=True,exist_ok=True)
     if not path.exists():write_bytes_atomic(path,data)

@@ -14,4 +14,5 @@ AssetLookup = Callable[[str], Optional[dict[str, Any]]]
 
 def build_html(deck: dict[str, Any], *, assets: AssetLookup) -> bytes:
     document, _ = render_document(deck, assets=assets, inline=True, mode="present")
-    return document.encode("utf-8")
+    from .render import present_document
+    return present_document(document).encode("utf-8")

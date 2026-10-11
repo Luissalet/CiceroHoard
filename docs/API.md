@@ -142,15 +142,20 @@ formats do not depend on it). Files live in `<data>/exports/<export id>/`. The H
 | `POST /api/decks/{id}/template` | Multipart `file`, or `{path, bindings?}`, or `{clear: true}` | Updated deck; copies the template into `data/templates/` |
 
 `bindings` maps Cicero layout names to `{source_slide, title_shape?, subtitle_shape?, keep_text_shapes?,
-remove_shapes?, content_frame?, prefix?}`. Source slide numbers and shape IDs are one-based; `content_frame`
+remove_shapes?, content_frame?, title_frame?, subtitle_frame?, title_font_points?, chart_font_points?, prefix?}`. Source slide numbers and shape IDs are one-based; `content_frame`
 is `[x, y, width, height]` in CSS pixels. Inspect the file before selecting slots. Defaults infer cover,
 body and closing examples. Explicit IDs override the inference for unusual templates.
 
 PPTX export uses the saved snapshot, keeps source masters/layouts, backgrounds, decorative shapes and related
 media, and replaces content with editable text, native charts and new speaker notes. Template examples are
 not appended to the authored deck. Source animations and transitions are not copied. The browser preview
-uses the built-in theme; template PDF/HTML exports return `template_format_not_supported`. Markdown remains
-available. Detaching changes the deck only; it does not delete the original file or template snapshot.
+uses live objects over source-template furniture when a local office slide engine is installed on Windows.
+PDF is the native rendering of the exported PPTX. HTML retains interactive objects with click stages.
+Missing or failed native rendering returns `pdf_unavailable`.
+Native snapshots are cached by deck state. After rendering, `deck_check` adds `native_review` and measured
+`native_text_overflow` findings. Markdown remains available. Detaching changes the deck only; it does not
+delete the original file or template snapshot. Frame overrides must contain finite coordinates inside
+the source slide. Font overrides use points, whereas frames use CSS pixels.
 
 ### Themes
 
@@ -172,7 +177,25 @@ available. Detaching changes the deck only; it does not delete the original file
 | `POST /api/agent/undo` | body `{session, agent?, dry_run?, confirm?, reason?}`; `{undone \| would_undo, conflicts, not_undoable, already_undone, complete, counts}`; `confirm: true` and `reason` are required unless `dry_run`; 404 `session_not_found` |
 | `GET/POST /api/agent/tokens`, `DELETE /api/agent/tokens/{id}` | scoped agent tokens `{agent, profile: read_only \| drafts \| all}` (main token only; a minted token is shown once) |
 
-The 37 tools are listed in `README.md`. The REST routes above and the tools share one implementation.
+The 49 tools are listed in `README.md`. The REST routes above and the tools share one implementation.
+
+## Visual agent API
+
+`visual_catalog {kind?: summary|charts|diagrams|metrics|tables|timelines}` returns capability metadata or a JSON schema.
+`slide_visual_update {deck_id,slide_id,block_index,block,expected_revision?,source_ids?}` makes a targeted visual edit and
+returns `changed` plus the resulting slide. Identical retries with the current revision do not create a revision.
+`slide_variants {deck_id,slide_id}` returns three content-preserving layout alternatives and estimated fit.
+`deck_scene {deck_id,slide_id?}` returns shared export geometry, typography and motion groups.
+`deck_present {deck_id}` returns `/api/decks/{deck_id}/preview.html?mode=present` for local interactive playback.
+
+`GET /api/decks/{deck_id}/slides/{slide_id}/variants` and `GET /api/decks/{deck_id}/scene?slide_id=` expose the same
+readonly operations to the editor. The ordinary slide PATCH accepts all visual block schemas. A block can have
+`build` (0-40), `effect` (`none`, `fade`, `wipe`, `draw`, `stages`) and `duration_ms` (100-2000). Bounds must contain
+the central value, numeric coordinate arrays must have matching lengths, and every diagram connection must
+reference an existing unique node ID. The target application differences are available in `visual_catalog`.
+
+`GET /api/decks/{deck_id}/slides/{slide_id}/variant.html?layout=` renders an alternative composition without
+writing a slide revision. `slide_variants` returns these preview URLs alongside its patches and estimates.
 
 ## VectorCraft and DesignCraft MCP bridge
 
@@ -188,6 +211,43 @@ Set `CICERO_VECTORCRAFT_CLI` and `CICERO_DESIGNCRAFT_CLI` to portable executable
 Handouts also embed raster assets as separate graphic frames. SVG assets use their stored PNG fallback; their original vector source remains available through Cicero. The saved native project is copied and reopened before preview generation. The result reports `image_transfer`, `images_transferred`, and `portable_copy_verified`. Missing images or overset text produce an explicit error.
 
 Local executable configuration can also be read from `<data>/craft-engines.json` using `{app: {executable: path}}`. A raw `craft_call` batch starts a fresh native process; state-dependent operations belong in that batch, and documents must be saved before it ends. In-memory selection and undo do not survive separate batches.
+
+## Tabular Sources
+
+`POST /api/decks/{deck_id}/datasets`: JSON `dataset_import` arguments or multipart `file`,
+`number_format`, optional `sheet`, `header_row`, `delimiter`, `title`.
+`GET /api/decks/{deck_id}/datasets/{source_id}?offset=0&limit=20`: numeric profiles and paginated raw rows.
+`POST /api/decks/{deck_id}/datasets/{source_id}/transform`: `dataset_transform` arguments except IDs.
+`POST /api/decks/{deck_id}/datasets/{source_id}/visual`: `dataset_visual` arguments except IDs; does not write a slide.
+
+Sources are immutable JSON snapshots. Reimport unchanged input reuses the source; changed input creates a new one.
+`dataset_visual` returns a block plus `source_ids`; pass both to `slide_visual_update`.
+Transforms support `eq`, `ne`, `gt`, `ge`, `lt`, `le`, `contains`, `isnull`, grouping and
+`sum`, `mean`, `median`, `min`, `max`, non-empty `count` and last non-empty `last`.
+Comparisons are numeric for range operators; null rows do not match. Missing sort values remain last.
+Use `number_format: es|en` for ambiguous separators. XLSX formulas require cached values;
+uncached formulas produce missing values and warnings, not invented results.
+
+## Live Presentation
+
+`POST /api/decks/{deck_id}/live`: `deck_live_start` (`target_seconds`, `main_slide_count`, `restart`).
+`GET /api/decks/{deck_id}/live/{session_id}/state`: audience-safe state.
+`POST /api/decks/{deck_id}/live/{session_id}/control`: `deck_live_control` arguments except deck ID.
+`GET /api/decks/{deck_id}/live/{session_id}/speaker`: notes, separate from audience state.
+`GET /api/decks/{deck_id}/live/{session_id}/audience.html`: synchronized local playback.
+
+The presenter UI is `/#/presenter/{deck_id}`. Share the audience window, not the console.
+Tools `deck_live_state` and `deck_live_control` use the deck's current local session.
+Navigation uses zero-based slide indices and normalized fragment groups (`-1` before any stage).
+The clock starts paused and tracks elapsed time across pause/resume. Commands include `next`, `previous`,
+`goto`, `sync`, `blackout`, `pause`, `resume`, `reset`, `target` and `main`.
+`expected_version` detects concurrent navigation. Sessions are in-memory; restart after deck edits or server restart.
+This is local screen sharing, not a hosted remote broadcast. Offline HTML contains no live polling or speaker notes.
+
+`freeform` layout uses normalized `block.frame: [x,y,width,height]` inside the body area.
+`block.font_size` sets text size; `block.id` identifies scene objects. Overlapping regions generate fit warnings.
+`timeline` blocks hold 2-8 labeled milestones with optional date, detail and emphasis; `effect: stages`
+reveals them on click. Images support `fit: contain|cover` and `position: [0..1,0..1]` crop focus.
 
 ## PWA and client
 

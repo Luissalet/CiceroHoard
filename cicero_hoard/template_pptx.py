@@ -23,6 +23,24 @@ from .themes import theme_of
 RNS='http://schemas.openxmlformats.org/officeDocument/2006/relationships'
 
 
+def _drop_library_metadata(prs):
+    # Donor library forms describe the original document, not its slide design.
+    schemas={'contentTypeSchema':'/office/2006/metadata/contentType',
+             'FormTemplates':'/sharepoint/v3/contenttype/forms',
+             'properties':'/office/2006/metadata/properties'}
+    for rel in list(prs.part.rels.values()):
+        if rel.reltype!=RT.CUSTOM_XML or rel.is_external:
+            continue
+        try:
+            root=etree.fromstring(rel.target_part.blob,etree.XMLParser(resolve_entities=False,no_network=True))
+            name=etree.QName(root)
+        except etree.XMLSyntaxError:
+            continue
+        suffix=schemas.get(name.localname)
+        if suffix and (name.namespace or '').endswith(suffix):
+            prs.part.drop_rel(rel.rId)
+
+
 def _clone(prs, source, excluded):
     slide=prs.slides.add_slide(source.slide_layout)
     for key, value in source._element.attrib.items():
@@ -62,21 +80,25 @@ def _template_theme(source, fallback):
             if color is not None:colors[etree.QName(node).localname]='#'+(color.get('val') if color.tag==qn('a:srgbClr') else color.get('lastClr','000000'))
         for key,slot in [('background','lt1'),('surface','lt2'),('text','dk2'),('muted','dk2'),('accent','accent1'),('accent2','accent5')]:
             if slot in colors:theme['colors'][key]=colors[slot]
+        theme['source_colors']=colors
         for key,slot in [('heading','majorFont'),('body','minorFont')]:
             font=root.find(f'.//a:fontScheme/a:{slot}/a:latin',ns)
             if font is not None and font.get('typeface'):theme['fonts'][key]=font.get('typeface')
     return theme
 
 
-def _replace_text(shape, value, theme, prefix=''):
+def _replace_text(shape, value, theme, prefix='', font_points=None):
     tf=shape.text_frame;paragraph=tf.paragraphs[0]
     runs=[r for p in tf.paragraphs for r in p.runs if r.text.strip()]
     first=deepcopy(runs[0]._r.rPr) if runs and runs[0]._r.rPr is not None else None
     last=deepcopy(runs[-1]._r.rPr) if runs and runs[-1]._r.rPr is not None else first
     ppr=deepcopy(paragraph._p.pPr) if paragraph._p.pPr is not None else None
     base=next((r.font.size.pt/.75 for r in reversed(runs) if r.font.size),48)
+    if font_points is not None:
+        base=font_points/.75
     texts=([prefix] if prefix else [])+[value]
     size,_=fit_size(lambda n:[Para(t,n) for t in texts],max(1,shape.width/PX-20),max(1,shape.height/PX-10),round(base),18,Ctx(theme))
+    size=min(base,size)
     tf.clear();tf.word_wrap=True;tf.auto_size=MSO_AUTO_SIZE.NONE
     for i,text in enumerate(texts):
         p=tf.paragraphs[0] if i==0 else tf.add_paragraph()
@@ -88,14 +110,14 @@ def _replace_text(shape, value, theme, prefix=''):
 
 
 def build_template_pptx(deck, *, assets):
-    from .export_pptx import _add_box
+    from .export_pptx import _add_box,stamp_motion
     descriptor=deck['template'];path=Path(descriptor['path'])
     try:data=path.read_bytes()
     except OSError:raise CiceroError('The attached template snapshot is missing; attach it again.') from None
     if hashlib.sha256(data).hexdigest()!=descriptor['sha256']:raise CiceroError('The attached template snapshot changed; attach it again.')
     prs=_presentation(data);sources=list(prs.slides)
     for n,item in enumerate(deck['slides'],1):
-        binding=TemplateBinding.model_validate(descriptor['bindings'][item['layout']]);source=sources[binding.source_slide-1]
+        binding=TemplateBinding.model_validate(descriptor['bindings'].get(item['layout']) or descriptor['bindings']['bullets']);source=sources[binding.source_slide-1]
         theme=_template_theme(source,theme_of(deck));keep=set(binding.keep_text_shapes)
         title=next((s for s in source.shapes if s.shape_id==binding.title_shape),None)
         subtitle=next((s for s in source.shapes if s.shape_id==binding.subtitle_shape),None)
@@ -109,11 +131,19 @@ def build_template_pptx(deck, *, assets):
             if runs:
                 if runs[0].font.name:theme['fonts']['body']=runs[0].font.name
                 if runs[0].font.color.type==MSO_COLOR_TYPE.RGB:theme['colors']['text']='#'+str(runs[0].font.color.rgb)
+        if binding.text_color:theme['colors']['text']=binding.text_color
+        if binding.muted_color:theme['colors']['muted']=binding.muted_color
         excluded=set(binding.remove_shapes)|{s.shape_id for s in slots}
         slide=_clone(prs,source,excluded)
         cloned={s.shape_id:s for s in slide.shapes}
-        if title is not None and title.shape_id in cloned:_replace_text(cloned[title.shape_id],item['title'],theme,binding.prefix)
+        for target,frame in ((title,binding.title_frame),(subtitle,binding.subtitle_frame)):
+            if target is not None and frame is not None:
+                shape=cloned.get(target.shape_id)
+                if shape is not None:
+                    shape.left,shape.top,shape.width,shape.height=[int(value*PX) for value in frame]
+        if title is not None and title.shape_id in cloned:_replace_text(cloned[title.shape_id],item['title'],theme,binding.prefix,binding.title_font_points)
         if subtitle is not None and subtitle.shape_id in cloned:_replace_text(cloned[subtitle.shape_id],item.get('subtitle') or '',theme)
+        if binding.chart_font_points is not None:theme['chart_font_points']=binding.chart_font_points
         for sid in numbers:
             if sid in cloned:
                 s=cloned[sid];s.width=min(s.width,prs.slide_width-s.left);_replace_text(s,f'{n:02d}',theme)
@@ -134,11 +164,14 @@ def build_template_pptx(deck, *, assets):
             for box in boxes:
                 moved=replace(box,x=fx+(box.x-bx)*sx,y=fy+(box.y-by)*sy,w=box.w*sx,h=box.h*sy,
                               paras=[replace(p,size=p.size*scale,indent=round(p.indent*scale),space_after=p.space_after*scale) for p in box.paras])
+                previous={shape.shape_id for shape in slide.shapes}
                 _add_box(slide,moved,{**theme, 'chart_font_scale': scale},deck.get('language','es'),assets,None)
+                stamp_motion(slide,previous,moved)
         slide.notes_slide.notes_text_frame.text=item.get('notes') or ''
     # Source slides were examples, not additional pages in the authored deck.
     for source in sources:
         entry=next(e for e in prs.slides._sldIdLst if prs.part.related_part(e.rId) is source.part)
         prs.part.drop_rel(entry.rId);prs.slides._sldIdLst.remove(entry)
+    _drop_library_metadata(prs)
     prs.core_properties.title=deck['title'];prs.core_properties.author="Cicero's Hoard"
     out=io.BytesIO();prs.save(out);return out.getvalue()

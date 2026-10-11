@@ -18,10 +18,10 @@ construidas con el mismo código, de modo que no pueden discrepar.
   (hay diapositivas y alguna sin aprobar), `ready` (todas aprobadas).
 - **Fuentes**: pega texto o añade un archivo `.txt`, `.md`, `.pdf`, `.docx` o `.pptx` (solo texto; un PDF escaneado lo lee el OCR
   del servicio de documentos de la familia cuando esa aplicación está en marcha). Las fuentes se numeran y cada diapositiva puede citar en las que se apoya.
-- **Guion**: lo genera el modelo local a partir del encargo y de fragmentos numerados de las fuentes, o se escribe a
+- **Guion**: lo genera el modelo configurado de la familia a partir del encargo y fragmentos numerados de las fuentes, o se escribe a
   mano. Cada punto tiene título, propósito, unas ideas y una sugerencia de diseño opcional.
-- **Diapositivas**: ocho diseños (`title`, `section`, `bullets`, `two_column`, `image_text`, `quote`, `chart`,
-  `closing`) formados por bloques (viñetas, texto, imagen, cita, columnas, gráfico). Todas llevan notas del orador.
+- **Diapositivas**: quince diseños, incluidos evidencia, comparación y composición libre, formados por
+  bloques de texto, imagen, gráfico, diagrama, métricas, tabla y cronología. Todas llevan notas del orador.
 - **Revisión una a una**: aprobar o quitar la aprobación, regenerar con comentarios, editar a mano. Cada cambio crea
   una revisión; revertir restaura una revisión antigua como una nueva. Al volver a generar se conservan las
   aprobadas y se reescriben los borradores.
@@ -50,6 +50,47 @@ construidas con el mismo código, de modo que no pueden discrepar.
 - **Funciona sin modelo**: si no hay ningún modelo accesible, el guion y las diapositivas salen de las fuentes con
   reglas fijas y el resultado indica `"generator": "fallback"`. Regenerar una diapositiva con comentarios sí necesita
   un modelo, y lo dice en lugar de aparentar.
+
+## Capacidades visuales para agentes
+
+El flujo reutilizable está en `docs/AGENT_VISUALS.md` y la entrada portable en `agent-skill/SKILL.md`.
+`npm run build` incluye los motores visuales en la distribución Python. Los visuales avanzados requieren
+Node 22.13+, sin instalar dependencias por separado al ejecutar. `scripts/visual-gallery.py --output-dir <carpeta>`
+genera una galería con datos ficticios y evidencia de render nativo cuando está disponible.
+
+`visual_catalog` expone esquemas versionados de 14 tipos de gráficos, diagramas, métricas y tablas.
+`slide_visual_update` sustituye o añade un bloque conservando el resto, las citas y las notas; utiliza
+`expected_revision` para detectar ediciones concurrentes. `slide_variants` compara tres composiciones sin
+cambiar el contenido. `deck_scene` informa de geometría, tipografía y pasos al clic. `deck_present` devuelve
+la dirección de presentación local con movimiento. MCP y la API utilizan estas mismas implementaciones.
+
+Los gráficos admiten coordenadas X numéricas, huecos, colores, énfasis, unidades, anotaciones, referencias e
+intervalos. ECharts renderiza gráficos, ELK distribuye diagramas y reveal.js controla la presentación local.
+PPTX conserva gráficos nativos u objetos de evidencia editables. Los intervalos se muestran como bandas en
+el navegador y curvas central/inferior/superior en PPTX. Los mapas de calor se exportan como tablas coloreadas
+y los embudos como objetos de etapas. Las fuentes siguen siendo la autoridad para las cifras.
+
+Los campos `build`, `effect` y `duration_ms` definen pasos al clic. Un diagrama con `effect: stages` muestra
+sus elementos por etapas. HTML y navegador conservan objetos individuales, también con plantillas adjuntas.
+El PPTX animado necesita el motor ofimático local instalado. PDF contiene el estado estático completo.
+La ventana local se puede compartir durante una presentación remota, sin publicar el documento.
+
+## Datos Y Presentacion En Vivo
+
+- `dataset_import`: fuentes CSV/TSV/XLSX inmutables, hojas y perfiles decimales explicitos.
+- `dataset_get`: filas paginadas, perfiles numericos y avisos de importacion.
+- `dataset_transform`: filtros, agrupaciones, agregados y ordenacion reproducibles.
+- `dataset_visual`: mapeo a grafico o tabla con huecos y referencias a la fuente.
+- `deck_live_start`: consola del orador y pantalla del publico, duracion y diapositivas de apoyo.
+- `deck_live_state`: navegacion y reloj sin notas privadas.
+- `deck_live_control`: pasos, saltos, pantalla negra, reloj y limite de la charla principal.
+
+El editor incorpora importacion y mapeo de datos, cronologias editables por etapas,
+composicion `freeform` por zonas y encuadre de imagenes con foco de recorte.
+Las sesiones viven en la memoria del servidor local; se reinician para adoptar cambios
+del contenido. El HTML sin conexion no depende de ellas.
+Detalles en [flujo de datos y presentacion](docs/DATA_PRESENTATION.md) y
+[matriz de capacidades](docs/CAPABILITY_MATRIX.md).
 
 ## Uso responsable
 
@@ -213,10 +254,17 @@ herramienta que el estudio no tiene.
 
 ## Límites
 
-- Con plantilla adjunta, la vista previa muestra el tema incorporado. Abre el PPTX exportado para revisar
-  la plantilla aplicada. PDF/HTML con plantilla aún no están disponibles; Markdown exporta el contenido.
-  No se copian animaciones ni transiciones del original. La selección automática de formas es un punto
+- Con plantilla adjunta, la vista previa y HTML conservan objetos interactivos sobre la identidad visual del
+  original, cuyo fondo renderiza un motor ofimático local en Windows. PDF muestra el render nativo del PPTX.
+  HTML es autocontenido y conserva pasos al clic. Sin ese motor, PDF/HTML y vista previa indican `pdf_unavailable`.
+  La vista se guarda por estado del deck. Después, `deck_check` detecta texto cuyos límites medidos por el
+  motor exceden su marco; antes de renderizar indica que queda pendiente la revisión nativa.
+  No se copian animaciones ni transiciones del original; se añaden las etapas nuevas. La selección automática de formas es un punto
   de partida; para referencias complejas, inspecciona sus IDs y asigna las formas explícitamente.
+
+Las asignaciones de plantilla admiten también `title_frame`, `subtitle_frame` (coordenadas en píxeles CSS),
+`title_font_points` y `chart_font_points`. Permiten ajustar títulos largos y etiquetas de gráficos conservando
+el patrón y la identidad de la plantilla. El ajuste de texto cuenta los saltos de línea explícitos.
 
 - Una imagen tarda lo que el estudio tarde en renderizarla; la petición espera hasta `CICERO_IMAGE_TIMEOUT` segundos.
   Si pasa ese tiempo, el render sigue en marcha en el estudio y no se vuelve a enviar. Solo se toma una imagen por

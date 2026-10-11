@@ -57,6 +57,10 @@ def _trunc(text: str, max_chars: int) -> str:
 
 
 def chart_svg(block: dict[str, Any], w: float, h: float, theme: dict[str, Any], lang: str, font: str) -> str:
+    rich={'unit','annotations','references','highlight','stacked','zero_baseline','show_values','show_legend'}
+    if block.get('chart') not in ('bar','line','pie') or rich.intersection(block) or any(s.get('x_values') for s in block.get('series',[])):
+        from .visuals import chart_svg as render_visual
+        return render_visual(block,w,h,theme,lang)
     kind = block.get("chart", "bar")
     cats: list[str] = list(block.get("categories") or [])
     series: list[dict[str, Any]] = list(block.get("series") or [])
@@ -180,11 +184,28 @@ def _para_style(p: Para, lang_fonts: dict[str, str]) -> str:
 
 def box_html(box: Box, theme: dict[str, Any], lang: str, assets: AssetLookup, src: Callable[[str], str]) -> str:
     geo = f"left:{_px(box.x)};top:{_px(box.y)};width:{_px(box.w)};height:{_px(box.h)}"
-    if box.kind == "rect":
+    if box.kind=='marker':
+        return f'<div class="b" style="{geo};background:var(--{box.fill});border-radius:50%"></div>'
+    if box.kind=='node':
+        return f'<div class="b diagram-node" style="{geo};background:var(--{box.fill});border:1.5px solid var(--accent);border-radius:6px"></div>'
+    if box.kind=='connector':
+        cw,ch=box.data['canvas'];points=' '.join(f"{p['x']:.2f},{p['y']:.2f}" for p in box.data['points'])
+        end=box.data['points'][-1];before=box.data['points'][-2]
+        angle=math.atan2(end['y']-before['y'],end['x']-before['x'])
+        a=(end['x']-10*math.cos(angle-.45),end['y']-10*math.sin(angle-.45));z=(end['x']-10*math.cos(angle+.45),end['y']-10*math.sin(angle+.45))
+        tip=f"{a[0]:.2f},{a[1]:.2f} {end['x']:.2f},{end['y']:.2f} {z[0]:.2f},{z[1]:.2f}"
+        return f'<svg class="b" style="{geo};overflow:visible" viewBox="0 0 {cw} {ch}" aria-hidden="true"><polyline points="{points}" fill="none" stroke="{_hex(theme["colors"]["accent"])}" stroke-width="2"/><polygon points="{tip}" fill="{_hex(theme["colors"]["accent"])}"/></svg>'
+    if box.kind=='table':
+        rows=[box.data['headers'],*box.data['rows']];head=rows[0]
+        body=''.join(('<tr style="background:var(--surface)" >' if i in (box.data.get('highlight_rows') or []) else '<tr>')+''.join(f'<td>{esc(cell)}</td>' for cell in row)+'</tr>' for i,row in enumerate(rows[1:]))
+        size=max(13,min(24,box.h/len(rows)*.46))
+        return f'<div class="b" style="{geo}"><table class="visual-table" style="font-size:{size}px"><thead><tr>'+''.join(f'<th>{esc(cell)}</th>' for cell in head)+f'</tr></thead><tbody>{body}</tbody></table></div>'
+    if box.kind in ("rect","rule"):
         radius = f";border-radius:{int(theme['radius'])}px" if theme.get("radius") and is_card(box) else ""
         return f'<div class="b" style="{geo};background:var(--{box.fill or "surface"}){radius}"></div>'
     if box.kind == "image" and box.image:
-        return f'<img class="b" style="{geo};object-fit:contain" src="{esc(src(box.image["asset_id"]))}" alt="{esc(box.image.get("alt", ""))}">'
+        position=box.image.get('position',[.5,.5]);fit=box.image.get('fit','contain')
+        return f'<img class="b" style="{geo};object-fit:{fit};object-position:{position[0]*100}% {position[1]*100}%" src="{esc(src(box.image["asset_id"]))}" alt="{esc(box.image.get("alt", ""))}">'
     if box.kind == "chart" and box.chart:
         svg = chart_svg(box.chart, box.w, box.h, theme, lang, css_font_stack(theme["fonts"]["body"]))
         return f'<div class="b" style="{geo}">{svg}</div>'
@@ -219,11 +240,20 @@ def slide_section(slide: dict[str, Any], *, deck: dict[str, Any], theme: dict[st
                   assets: AssetLookup, src: Callable[[str], str], index: int) -> tuple[str, Plan]:
     lang = deck.get("language", "es")
     plan = build_plan(slide, deck_title=deck["title"], theme=theme, number=number, total=total, lang=lang, assets=assets)
-    body = "".join(box_html(b, theme, lang, assets, src) for b in plan.boxes)
+    body = "".join(motion_box_html(b,theme,lang,assets,src) for b in plan.boxes)
     ui = UI_TEXT.get(lang, UI_TEXT["es"])
     label = f'{ui["slide"]} {number} {ui["of"]} {total}: {slide.get("title") or ""}'
     return (f'<section class="slide" id="s-{esc(slide["id"])}" data-index="{index}" aria-label="{esc(label.strip())}">'
             f'<div class="stage" style="{esc(_theme_vars(theme))}">{body}</div></section>'), plan
+
+
+def motion_box_html(box,theme,lang,assets,src):
+    content=box_html(box,theme,lang,assets,src)
+    if box.object_id:content=content.replace('class="b',f'data-id="{esc(box.object_id)}" class="b',1)
+    if box.build is not None and box.build>0 and box.effect!='none':
+        effect=box.effect or 'fade'
+        return f'<div class="fragment visual-{effect}" data-fragment-index="{box.build-1}" style="position:absolute;inset:0;--motion-duration:{box.duration_ms}ms">{content}</div>'
+    return content
 
 
 CSS = """
@@ -238,6 +268,12 @@ body{font-family:"Segoe UI",Arial,sans-serif;background:#1c1f26;min-height:100vh
 .t ul{list-style:disc}
 .t li::marker{color:var(--accent)}
 .t h2{font-weight:inherit}
+.t p,.t h2,.t li{white-space:pre-wrap}
+.visual-table{border-collapse:collapse;width:100%;height:100%;font-family:var(--f-b);color:var(--text);table-layout:fixed}
+.visual-table th{text-align:left;background:var(--accent);color:white;padding:12px}
+.visual-table td{padding:12px;border-bottom:1px solid var(--muted);overflow-wrap:anywhere}
+.fragment{opacity:1;visibility:visible}
+@media(prefers-reduced-motion:reduce){.fragment{transition:none!important;animation:none!important}}
 .mode-present{overflow:hidden}
 .mode-present .deck{padding:0;height:100vh;display:grid;place-items:center}
 .mode-present .slide{display:none;margin:0;width:min(100vw,calc(100vh*16/9));box-shadow:none}
@@ -337,3 +373,35 @@ def render_document(deck: dict[str, Any], *, assets: AssetLookup, inline: bool =
            f'<body class="mode-{mode}" data-mode="{mode}"><main class="deck">{"".join(sections)}</main>{hud}'
            f'<script>{SCRIPT}</script></body></html>')
     return doc, plans
+
+
+def present_document(document: str,width=1280,height=720) -> str:
+    """A local, self-contained presentation runtime with staged navigation and reduced motion."""
+    root=Path(__file__).resolve().parent/'static/visual-runtime'
+    css=(root/'reveal.css').read_text(encoding='utf-8')
+    js=(root/'reveal.js').read_text(encoding='utf-8').replace('</script','<\\/script')
+    # The renderer's stage coordinates remain the source of truth.
+    document=re.sub(r'<script>.*?</script>','',document,flags=re.S)
+    document=document.replace('<main class="deck">','<div class="reveal"><div class="slides">').replace('</main>','</div></div>')
+    document=document.replace('class="slide"','class="slide"')
+    overrides=f'''.reveal .slides{{text-align:left}}.reveal .slides>section{{padding:0;width:{width}px;height:{height}px;margin:0;box-shadow:none;overflow:hidden;aspect-ratio:auto}}
+    .reveal .stage{{width:{width}px;height:{height}px;transform:none!important}}
+    .reveal .fragment{{transition-duration:var(--motion-duration,400ms)}}
+    .reveal .visual-wipe,.reveal .visual-draw{{clip-path:inset(0 100% 0 0)}}
+    .reveal .visual-wipe.visible,.reveal .visual-draw.visible{{clip-path:inset(0)}}
+    .reveal .progress{{color:#219BC3}}.reveal .controls{{color:#219BC3}}
+    .elapsed{{position:fixed;left:12px;bottom:10px;font:14px Arial;color:#657681;z-index:20}}
+    @media print{{.fragment{{opacity:1!important;visibility:visible!important;clip-path:none!important}}}}
+    @media(prefers-reduced-motion:reduce){{.reveal .fragment{{clip-path:none!important;transition:none!important}}}}
+    '''
+    start=f'''<script>{js}</script><script>
+    const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const started=Date.now();
+    const deck=new Reveal({{width:{width},height:{height},margin:0,center:false,controls:true,progress:true,hash:false,
+      transition:reduced?'none':'fade',transitionSpeed:'fast',keyboard:{{66:()=>document.body.classList.toggle('blackout')}}}});
+    deck.initialize();
+    const timer=document.createElement('div');timer.className='elapsed';document.body.append(timer);
+    setInterval(()=>{{const s=Math.floor((Date.now()-started)/1000);timer.textContent=String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0')}},1000);
+    </script>'''
+    document=document.replace('</head>',f'<style>{css}\n{overrides}\nbody.blackout::after{{content:"";position:fixed;inset:0;background:#000;z-index:100}}</style></head>')
+    return document.replace('</body>',start+'</body>')

@@ -45,7 +45,7 @@ def test_input_validation():
     with pytest.raises(ValidationError):
         ChartBlock(chart="bar", categories=["a"], series=[ChartSeries(name="s", values=[float("nan")])])
     with pytest.raises(ValidationError):
-        ChartBlock(chart="donut")
+        ChartBlock(chart="unknown")
     with pytest.raises(ValidationError):
         BulletsBlock(items=["x"] * 13)
     with pytest.raises(ValidationError):

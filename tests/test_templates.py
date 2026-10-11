@@ -29,6 +29,24 @@ def template(path, wide=True):
     return {'source_slide':1,'title_shape':title.shape_id,'keep_text_shapes':[footer.shape_id],
             'content_frame':[96,288,768,192]}
 
+def test_timeline_rules_and_freeform_positions_survive_template_mapping(services,tmp_path):
+    from cicero_hoard.template_live import scenes
+    file=tmp_path/'composition-template.pptx';binding=template(file)
+    deck=decks.create_deck(services,DeckCreate(title='Reusable scene',slide_count=3))
+    decks.add_slide(services,deck['id'],layout='freeform',title='Precise placement',blocks=[
+        {'type':'text','text':'Right half','frame':[.5,0,.5,.5]}])
+    decks.add_slide(services,deck['id'],layout='evidence',title='Milestones',blocks=[
+        {'type':'timeline','items':[{'label':'Source'},{'label':'Review'},{'label':'Deliver'}]}])
+    agent_tools.call_tool(services,'deck_template',{'deck_id':deck['id'],'path':str(file),
+        'bindings':{'freeform':binding,'evidence':binding}})
+    snapshot=decks.deck_view(services,deck['id']);scene,_,_=scenes(snapshot,services.assets_lookup())
+    text=next(b for b in scene[0]['boxes'] if b.paras and b.paras[0].text=='Right half')
+    assert text.x==pytest.approx(96+768*.5)
+    assert sum(b.kind=='rule' for b in scene[1]['boxes'])==2
+    from cicero_hoard.export_pptx import build_pptx
+    prs=Presentation(io.BytesIO(build_pptx(snapshot,assets=services.assets_lookup())))
+    assert sum(s.name=='Decoration' for s in prs.slides[1].shapes)>=2
+
 
 @pytest.mark.parametrize('wide', [True, False])
 def test_template_frame_preserves_generated_picture_aspect(services, tmp_path, wide):
@@ -80,13 +98,15 @@ def test_native_roundtrip_preserves_template_and_independent_charts_notes(servic
                 assert set(refs) == set(ids)
 
 
-def test_snapshot_is_reusable_after_source_changes_and_clear_restores_default(services,tmp_path):
+def test_snapshot_is_reusable_after_source_changes_and_clear_restores_default(services,tmp_path,monkeypatch):
     file=tmp_path/'source.pptx';template(file,wide=False)
     d=decks.create_deck(services,DeckCreate(title='Reuse',slide_count=3));decks.add_slide(services,d['id'],title='New body',notes='Notes')
     attached=agent_tools.call_tool(services,'deck_template',{'deck_id':d['id'],'path':str(file)})
     before=Path(attached['template']['path']).read_bytes();file.write_bytes(b'changed original')
     exported=agent_tools.call_tool(services,'deck_export',{'deck_id':d['id'],'format':'pptx'});assert Presentation(exported['path']).slide_width==Inches(10)
     assert Path(attached['template']['path']).read_bytes()==before
+    from cicero_hoard import native_slides
+    monkeypatch.setattr(native_slides, 'available', lambda: False)
     with pytest.raises(CiceroError):services.export(d['id'],'pdf')
     agent_tools.call_tool(services,'deck_template',{'deck_id':d['id'],'clear':True})
     assert 'template' not in decks.deck_view(services,d['id'])

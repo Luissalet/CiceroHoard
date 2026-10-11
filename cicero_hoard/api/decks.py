@@ -49,10 +49,16 @@ def decks_check(request: Request, deck_id: str):
 
 
 @router.get("/decks/{deck_id}/preview.html", response_class=HTMLResponse)
-def deck_preview(request: Request, deck_id: str):
-    return HTMLResponse(services(request).preview_html(deck_id), headers=PREVIEW_HEADERS)
+def deck_preview(request: Request, deck_id: str, mode: str = 'stacked'):
+    if mode not in ('stacked','present'):raise ValueError('Unknown presentation mode')
+    return HTMLResponse(services(request).preview_html(deck_id,mode=mode), headers=PREVIEW_HEADERS)
 
 
 @router.get("/decks/{deck_id}/slides/{slide_id}/preview.html", response_class=HTMLResponse)
 def slide_preview(request: Request, deck_id: str, slide_id: str):
     return HTMLResponse(services(request).preview_html(deck_id, slide_id), headers=PREVIEW_HEADERS)
+
+
+@router.get('/decks/{deck_id}/slides/{slide_id}/variant.html',response_class=HTMLResponse)
+def variant_preview(request: Request,deck_id: str,slide_id: str,layout: str):
+    return HTMLResponse(services(request).preview_html(deck_id,slide_id,layout=layout),headers=PREVIEW_HEADERS)

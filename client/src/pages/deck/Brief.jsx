@@ -4,6 +4,7 @@ import { go, useApp } from "../../App.jsx";
 import { useDeck, useDirty } from "../../components/deckContext.js";
 import { ConfirmButton, Field, Section, useAsync } from "../../components/ui.jsx";
 import { formatBytes } from "../../format.js";
+import DataPanel from './DataPanel.jsx';
 
 const MAX_BYTES = 20 * 1024 * 1024;
 const ACCEPT = ".txt,.md,.markdown,.pdf,.docx,.pptx";
@@ -160,6 +161,7 @@ export default function Brief() {
           <ul className="mt-3 space-y-2">{sources.map((s) => <SourceRow key={s.id} source={s} />)}</ul>
         )}
       </Section>
+      <Section title={t('data_section')}><DataPanel/></Section>
       <Section title={t("danger_zone")}>
         <p className="help mb-2">{t("deck_delete_help")}</p>
         <ConfirmButton t={t} disabled={!!busy} label={t("deck_delete")} confirmLabel={t("deck_delete_confirm")} onConfirm={() => { if (confirmDiscard()) remove(); }} />

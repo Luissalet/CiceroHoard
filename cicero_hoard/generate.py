@@ -21,7 +21,7 @@ from typing import Any, Callable, Optional
 from pydantic import ValidationError
 
 from . import decks as store
-from .check import all_number_values, chart_values_unsourced
+from .check import all_number_values, chart_values_unsourced,slide_text_parts,unsourced
 from .errors import CiceroError, GenerationFailed, ModelUnavailable
 from .hoard_link.docs import chunking
 from .models import GeneratedOutline, GeneratedSlide, LAYOUTS
@@ -157,7 +157,21 @@ BLOCK_SPEC = """Block types (use only these):
 {"type":"columns","left_title":"...","left":["..."],"right_title":"...","right":["..."]}
 {"type":"chart","chart":"bar|line|pie","title":"...","categories":["..."],"series":[{"name":"...","values":[1,2]}]}   // only with numbers that appear in the sources"""
 
-LAYOUT_SPEC = "Layouts: title, section, bullets, two_column, image_text, quote, chart, closing."
+BLOCK_SPEC += '''
+{"type":"diagram","direction":"right|down","nodes":[{"id":"a","label":"...","detail":"..."}],"edges":[{"source":"a","target":"b"}]}
+{"type":"metrics","items":[{"value":"...","label":"...","detail":"...","emphasis":true}]}
+{"type":"table","headers":["..."],"rows":[["..."]]}
+{"type":"timeline","items":[{"date":"...","label":"...","detail":"..."},{"date":"...","label":"..."}]}
+Chart types also include bar_horizontal, area, donut, scatter, bubble, dot, dumbbell, band, heatmap, waterfall, funnel.
+Numeric-time or scatter series use x_values. Band series require measured lower and upper arrays. Never invent bounds.
+Charts can have unit, highlight (category indices), annotations [{text,category,series}], references [{value,label}].
+Use diagrams for processes and relationships present in the sources, metrics for sourced headline figures,
+and tables for exact comparisons. Use timelines for sourced milestones; stages reveal each milestone on click.
+Each block may have build (click stage, 1-40), effect (fade|wipe|draw|stages), duration_ms.
+Canvas composition supports block.frame [x,y,width,height] fractions inside the content area. Set font_size only when needed.
+Select the visual that explains the content. Avoid making every slide a list. Keep experimental uncertainty and limitations visible.
+'''
+LAYOUT_SPEC = "Layouts: "+', '.join(LAYOUTS)+'.'
 
 
 def _deck_header(deck: dict[str, Any]) -> str:
@@ -277,6 +291,9 @@ def finish_slide(draft: GeneratedSlide, *, strict: bool, source_ids: set[int], r
             if reference is None or chart_values_unsourced(data, reference):
                 warnings.append(f"Slide \"{clip(draft.title, 40)}\": a chart was dropped because its values are not in the sources.")
                 continue
+        if t in ('metrics','diagram','table','timeline') and unsourced(' '.join(slide_text_parts({'blocks':[data]})),reference or set()):
+            warnings.append(f'Slide "{clip(draft.title,40)}": a visual was dropped because its figures are not in the sources.')
+            continue
         blocks.append(data)
     layout = draft.layout
     if layout == "chart" and not any(b["type"] == "chart" for b in blocks):

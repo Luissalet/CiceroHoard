@@ -11,6 +11,16 @@ from .deps import services, tool
 router = APIRouter(prefix="/api")
 
 
+@router.get('/decks/{deck_id}/slides/{slide_id}/variants')
+def slide_variants(request: Request,deck_id: str,slide_id: str):
+    return tool(request,'slide_variants',deck_id=deck_id,slide_id=slide_id)
+
+
+@router.get('/decks/{deck_id}/scene')
+def deck_scene(request: Request,deck_id: str,slide_id: str | None=None):
+    return tool(request,'deck_scene',deck_id=deck_id,slide_id=slide_id)
+
+
 @router.post("/decks/{deck_id}/slides/generate")
 def slides_generate(request: Request, deck_id: str, body: SlidesGenerateBody | None = None):
     return tool(request, "slides_generate", deck_id=deck_id, only_missing=(body.only_missing if body else False))

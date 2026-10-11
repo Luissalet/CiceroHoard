@@ -1,0 +1,18 @@
+.presenter{min-height:100dvh;background:#12171c;color:#e7edf0;padding:16px;letter-spacing:0}
+.presenter-toolbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;border-bottom:1px solid #35414b;padding-bottom:12px}
+.presenter-toolbar h1{font-size:18px;font-weight:600;margin-right:auto}
+.presenter-controls{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;padding:16px 0}
+.presenter-jump{max-width:420px;width:min(40vw,420px)}
+.presenter-stage{white-space:nowrap;font-size:13px;color:#adc3cc}
+.presenter-clock{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.presenter-clock output{font:600 28px/1.2 monospace;color:#70cbb0;width:100px}
+.presenter-clock .overtime{color:#ff8f8f}
+.presenter-clock label{display:flex;align-items:center;gap:8px;font-size:12px}
+.presenter-clock input{width:80px}
+.presenter-workspace{display:grid;grid-template-columns:minmax(0,1fr) minmax(260px,340px);gap:20px}
+.presenter-current,.presenter-notes{min-width:0;background:transparent}
+.presenter iframe{display:block;width:100%;aspect-ratio:16/9;border:0;background:#000}
+.presenter h2{font-size:15px;line-height:1.5;font-weight:600;margin:12px 0;overflow-wrap:anywhere}
+.presenter-note-text{white-space:pre-wrap;font-size:17px;line-height:1.6;max-height:45dvh;overflow:auto;overflow-wrap:anywhere;padding-bottom:16px;color:#f0f3f5}
+.presenter-error{background:#5b252b;color:#fff;padding:12px;margin:12px 0}
+@media(max-width:800px){.presenter{padding:12px}.presenter-workspace{grid-template-columns:1fr}.presenter-jump{width:min(54vw,420px)}.presenter-notes{display:grid;grid-template-columns:minmax(0,1fr);gap:4px}.presenter-notes iframe{max-width:440px}.presenter-note-text{max-height:280px}}

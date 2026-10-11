@@ -4,6 +4,8 @@ import { useApp } from "../../App.jsx";
 import { useDeck } from "../../components/deckContext.js";
 import { Field, ListEditor } from "../../components/ui.jsx";
 import { CHART_KINDS, formatBytes } from "../../format.js";
+import {DiagramEditor,MetricsEditor,TableEditor,TimelineEditor,FrameEditor,MotionEditor} from './VisualEditors.jsx';
+import {AdvancedChartSettings} from './ChartSettings.jsx';
 
 const MAX_IMAGE = 15 * 1024 * 1024;
 
@@ -13,10 +15,11 @@ function ChartEditor({ block, onChange, disabled }) {
   const setCat = (i, v) => onChange({ ...block, categories: categories.map((c, n) => (n === i ? v : c)) });
   const setName = (si, v) => onChange({ ...block, series: series.map((s, n) => (n === si ? { ...s, name: v } : s)) });
   const setVal = (si, ci, v) => onChange({ ...block, series: series.map((s, n) => (n === si ? { ...s, values: s.values.map((x, m) => (m === ci ? v : x)) } : s)) });
-  const addRow = () => onChange({ ...block, categories: [...categories, ""], series: series.map((s) => ({ ...s, values: [...s.values, ""] })) });
-  const removeRow = (ci) => onChange({ ...block, categories: categories.filter((_, n) => n !== ci), series: series.map((s) => ({ ...s, values: s.values.filter((_, n) => n !== ci) })) });
+  const mapArrays = (s,fn) => Object.fromEntries(Object.entries(s).map(([key,value])=>[key,['values','x_values','lower','upper','sizes'].includes(key)&&Array.isArray(value)?fn(value):value]));
+  const addRow = () => onChange({ ...block, categories: [...categories, ""], series: series.map((s) => mapArrays(s,a=>[...a,''])) });
+  const removeRow = (ci) => onChange({ ...block, categories: categories.filter((_, n) => n !== ci), series: series.map((s) => mapArrays(s,a=>a.filter((_,n)=>n!==ci))),highlight:(block.highlight||[]).filter(i=>i!==ci).map(i=>i>ci?i-1:i),annotations:(block.annotations||[]).filter(a=>a.category!==ci).map(a=>({...a,category:a.category>ci?a.category-1:a.category})) });
   const addSeries = () => onChange({ ...block, series: [...series, { name: t("chart_series_n", { n: series.length + 1 }), values: categories.map(() => "") }] });
-  const removeSeries = (si) => onChange({ ...block, series: series.filter((_, n) => n !== si) });
+  const removeSeries = (si) => onChange({ ...block, series: series.filter((_, n) => n !== si),annotations:(block.annotations||[]).filter(a=>a.series!==si).map(a=>({...a,series:a.series>si?a.series-1:a.series})) });
 
   return (
     <div className="space-y-2">
@@ -60,6 +63,7 @@ function ChartEditor({ block, onChange, disabled }) {
           </tbody>
         </table>
       </div>
+      <AdvancedChartSettings block={block} onChange={onChange} disabled={disabled}/>
       <div className="flex flex-wrap gap-2">
         <button type="button" className="btn btn-sm" disabled={disabled} onClick={addRow}>+ {t("chart_add_row")}</button>
         <button type="button" className="btn btn-sm" disabled={disabled} onClick={addSeries}>+ {t("chart_add_series")}</button>
@@ -90,11 +94,13 @@ function ImageBlock({ block, onChange, disabled }) {
       </label>
       <span className="help ml-2">{t("image_formats")}</span>
       <Field label={t("image_caption")}><input className="field" value={block.caption || ""} disabled={disabled} onChange={(e) => onChange({ ...block, caption: e.target.value })} /></Field>
+      <Field label={t('image_fit')}><select className="field" disabled={disabled} value={block.fit||'contain'} onChange={e=>onChange({...block,fit:e.target.value})}><option value="contain">{t('image_contain')}</option><option value="cover">{t('image_cover')}</option></select></Field>
+      {block.fit==='cover'&&<div className="grid gap-2 sm:grid-cols-2">{[0,1].map(i=><Field key={i} label={t(i===0?'image_focus_x':'image_focus_y')}><input className="w-full" type="range" min="0" max="1" step="0.01" disabled={disabled} value={block.position?.[i]??.5} onChange={e=>{const position=[...(block.position||[.5,.5])];position[i]=Number(e.target.value);onChange({...block,position})}}/></Field>)}</div>}
     </div>
   );
 }
 
-export default function BlockEditor({ block, index, count, onChange, onMove, onRemove, disabled }) {
+export default function BlockEditor({ block, index, count, onChange, onMove, onRemove, disabled,canvas=false }) {
   const { t } = useApp();
   const name = `${t(`block_${block.type}`)} ${index + 1}`;
   let body;
@@ -129,6 +135,10 @@ export default function BlockEditor({ block, index, count, onChange, onMove, onR
     case "chart":
       body = <ChartEditor block={block} onChange={onChange} disabled={disabled} />;
       break;
+    case 'diagram':body=<DiagramEditor block={block} onChange={onChange} disabled={disabled}/>;break;
+    case 'metrics':body=<MetricsEditor block={block} onChange={onChange} disabled={disabled}/>;break;
+    case 'table':body=<TableEditor block={block} onChange={onChange} disabled={disabled}/>;break;
+    case 'timeline':body=<TimelineEditor block={block} onChange={onChange} disabled={disabled}/>;break;
     default:
       body = <ImageBlock block={block} onChange={onChange} disabled={disabled} />;
   }
@@ -143,6 +153,8 @@ export default function BlockEditor({ block, index, count, onChange, onMove, onR
         </span>
       </div>
       {body}
+      <MotionEditor block={block} onChange={onChange} disabled={disabled}/>
+      {canvas&&<FrameEditor block={block} onChange={onChange} disabled={disabled} index={index} count={count}/>}
     </div>
   );
 }

@@ -66,6 +66,21 @@ def build_markdown(deck: dict[str, Any]) -> bytes:
                 lines.append(f"*[{labels['image']}{': ' + caption if caption else ''}]*")
             elif kind == "chart":
                 lines += _chart_table(block, lang)
+            elif kind in ('metrics','timeline'):
+                if block.get('title'):lines.append(f"**{block['title']}**")
+                for item in block['items']:
+                    lead=item.get('value',item.get('date',''))
+                    lines.append('- '+': '.join(v for v in (lead,item['label'],item.get('detail','')) if v))
+            elif kind=='table':
+                if block.get('title'):lines.append(f"**{block['title']}**")
+                lines.append('| '+' | '.join(_cell(c) for c in block['headers'])+' |')
+                lines.append('| '+' | '.join('---' for c in block['headers'])+' |')
+                lines += ['| '+' | '.join(_cell(c) for c in row)+' |' for row in block['rows']]
+            elif kind=='diagram':
+                if block.get('title'):lines.append(f"**{block['title']}**")
+                names={n['id']:n['label'] for n in block['nodes']}
+                lines += ['- '+': '.join(v for v in (n['label'],n.get('detail','')) if v) for n in block['nodes']]
+                lines += ['- '+names[e['source']]+' -> '+names[e['target']]+(': '+e['label'] if e.get('label') else '') for e in block.get('edges',[])]
             elif kind == "columns":
                 for side in ("left", "right"):
                     if block.get(f"{side}_title"):

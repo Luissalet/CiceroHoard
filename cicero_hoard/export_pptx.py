@@ -29,6 +29,13 @@ AssetLookup = Callable[[str], Optional[dict[str, Any]]]
 LANG_IDS = {"es": "es-ES", "en": "en-US"}
 
 
+def stamp_motion(slide,previous,box):
+    if box.build is None or box.build<1 or box.effect=='none':return
+    for shape in slide.shapes:
+        if shape.shape_id not in previous:
+            shape.name=f'Cicero-step:{box.build}:{box.effect or "fade"}:{box.duration_ms}'
+
+
 def _rgb(hex_color: str) -> RGBColor:
     return RGBColor(*hex_to_rgb(hex_color))
 
@@ -63,6 +70,9 @@ def _set_bullet(paragraph: Any, indent_px: int, color_hex: str) -> None:
 
 def _no_bullet(paragraph: Any) -> None:
     pPr = paragraph._p.get_or_add_pPr()
+    # Imported presentation defaults can carry a hanging indent even without a bullet.
+    pPr.set("marL", "0")
+    pPr.set("indent", "0")
     if pPr.find(qn("a:buNone")) is None:
         etree.SubElement(pPr, qn("a:buNone"))
 
@@ -101,6 +111,9 @@ def _fill_text(tf: Any, box: Box, theme: dict[str, Any], lang: str) -> None:
 def _add_chart(slide: Any, box: Box, theme: dict[str, Any], lang: str) -> None:
     block = box.chart or {}
     kind = block.get("chart", "bar")
+    if kind not in ('bar','line','pie') or any(s.get('x_values') for s in block.get('series',[])) or any(key in block for key in ('unit','annotations','references','show_values','show_legend','zero_baseline','stacked')):
+        from .rich_pptx import add_chart
+        return add_chart(slide,box,theme,lang)
     cats = list(block.get("categories") or [])
     data = CategoryChartData()
     data.categories = cats
@@ -114,19 +127,20 @@ def _add_chart(slide: Any, box: Box, theme: dict[str, Any], lang: str) -> None:
     ctype = {"bar": XL_CHART_TYPE.COLUMN_CLUSTERED, "line": XL_CHART_TYPE.LINE_MARKERS, "pie": XL_CHART_TYPE.PIE}.get(kind, XL_CHART_TYPE.COLUMN_CLUSTERED)
     frame = slide.shapes.add_chart(ctype, _emu(box.x), _emu(box.y), _emu(box.w), _emu(box.h), data)
     chart = frame.chart
-    # Axis IDs are unsigned 32-bit in OOXML. Some python-pptx chart templates
-    # emit signed IDs; normalize definitions and references together so strict
-    # readers can open the chart without changing its data or axis pairing.
+    # Small positive IDs also work in native readers that reject wrapped signed IDs.
+    axis_ids = list(dict.fromkeys(el.get('val') for el in chart._chartSpace.iter(qn('c:axId'))))
+    axis_mapping = {value: str(100 + index) for index, value in enumerate(axis_ids)}
     for element in chart._chartSpace.iter():
         if element.tag in (qn("c:axId"), qn("c:crossAx")):
-            element.set("val", str(int(element.get("val")) & 0xFFFFFFFF))
+            element.set("val", axis_mapping[element.get("val")])
     values = [v for s in series for v in (s.get("values") or []) if isinstance(v, (int, float))]
     # Grouped thousands; the viewer's locale draws the separator (a point in Spanish), as the preview does.
     number_format = "#,##0" if all(float(v).is_integer() for v in values) else "#,##0.0#"
     text_hex, muted_hex = _color(theme, "text"), _color(theme, "muted")
     palette = series_colors(theme)
     font_scale = theme.get('chart_font_scale', 1)
-    chart.font.size = Pt(11 * font_scale)
+    chart_font = theme.get('chart_font_points', 11 * font_scale)
+    chart.font.size = Pt(chart_font)
     chart.font.name = theme["fonts"]["body"]
     chart.font.color.rgb = _rgb(text_hex)
     chart.has_title = False
@@ -135,7 +149,7 @@ def _add_chart(slide: Any, box: Box, theme: dict[str, Any], lang: str) -> None:
         chart.has_legend = True
         chart.legend.position = XL_LEGEND_POSITION.RIGHT
         chart.legend.include_in_layout = False
-        chart.legend.font.size = Pt(12 * font_scale)
+        chart.legend.font.size = Pt(max(chart_font, 12 * font_scale))
         chart.legend.font.color.rgb = _rgb(text_hex)
         plot.vary_by_categories = True
         ser = plot.series[0]
@@ -145,7 +159,7 @@ def _add_chart(slide: Any, box: Box, theme: dict[str, Any], lang: str) -> None:
             pt.format.fill.fore_color.rgb = _rgb(palette[i % len(palette)])
         plot.has_data_labels = True
         plot.data_labels.show_value = True
-        plot.data_labels.font.size = Pt(11 * font_scale)
+        plot.data_labels.font.size = Pt(chart_font)
         plot.data_labels.font.color.rgb = _rgb(text_hex)
         plot.data_labels.position = XL_LABEL_POSITION.OUTSIDE_END
         plot.data_labels.number_format = number_format
@@ -155,13 +169,16 @@ def _add_chart(slide: Any, box: Box, theme: dict[str, Any], lang: str) -> None:
         if chart.has_legend:
             chart.legend.position = XL_LEGEND_POSITION.TOP
             chart.legend.include_in_layout = False
-            chart.legend.font.size = Pt(12 * font_scale)
+            chart.legend.font.size = Pt(max(chart_font, 12 * font_scale))
             chart.legend.font.color.rgb = _rgb(text_hex)
         for i, ser in enumerate(plot.series):
-            col = _rgb(palette[i % len(palette)])
+            col = _rgb(series[i].get('color') or palette[i % len(palette)])
             if kind == "bar":
                 ser.format.fill.solid()
                 ser.format.fill.fore_color.rgb = col
+                if block.get('highlight'):
+                    for j,point in enumerate(ser.points):
+                        point.format.fill.solid();point.format.fill.fore_color.rgb=col if j in block['highlight'] else _rgb('#CFD9E0')
             else:
                 ser.format.line.color.rgb = col
                 ser.format.line.width = Pt(2.5)
@@ -172,7 +189,7 @@ def _add_chart(slide: Any, box: Box, theme: dict[str, Any], lang: str) -> None:
         if len(cats) * len(series) <= 14:
             plot.has_data_labels = True
             plot.data_labels.show_value = True
-            plot.data_labels.font.size = Pt(11 * font_scale)
+            plot.data_labels.font.size = Pt(chart_font)
             plot.data_labels.font.color.rgb = _rgb(text_hex)
             plot.data_labels.position = XL_LABEL_POSITION.OUTSIDE_END if kind == "bar" else XL_LABEL_POSITION.ABOVE
             plot.data_labels.number_format = number_format
@@ -181,7 +198,8 @@ def _add_chart(slide: Any, box: Box, theme: dict[str, Any], lang: str) -> None:
         val_axis.tick_labels.number_format = number_format
         val_axis.tick_labels.number_format_is_linked = False
         for axis in (cat_axis, val_axis):
-            axis.tick_labels.font.size = Pt(11 * font_scale)
+            axis.tick_labels.font.size = Pt(chart_font)
+            axis.tick_labels.font.name = theme['fonts']['body']
             axis.tick_labels.font.color.rgb = _rgb(muted_hex if axis is val_axis else text_hex)
             axis.format.line.color.rgb = _rgb(muted_hex)
         val_axis.has_major_gridlines = True
@@ -192,10 +210,22 @@ def _add_chart(slide: Any, box: Box, theme: dict[str, Any], lang: str) -> None:
         for clr in ln.iter(qn("a:srgbClr")):
             alpha = etree.SubElement(clr, qn("a:alpha"))
             alpha.set("val", "30000")
+    return frame
 
 
 def _add_box(slide: Any, box: Box, theme: dict[str, Any], lang: str, assets: AssetLookup, title_shape: Any) -> Any:
-    if box.kind == "rect":
+    if box.kind=='marker':
+        shape=slide.shapes.add_shape(MSO_SHAPE.OVAL,_emu(box.x),_emu(box.y),_emu(box.w),_emu(box.h))
+        shape.fill.solid();shape.fill.fore_color.rgb=_rgb(_color(theme,box.fill or 'accent'))
+        shape.line.fill.background()
+        return shape
+    if box.kind in ('node','connector'):
+        from .rich_pptx import add_graph_object
+        return add_graph_object(slide,box,theme)
+    if box.kind=='table':
+        from .rich_pptx import add_table
+        return add_table(slide,box,theme,lang)
+    if box.kind in ("rect","rule"):
         radius = int(theme.get("radius") or 0) if is_card(box) else 0
         shape = slide.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE if radius else MSO_SHAPE.RECTANGLE, _emu(box.x), _emu(box.y), _emu(box.w), _emu(box.h))
         if radius:  # the adjustment is the corner radius as a share of the shorter side
@@ -241,7 +271,14 @@ def _add_box(slide: Any, box: Box, theme: dict[str, Any], lang: str, assets: Ass
         scale = min(box.w / width, box.h / height)
         w, h = width * scale, height * scale
         x, y = box.x + (box.w - w) / 2, box.y + (box.h - h) / 2
+        cover=box.image.get('fit')=='cover'
+        if cover:x,y,w,h=box.x,box.y,box.w,box.h
         pic = slide.shapes.add_picture(source, _emu(x), _emu(y), _emu(w), _emu(h))
+        if cover:
+            focus=box.image.get('position',[.5,.5]);scale=max(w/width,h/height)
+            crop_x=1-w/(width*scale);crop_y=1-h/(height*scale)
+            pic.crop_left=crop_x*focus[0];pic.crop_right=crop_x*(1-focus[0])
+            pic.crop_top=crop_y*focus[1];pic.crop_bottom=crop_y*(1-focus[1])
         alt = box.image.get("alt") or ""
         pic._element.nvPicPr.cNvPr.set("descr", alt)
         pic.name = "Picture"
@@ -266,7 +303,7 @@ def _add_box(slide: Any, box: Box, theme: dict[str, Any], lang: str, assets: Ass
             blip.append(extension)
         return pic
     if box.kind == "chart" and box.chart:
-        _add_chart(slide, box, theme, lang)
+        return _add_chart(slide, box, theme, lang)
         return None
     return None
 
@@ -296,7 +333,9 @@ def build_pptx(deck: dict[str, Any], *, assets: AssetLookup) -> bytes:
         title_shape = slide.shapes.title if has_title else None
         decorations = []
         for box in plan.boxes:
+            previous={shape.shape_id for shape in slide.shapes}
             shape = _add_box(slide, box, theme, lang, assets, title_shape if box.role == "title" else None)
+            stamp_motion(slide,previous,box)
             if box.kind == "rect" and shape is not None:
                 decorations.append(shape)
         # decorations go to the back, behind the title placeholder that the layout created first
