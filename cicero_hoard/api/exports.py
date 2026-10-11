@@ -9,6 +9,7 @@ from .. import decks as store
 from ..models import ExportBody
 from .deps import services
 
+
 router = APIRouter(prefix="/api")
 
 MEDIA_TYPES = {
@@ -39,3 +40,30 @@ def export_file(request: Request, export_id: str):
     if view["format"] == "html":
         headers["Content-Security-Policy"] = "sandbox"  # a downloaded page opened in the browser must not reach the app's origin
     return FileResponse(path, media_type=MEDIA_TYPES.get(view["format"], "application/octet-stream"), filename=view["filename"], headers=headers)
+
+
+@router.get("/animations/catalogue")
+def animations_catalogue():
+    from ..animations import catalogue
+    return catalogue()
+
+
+@router.get("/decks/{deck_id}/animations")
+def animations_get(request: Request, deck_id: str):
+    return services(request).animations_get(deck_id)
+
+
+@router.put("/decks/{deck_id}/animations")
+def animations_put(request: Request, deck_id: str, body: dict):
+    return services(request).animations_set(deck_id, body)
+
+
+@router.delete("/decks/{deck_id}/animations")
+def animations_reset(request: Request, deck_id: str):
+    return services(request).animations_reset(deck_id)
+
+
+@router.get("/decks/{deck_id}/animations/preview")
+def animations_preview(request: Request, deck_id: str):
+    return services(request).animations_preview(deck_id)
+

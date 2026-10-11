@@ -70,8 +70,15 @@ regions in the browser and central/lower/upper curves in PPTX. Heatmaps export a
 objects. Diagram nodes, connections, metric text and tables remain editable. Sources remain the authority for values.
 
 Use `build`, `effect` and `duration_ms` on blocks for click stages. Diagram `effect: stages` builds nodes in order.
-The browser and standalone HTML retain individual objects, including with attached templates. Native animated
-PPTX needs an installed local office slide engine. PDF represents the complete static state. The user can share
+The browser and standalone HTML retain individual objects, including with attached templates. The exported PPTX
+carries native slide animations and transitions written as OOXML, with no office engine needed:
+`deck_animations` (or `GET|PUT|DELETE /api/decks/{id}/animations`, `.../animations/preview`, `/api/animations/catalogue`)
+sets `mode` -- `builds` (only the click stages, the default), `auto` (cover zoom, title fade, chart and table wipe,
+picture zoom, cards and text fly in, then the click stages), `mixed`, `none` or any of the 203 native effects --
+`trigger` (after-previous or on-click), `duration`, `transition` (none or any of 48, Morph included) and
+`transition_duration`, deck-wide or per slide. Footers and background shapes never animate. The animation and
+transition XML comes from PPT Master (MIT, vendored in `cicero_hoard/vendor/ppt_master` with its licence) and every
+export is read back with its validators. PDF represents the complete static state. The user can share
 their local presentation window remotely; no publication is necessary.
 
 ## Data And Live Presentation
@@ -169,6 +176,7 @@ turns that off; the slow tools publish how long the bridge waits for them). Regi
 | `template_inspect`, `deck_template` | inspect a local PPTX, attach it with optional per-layout bindings, read the attachment, or detach it with `clear=true` |
 | `theme_from_tokens` | make a theme from a design system (`tokens_id`, `mode` light or dark, optional `deck_id` to apply it); without `tokens_id` it lists the design systems |
 | `deck_export` | export to `pptx`, `pdf`, `html` or `md`; returns the file path and the download URL |
+| `deck_animations` | native animations and transitions of the exported PPTX: get, set, reset, preview, list |
 | `slide_image` | generate a picture for a slide with the image studio |
 | `asset_import` | copy an existing local PNG/JPEG/WEBP figure; use its returned asset ID in an image block; repeated imports reuse the image within this deck |
 | `slides_add` | atomic draft batches with a reusable batch key; retrying identical content returns the original IDs |

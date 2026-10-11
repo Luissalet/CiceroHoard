@@ -233,14 +233,9 @@ class Services:
             from .export_pptx import build_pptx
 
             data = build_pptx(deck, assets=assets)
-            staged=any(b.get('build') or b.get('effect')=='stages' for s in deck['slides'] for b in s['blocks'])
-            if staged:
-                from .errors import PdfUnavailable
-                try:
-                    folder,report=self._native_snapshot(deck)
-                    if (folder/'animated.pptx').is_file():data=(folder/'animated.pptx').read_bytes()
-                except PdfUnavailable:
-                    warnings.append('Native motion unavailable: editable PPTX is static. HTML retains authored click stages.')
+            # click stages, auto/mixed/effect animations and slide transitions, written as native OOXML (animations.json)
+            from . import animations as motion
+            data, motion_report = motion.apply(data, self.animations_get(deck_id), [s['id'] for s in deck['slides']])
         elif fmt == "html":
             from .export_html import build_html
 
@@ -263,8 +258,40 @@ class Services:
         export = store.add_export(self, deck_id, fmt, data, deck["title"])
         if cache_review is not None:export['cache_review']=cache_review
         if warnings:export['warnings']=warnings
+        if fmt=='pptx':export['animations']={k:motion_report[k] for k in ('animated','transitions')}
         self.emit("cicero.deck.exported", {"id": deck_id, "format": fmt, "title": clip(deck["title"], 80)})
         return export
+
+    # ---------------- animations ----------------
+    def animations_get(self, deck_id: str) -> dict[str, Any]:
+        from .animations import AnimationStore
+        store.deck_view(self, deck_id)                       # 404 for an unknown deck
+        return AnimationStore(self.config.data_dir).get(deck_id)
+
+    def animations_set(self, deck_id: str, settings: dict[str, Any], *, merge: bool = True) -> dict[str, Any]:
+        from .animations import AnimationStore
+        deck = store.deck_view(self, deck_id)
+        try:
+            saved = AnimationStore(self.config.data_dir).set(deck_id, settings, {s['id'] for s in deck['slides']}, merge=merge)
+        except ValueError as exc:
+            raise CiceroError(str(exc), code='bad_animation') from exc
+        self.emit("cicero.deck.animations", {"id": deck_id, "mode": saved["mode"], "transition": saved["transition"]})
+        return saved
+
+    def animations_reset(self, deck_id: str) -> dict[str, Any]:
+        from .animations import AnimationStore
+        store.deck_view(self, deck_id)
+        return AnimationStore(self.config.data_dir).reset(deck_id)
+
+    def animations_preview(self, deck_id: str) -> dict[str, Any]:
+        """What the next .pptx export would carry, per slide, without storing an export."""
+        from . import animations as motion
+        from .export_pptx import build_pptx
+        deck = store.deck_view(self, deck_id)
+        if not deck['slides']:
+            raise CiceroError("The presentation has no slides to export.", code="no_slides")
+        _, report = motion.apply(build_pptx(deck, assets=self.assets_lookup()), self.animations_get(deck_id), [s['id'] for s in deck['slides']])
+        return report
 
     def base_url(self) -> str:
         return f"http://127.0.0.1:{self.config.port}" if self.config.port else ""

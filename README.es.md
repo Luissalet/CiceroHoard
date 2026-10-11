@@ -72,7 +72,14 @@ y los embudos como objetos de etapas. Las fuentes siguen siendo la autoridad par
 
 Los campos `build`, `effect` y `duration_ms` definen pasos al clic. Un diagrama con `effect: stages` muestra
 sus elementos por etapas. HTML y navegador conservan objetos individuales, también con plantillas adjuntas.
-El PPTX animado necesita el motor ofimático local instalado. PDF contiene el estado estático completo.
+El PPTX exportado lleva animaciones y transiciones nativas escritas como OOXML, sin motor ofimático:
+`deck_animations` (o `GET|PUT|DELETE /api/decks/{id}/animations`, `.../animations/preview`, `/api/animations/catalogue`)
+fija `mode` -- `builds` (solo los pasos al clic, por defecto), `auto` (portada con zoom, título con fundido, gráfico y
+tabla con barrido, imagen con zoom, tarjetas y texto que entran volando, y después los pasos al clic), `mixed`, `none`
+o cualquiera de los 203 efectos nativos --, `trigger` (tras el anterior o al clic), `duration`, `transition`
+(ninguna o cualquiera de las 48, Morph incluida) y `transition_duration`, para todo el deck o por diapositiva. Los
+pies y las formas de fondo nunca se animan. El XML de animaciones y transiciones viene de PPT Master (MIT, copiado
+en `cicero_hoard/vendor/ppt_master` con su licencia) y cada exportación se relee con sus validadores. PDF contiene el estado estático completo.
 La ventana local se puede compartir durante una presentación remota, sin publicar el documento.
 
 ## Datos Y Presentacion En Vivo
@@ -179,6 +186,7 @@ herramientas de la aplicación en marcha y reenvía cada llamada. Si la aplicaci
 | `template_inspect`, `deck_template` | inspeccionar un PPTX local, adjuntarlo con asignaciones opcionales por diseño, consultar la plantilla o quitarla con `clear=true` |
 | `theme_from_tokens` | crear un tema desde un sistema de diseño (`tokens_id`, `mode` claro u oscuro, `deck_id` opcional para aplicarlo); sin `tokens_id` lista los sistemas de diseño |
 | `deck_export` | exportar a `pptx`, `pdf`, `html` o `md`; devuelve la ruta del archivo y la URL de descarga |
+| `deck_animations` | animaciones y transiciones nativas del PPTX exportado: leer, fijar, quitar, previsualizar, listar |
 | `slide_image` | generar una imagen para una diapositiva con el estudio de imágenes |
 
 Los resultados que se envían a un asistente se recortan a unos 20 KB con una pista para acotar la petición. Aprobar

@@ -13,7 +13,7 @@ from conftest import BANNED_WORDS
 
 ROOT = Path(__file__).resolve().parent.parent
 # static/ is the minified build of client/src, which is scanned instead.
-SKIP_DIRS = {"node_modules", "public", "static", "hoard_link", "dist-icons", ".git", "__pycache__", "venv", ".pytest_cache", "data", "dist"}
+SKIP_DIRS = {"node_modules", "public", "static", "hoard_link", "vendor", "dist-icons", ".git", "__pycache__", "venv", ".pytest_cache", "data", "dist"}
 TEXT_SUFFIXES = {".py", ".md", ".json", ".toml", ".txt", ".yml", ".yaml", ".jsx", ".js", ".css", ".html"}
 
 

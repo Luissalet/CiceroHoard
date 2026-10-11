@@ -493,6 +493,32 @@ def run_slide_image(svc: Services, a: SlideImageArgs) -> dict:
     return images_mod.generate_for_slide(svc, a.deck_id, a.slide_id, a.prompt)
 
 
+
+class AnimationsArgs(BaseModel):
+    deck_id: str = DeckId
+    action: Literal["get", "set", "reset", "preview", "list"] = Field("get", description="list: the effects and transitions; preview: what the next .pptx would carry per slide.")
+    mode: Optional[str] = Field(None, max_length=60, description="builds | auto | mixed | none | a native effect such as entrance_fly.")
+    trigger: Optional[Literal["after-previous", "on-click"]] = None
+    duration: Optional[float] = Field(None, ge=0.05, le=10, description="Seconds per element.")
+    transition: Optional[str] = Field(None, max_length=60, description="none or a transition such as fade, push, morph.")
+    transition_duration: Optional[float] = Field(None, ge=0.05, le=10)
+    slides: Optional[dict[str, dict[str, Any]]] = Field(None, description="Per-slide overrides by slide id ({} removes one).")
+
+
+def run_deck_animations(svc: Services, a: AnimationsArgs) -> dict:
+    from . import animations as motion
+    if a.action == "list":
+        return motion.catalogue()
+    if a.action == "get":
+        return svc.animations_get(a.deck_id)
+    if a.action == "reset":
+        return svc.animations_reset(a.deck_id)
+    if a.action == "preview":
+        return svc.animations_preview(a.deck_id)
+    settings = {k: v for k, v in a.model_dump().items() if k not in ("deck_id", "action") and v is not None}
+    return svc.animations_set(a.deck_id, settings)
+
+
 TOOLS: list[Tool] = [
     Tool("cicero_status",
          "Health and counts: decks, sources, slides, exports; model and PDF availability. Estado de Cicero.\n"
@@ -619,6 +645,11 @@ TOOLS: list[Tool] = [
          "Export to pptx (editable, native charts), pdf, html or md; returns the file path and download URL. Exportar.\n"
          "PDF uses the local office engine for template decks, or Chromium otherwise. Sinónimos: descargar, guardar, generar archivo, pptx, PDF.\nKeywords: export, pptx, pdf, html, markdown.",
          ExportArgs, _ann(False, False, False), run_deck_export),
+    Tool("deck_animations",
+         "Native animations and transitions of the exported .pptx: get, set, reset, preview, list. Animaciones.\n"
+         "mode builds (click stages only), auto (cover zoom, title fade, chart/table wipe, picture zoom, cards fly), mixed, none or any of 203\n"
+         "native effects; transition none or any of 48 (fade, push, morph...). Per-slide overrides. Sinónimos: animar, transiciones, efectos.",
+         AnimationsArgs, _ann(False, False, True), run_deck_animations),
     Tool("asset_import", "Import an existing local figure or photo; returns an asset_id usable in image blocks.\n"
          "Repeated imports of the same image into this deck reuse its stored asset. Importar imagen local.",
          AssetImportArgs, _ann(False, False, True, False), run_asset_import),

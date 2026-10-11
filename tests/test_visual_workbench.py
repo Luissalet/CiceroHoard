@@ -122,7 +122,8 @@ def test_diagram_objects_and_click_groups_remain_native():
     assert sum(name.startswith('Cicero-step:') for name in names)>=6
     assert not any(shape.shape_type==13 for shape in prs.slides[0].shapes)
 
-def test_motion_does_not_remove_static_export_when_native_engine_is_missing(services):
+def test_motion_is_native_even_without_the_office_engine(services):
+    from cicero_hoard.animations import read_back
     from cicero_hoard.errors import PdfUnavailable
     deck=new_deck(services)
     decks.add_slide(services,deck['id'],title='A staged explanation',blocks=[{'type':'text','text':'Retained','build':1,'effect':'fade'}])
@@ -130,7 +131,8 @@ def test_motion_does_not_remove_static_export_when_native_engine_is_missing(serv
     services._native_render_fn=unavailable
     out=services.export(deck['id'],'pptx')
     path,_=decks.export_file(services,out['id'])
-    assert out['warnings'] and Presentation(str(path)).slides[0].shapes
+    assert 'warnings' not in out and Presentation(str(path)).slides[0].shapes
+    assert read_back(path.read_bytes())[0]['animations']==['entrance_fade']
 
 def test_variant_previews_are_readonly(client):
     deck=client.post('/api/decks',json={'title':'Composition review'}).json()
