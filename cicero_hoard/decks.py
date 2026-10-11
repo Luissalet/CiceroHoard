@@ -97,6 +97,14 @@ def deck_view(svc: Any, deck_id: str) -> dict[str, Any]:
         view["theme_def"] = custom
     if row['template']:
         view['template'] = jload(row['template'], {})
+    transitions = svc.db.get_setting('transitions:' + deck_id, {}) or {}
+    view['transitions'] = transitions
+    view['linked_data'] = bool(svc.db.one('SELECT 1 FROM data_links WHERE deck_id=? AND enabled=1', (deck_id,)))
+    view['content_version'] = sha256_hex(jdump([(s['id'],s['revision']) for s in slides]))[:16]
+    for slide in slides:
+        setting = transitions.get('slides', {}).get(slide['id'], transitions.get('default'))
+        if setting:
+            slide['transition'] = setting
     return view
 
 
@@ -282,10 +290,27 @@ def _write_revision(svc: Any, slide_id: str, reason: str) -> None:
 
 
 def _check_blocks(svc: Any, deck_id: str, blocks: list[dict[str, Any]]) -> None:
+    ids = [b['id'] for b in blocks if b.get('id')]
+    if len(set(ids)) != len(ids):
+        raise CiceroError('Block IDs must be unique within a slide.')
     for b in blocks:
-        if b.get("type") == "image":
-            if svc.db.one("SELECT 1 FROM assets WHERE id = ? AND deck_id = ?", (b["asset_id"], deck_id)) is None:
+        if b.get("type") in ('image', 'video', 'audio'):
+            asset = svc.db.one("SELECT * FROM assets WHERE id = ? AND deck_id = ?", (b["asset_id"], deck_id))
+            if asset is None:
                 raise CiceroError(f"Image asset {b['asset_id']} does not belong to this deck; upload it first.")
+            if b['type'] == 'image' and not asset['mime'].startswith('image/'):
+                raise CiceroError('Use an audio/video block for media assets.')
+            if b['type'] in ('video', 'audio'):
+                from .media import inspect, GetArgs
+                info = inspect(svc, GetArgs(deck_id=deck_id, asset_id=b['asset_id']))['items'][0]
+                if info['kind'] != b['type']:
+                    raise CiceroError('The media block type does not match its stream.')
+                if info['duration'] and (b.get('start', 0) >= info['duration'] or (b.get('end') or 0) > info['duration'] + .05):
+                    raise CiceroError('Playback range exceeds the media duration.')
+                if b.get('poster_id'):
+                    poster = svc.db.one('SELECT mime FROM assets WHERE id=? AND deck_id=?', (b['poster_id'], deck_id))
+                    if not poster or not poster['mime'].startswith('image/'):
+                        raise CiceroError('The poster must be an image in this deck.')
 
 
 def _check_sources(svc: Any, deck_id: str, ids: list[int]) -> list[int]:
@@ -339,14 +364,16 @@ def add_slide_batch(svc: Any, deck_id: str, batch_key: str, slides: list[dict[st
                 raise CiceroError("This batch_key already names different content; choose a new batch_key.")
             ids = jload(receipt['slide_ids'], [])
             current = [get_slide(svc, deck_id, sid) for sid in ids]
-            return {"deck_id": deck_id, "batch_key": batch_key, "replayed": True, "slides": current}
+            return {"deck_id": deck_id, "batch_key": batch_key, "replayed": True, "slides": current,
+                    'receipt':{'slide_ids':ids,'batch_key':batch_key}}
         count = conn.execute("SELECT COUNT(*) FROM slides WHERE deck_id=?", (deck_id,)).fetchone()[0]
         if not slides or count + len(slides) > MAX_SLIDES:
             raise CiceroError(f"A batch must be nonempty and the deck may contain at most {MAX_SLIDES} slides.")
         created = [add_slide(svc, deck_id, **slide) for slide in slides]
         conn.execute("INSERT INTO slide_batches VALUES (?,?,?,?)",
                      (deck_id, batch_key, digest, jdump([s['id'] for s in created])))
-    return {"deck_id": deck_id, "batch_key": batch_key, "replayed": False, "slides": created}
+    return {"deck_id": deck_id, "batch_key": batch_key, "replayed": False, "slides": created,
+            'receipt':{'slide_ids':[s['id'] for s in created],'batch_key':batch_key}}
 
 
 def patch_slide(svc: Any, deck_id: str, slide_id: str, patch: dict[str, Any], *, reason: str = "edited") -> dict[str, Any]:
@@ -370,6 +397,16 @@ def patch_slide(svc: Any, deck_id: str, slide_id: str, patch: dict[str, Any], *,
         sets.append(f"{key} = ?")
         params.append(jdump(value) if key in ("blocks", "sources") else value)
     with svc.db.transaction() as conn:
+        if 'sources' in fields and reason not in ('linked visual', 'linked data refresh'):
+            bindings = conn.execute('SELECT block_id,definition FROM data_bindings WHERE slide_id=?', (slide_id,)).fetchall()
+            linked_ids = {b['block_id'] for b in bindings}
+            owned = {sid for b in bindings for sid in jload(b['definition'], {}).get('source_ids', [])}
+            old_blocks = jload(row['blocks'], [])
+            static_changed = ([b for b in fields.get('blocks', old_blocks) if b.get('id') not in linked_ids]
+                              != [b for b in old_blocks if b.get('id') not in linked_ids])
+            previous = svc.db.get_setting('manual_citations:' + slide_id, [])
+            pinned = [sid for sid in fields['sources'] if sid not in owned or sid in previous or static_changed]
+            svc.db.set_setting('manual_citations:' + slide_id, pinned)
         conn.execute(f"UPDATE slides SET {', '.join(sets)}, status = 'draft', revision = revision + 1, updated_ts = ? WHERE id = ?",
                      (*params, svc.clock(), slide_id))
     _write_revision(svc, slide_id, reason)
@@ -425,7 +462,7 @@ def revert_slide(svc: Any, deck_id: str, slide_id: str, revision: int) -> dict[s
     patch = {k: snap.get(k) for k in ("layout", "title", "subtitle", "blocks", "notes", "image_prompt")}
     patch["sources"] = [i for i in snap.get("sources", []) if svc.db.one("SELECT 1 FROM sources WHERE id = ? AND deck_id = ?", (i, deck_id))]
     # a snapshot can name images or sources that no longer exist; keep only what is still there
-    patch["blocks"] = [b for b in (patch["blocks"] or []) if b.get("type") != "image" or svc.db.one("SELECT 1 FROM assets WHERE id = ?", (b.get("asset_id"),))]
+    patch["blocks"] = _available_blocks(svc, deck_id, patch['blocks'])
     with svc.db.transaction() as conn:
         conn.execute(
             "UPDATE slides SET layout = ?, title = ?, subtitle = ?, blocks = ?, notes = ?, sources = ?, image_prompt = ?, status = 'draft', "
@@ -442,6 +479,18 @@ def revert_slide(svc: Any, deck_id: str, slide_id: str, revision: int) -> dict[s
 SLIDE_CONTENT_FIELDS = ("layout", "title", "subtitle", "blocks", "notes", "sources", "image_prompt", "status")
 
 
+def _available_blocks(svc, deck_id, blocks):
+    available=[]
+    for b in blocks or []:
+        if b.get('type') in ('image','video','audio'):
+            if not svc.db.one('SELECT 1 FROM assets WHERE id=? AND deck_id=?',(b.get('asset_id'),deck_id)):
+                continue
+            if b.get('poster_id') and not svc.db.one('SELECT 1 FROM assets WHERE id=? AND deck_id=?',(b['poster_id'],deck_id)):
+                b={**b,'poster_id':None}
+        available.append(b)
+    return available
+
+
 def slide_etag(slide: dict[str, Any]) -> str:
     """A fingerprint of what a slide says (not of its revision number or position): two states with the same text, blocks, sources
     and approval have the same etag, so undoing the newest of two edits gives back the etag the older one left."""
@@ -453,8 +502,7 @@ def restore_slide(svc: Any, deck_id: str, slide_id: str, state: dict[str, Any], 
     """Put a slide back to ``state`` (a slide as ``get_slide`` returned it earlier), as a new revision. Pictures and sources that
     no longer exist are left out, as ``revert_slide`` does."""
     _slide_row(svc, deck_id, slide_id)
-    blocks = [b for b in (state.get("blocks") or [])
-              if b.get("type") != "image" or svc.db.one("SELECT 1 FROM assets WHERE id = ?", (b.get("asset_id"),))]
+    blocks = _available_blocks(svc, deck_id, state.get('blocks'))
     sources = [i for i in (state.get("sources") or []) if svc.db.one("SELECT 1 FROM sources WHERE id = ? AND deck_id = ?", (i, deck_id))]
     status = "approved" if state.get("status") == "approved" else "draft"
     with svc.db.transaction() as conn:
@@ -476,8 +524,7 @@ def reinsert_slide(svc: Any, deck_id: str, state: dict[str, Any], *, reason: str
     count = svc.db.one("SELECT COUNT(*) c FROM slides WHERE deck_id = ?", (deck_id,))["c"]
     position = max(1, min(count + 1, int(state.get("position") or count + 1)))
     sources = [i for i in (state.get("sources") or []) if svc.db.one("SELECT 1 FROM sources WHERE id = ? AND deck_id = ?", (i, deck_id))]
-    blocks = [b for b in (state.get("blocks") or [])
-              if b.get("type") != "image" or svc.db.one("SELECT 1 FROM assets WHERE id = ?", (b.get("asset_id"),))]
+    blocks = _available_blocks(svc, deck_id, state.get('blocks'))
     ts = svc.clock()
     with svc.db.transaction() as conn:
         conn.execute("UPDATE slides SET position = position + 1 WHERE deck_id = ? AND position >= ?", (deck_id, position))
@@ -631,6 +678,9 @@ def asset_info(svc: Any, asset_id: str) -> Optional[dict[str, Any]]:
     if not path.is_file():
         return None
     result = {"id": row["id"], "deck_id": row["deck_id"], "width": row["width"], "height": row["height"], "mime": row["mime"], "path": path}
+    metadata = svc.db.one('SELECT definition FROM media_metadata WHERE asset_id=?', (asset_id,))
+    if metadata:
+        result['metadata'] = jload(metadata['definition'], {})
     if row["ext"] == "svg":
         fallback = path.with_suffix(".png")
         if fallback.is_file(): result["fallback_path"] = fallback

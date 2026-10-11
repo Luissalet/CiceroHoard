@@ -249,6 +249,18 @@ This is local screen sharing, not a hosted remote broadcast. Offline HTML contai
 `timeline` blocks hold 2-8 labeled milestones with optional date, detail and emphasis; `effect: stages`
 reveals them on click. Images support `fit: contain|cover` and `position: [0..1,0..1]` crop focus.
 
+## Motion, Media And Linked Data
+
+- `GET|PUT|DELETE /api/decks/{id}/transitions`: default and per-slide effects; optional native effect override.
+- `POST|GET /api/decks/{id}/media`: multipart import or JSON local path/HTTP(S) URL; inspect metadata and poster.
+- `POST /api/decks/{id}/live/media`: play, pause, seek, volume or mute on the active slide.
+- `GET|POST /api/decks/{id}/data-links`: inspect links or create a durable local/URL source.
+- `POST /api/decks/{id}/data-links/bind`: bind a visual recipe by slide and stable block ID.
+- `POST /api/decks/{id}/data-links/control`: refresh, pause, resume or unlink.
+- `GET /api/decks/{id}/data-links/version`: lightweight content version for live view refresh.
+
+These routes share eight MCP tool implementations. [Full contract](LIVE_MEDIA.md).
+
 ## PWA and client
 
 `GET /manifest.webmanifest` and `GET /sw.js` serve the installable app. Any other path that is not under `/api/` is

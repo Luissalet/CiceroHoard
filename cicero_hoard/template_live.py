@@ -14,7 +14,7 @@ from .layouts import Box,Para,build_plan,fit_size,Ctx
 from .templates import TemplateBinding,PX,is_slide_number
 from .template_pptx import _template_theme
 from .themes import theme_of
-from .render import CSS,esc,_theme_vars,_asset_src,motion_box_html,present_document,SCRIPT
+from .render import CSS,esc,_theme_vars,_asset_src,motion_box_html,present_document,SCRIPT,MEDIA_SCRIPT,linked_attributes
 from . import native_slides
 
 
@@ -91,8 +91,9 @@ def document(svc,deck,*,slide_id=None,mode='stacked',inline=True):
         raw=base64.b64encode((folder/f'slide-{index+1}.png').read_bytes()).decode('ascii')
         theme=item['theme'];vars=_theme_vars(theme)+''.join(f'--{key}:{value};' for key,value in theme['colors'].items() if key.endswith('_ink'))
         content=''.join(motion_box_html(box,theme,deck['language'],svc.assets_lookup(),src) for box in item['boxes'])
-        sections.append(f'<section class="slide" id="s-{esc(s["id"])}" data-index="{index}" aria-label="{esc(s["title"])}"><div class="stage" style="{esc(vars)};width:{width}px;height:{height}px"><img class="furniture" alt="" src="data:image/png;base64,{raw}"/>{content}</div></section>')
+        from .transitions import attributes
+        sections.append(f'<section class="slide" id="s-{esc(s["id"])}" data-index="{index}"{attributes(s)} aria-label="{esc(s["title"])}"><div class="stage" style="{esc(vars)};width:{width}px;height:{height}px"><img class="furniture" alt="" src="data:image/png;base64,{raw}"/>{content}</div></section>')
     style=CSS+f'.furniture{{position:absolute;inset:0;width:100%;height:100%}}.stage{{width:{width}px;height:{height}px}}.slide{{aspect-ratio:{width}/{height}}}'
     script=SCRIPT.replace('/1280','/'+str(width))
-    result=f'<!doctype html><html lang="{deck["language"]}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{esc(deck["title"])}</title><style>{style}</style></head><body class="mode-{mode}" data-mode="{mode}"><main class="deck">'+''.join(sections)+f'</main><script>{script}</script></body></html>'
+    result=f'<!doctype html><html lang="{deck["language"]}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{esc(deck["title"])}</title><style>{style}</style></head><body class="mode-{mode}" data-mode="{mode}"{linked_attributes(deck,inline)}><main class="deck">'+''.join(sections)+f'</main><script>{script}{MEDIA_SCRIPT.removeprefix("\n<script>\n").removesuffix("</script>\n")}</script></body></html>'
     return present_document(result,width,height) if mode=='present' else result

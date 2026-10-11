@@ -184,6 +184,23 @@ def _para_style(p: Para, lang_fonts: dict[str, str]) -> str:
 
 def box_html(box: Box, theme: dict[str, Any], lang: str, assets: AssetLookup, src: Callable[[str], str]) -> str:
     geo = f"left:{_px(box.x)};top:{_px(box.y)};width:{_px(box.w)};height:{_px(box.h)}"
+    if box.kind == 'media':
+        data = box.data
+        kind = data['type']
+        attrs = ''.join(' '+name for name in ('controls', 'loop', 'muted') if data.get(name))
+        if data.get('autoplay'):
+            attrs += ' data-autoplay'
+        poster = f' poster="{esc(src(data["poster_id"]))}"' if kind == 'video' and data.get('poster_id') else ''
+        track = ''
+        if data.get('subtitles'):
+            content = base64.b64encode(data['subtitles'].encode('utf-8')).decode('ascii')
+            track = f'<track default kind="captions" srclang="{esc(lang)}" src="data:text/vtt;base64,{content}">'
+        fallback = f'<img class="b media-poster" style="{geo};object-fit:contain" alt="{esc(data.get("caption") or kind)}" src="{esc(src(data["poster_id"]))}">' if data.get('poster_id') else ''
+        return (f'<{kind} class="b slide-media" style="{geo};object-fit:{data.get("fit", "contain")}" '
+                f'src="{esc(src(data["asset_id"]))}" preload="metadata" playsinline{attrs}{poster} '
+                f'data-start="{data.get("start",0)}" data-end="{data.get("end", "")}" '
+                f'data-volume="{data.get("volume",1)}" data-rate="{data.get("playback_rate",1)}" '
+                f'aria-label="{esc(data.get("caption") or kind)}">{track}</{kind}>'+fallback)
     if box.kind=='marker':
         return f'<div class="b" style="{geo};background:var(--{box.fill});border-radius:50%"></div>'
     if box.kind=='node':
@@ -243,7 +260,8 @@ def slide_section(slide: dict[str, Any], *, deck: dict[str, Any], theme: dict[st
     body = "".join(motion_box_html(b,theme,lang,assets,src) for b in plan.boxes)
     ui = UI_TEXT.get(lang, UI_TEXT["es"])
     label = f'{ui["slide"]} {number} {ui["of"]} {total}: {slide.get("title") or ""}'
-    return (f'<section class="slide" id="s-{esc(slide["id"])}" data-index="{index}" aria-label="{esc(label.strip())}">'
+    from .transitions import attributes
+    return (f'<section class="slide" id="s-{esc(slide["id"])}" data-index="{index}"{attributes(slide)} aria-label="{esc(label.strip())}">'
             f'<div class="stage" style="{esc(_theme_vars(theme))}">{body}</div></section>'), plan
 
 
@@ -273,6 +291,7 @@ body{font-family:"Segoe UI",Arial,sans-serif;background:#1c1f26;min-height:100vh
 .visual-table th{text-align:left;background:var(--accent);color:white;padding:12px}
 .visual-table td{padding:12px;border-bottom:1px solid var(--muted);overflow-wrap:anywhere}
 .fragment{opacity:1;visibility:visible}
+.media-poster{display:none}
 @media(prefers-reduced-motion:reduce){.fragment{transition:none!important;animation:none!important}}
 .mode-present{overflow:hidden}
 .mode-present .deck{padding:0;height:100vh;display:grid;place-items:center}
@@ -292,6 +311,7 @@ html,body{background:#fff!important;margin:0!important;padding:0!important;min-h
 .slide:last-child{break-after:auto;page-break-after:auto}
 .stage{transform:none!important}
 .hud{display:none!important}
+.slide-media{display:none!important}.media-poster{display:block!important}
 }
 """
 
@@ -328,6 +348,21 @@ fit();
 if(mode==='present')show(isNaN(start)?0:start-1);
 else if(hud)hud.textContent='';
 })();
+"""
+
+MEDIA_SCRIPT = """
+<script>
+document.querySelectorAll('.slide-media').forEach(media=>{
+  const start=Number(media.dataset.start)||0,end=Number(media.dataset.end)||Infinity;
+  const setup=()=>{media.volume=Number(media.dataset.volume);media.playbackRate=Number(media.dataset.rate)||1;
+    if(start&&Math.abs(media.currentTime-start)>.05)media.currentTime=start;};
+  media.addEventListener('loadedmetadata',setup);
+  if(media.readyState>=1)setup();
+  media.addEventListener('play',()=>{if(media.currentTime<start||media.currentTime>=end)media.currentTime=start;});
+  media.addEventListener('timeupdate',()=>{if(media.currentTime>=end){
+    if(media.loop){media.currentTime=start;media.play().catch(()=>{});}else{media.pause();media.currentTime=end;}}});
+});
+</script>
 """
 
 
@@ -370,8 +405,8 @@ def render_document(deck: dict[str, Any], *, assets: AssetLookup, inline: bool =
     doc = (f'<!doctype html><html lang="{esc(lang)}"><head><meta charset="utf-8">'
            '<meta name="viewport" content="width=device-width, initial-scale=1">'
            f'<title>{esc(deck["title"])}</title><style>{CSS}</style></head>'
-           f'<body class="mode-{mode}" data-mode="{mode}"><main class="deck">{"".join(sections)}</main>{hud}'
-           f'<script>{SCRIPT}</script></body></html>')
+           f'<body class="mode-{mode}" data-mode="{mode}"{linked_attributes(deck,inline)}><main class="deck">{"".join(sections)}</main>{hud}'
+           f'<script>{SCRIPT}{MEDIA_SCRIPT.removeprefix("\n<script>\n").removesuffix("</script>\n")}</script></body></html>')
     return doc, plans
 
 
@@ -398,10 +433,34 @@ def present_document(document: str,width=1280,height=720) -> str:
     const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
     const started=Date.now();
     const deck=new Reveal({{width:{width},height:{height},margin:0,center:false,controls:true,progress:true,hash:false,
-      transition:reduced?'none':'fade',transitionSpeed:'fast',keyboard:{{66:()=>document.body.classList.toggle('blackout')}}}});
+      transition:reduced?'none':'fade',transitionSpeed:'fast',autoAnimate:!reduced,
+      keyboard:{{66:()=>document.body.classList.toggle('blackout')}}}});
     deck.initialize();
+    deck.on('ready',()=>{{
+      const saved=sessionStorage.getItem('cicero-resume:'+location.pathname);
+      if(saved){{sessionStorage.removeItem('cicero-resume:'+location.pathname);try{{const p=JSON.parse(saved);deck.slide(p.h,p.v,p.f)}}catch{{}}}}
+    }});
+    const liveUrl=document.body.dataset.liveUrl;
+    if(liveUrl)setInterval(async()=>{{try{{const r=await fetch(liveUrl);if(!r.ok)return;const s=await r.json();
+      if(s.content_version!==document.body.dataset.contentVersion){{const i=deck.getIndices();sessionStorage.setItem('cicero-resume:'+location.pathname,JSON.stringify(i));location.reload();}}
+    }}catch{{}}}},2000);
+    deck.on('slidechanged',event=>{{
+      document.querySelectorAll('.slide-media').forEach(media=>{{
+        if(!event.currentSlide.contains(media))media.pause();
+      }});
+      if(!reduced&&event.currentSlide.dataset.transitionDuration){{
+        event.currentSlide.style.transitionDuration=Number(event.currentSlide.dataset.transitionDuration)+'ms';
+      }}
+    }});
     const timer=document.createElement('div');timer.className='elapsed';document.body.append(timer);
     setInterval(()=>{{const s=Math.floor((Date.now()-started)/1000);timer.textContent=String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0')}},1000);
     </script>'''
     document=document.replace('</head>',f'<style>{css}\n{overrides}\nbody.blackout::after{{content:"";position:fixed;inset:0;background:#000;z-index:100}}</style></head>')
-    return document.replace('</body>',start+'</body>')
+    return document.replace('</body>',start+MEDIA_SCRIPT+'</body>')
+
+
+def linked_attributes(deck, inline):
+    if inline or not deck.get('linked_data'):
+        return ''
+    return (f' data-live-url="/api/decks/{esc(deck["id"])}/data-links/version"'
+            f' data-content-version="{esc(deck["content_version"])}"')

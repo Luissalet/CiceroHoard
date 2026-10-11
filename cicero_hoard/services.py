@@ -9,6 +9,7 @@ from __future__ import annotations
 import dataclasses
 import logging
 import time
+import threading
 from typing import Any, Callable, Optional
 
 from . import APP_ID, SERVICE, __version__
@@ -56,12 +57,16 @@ class Services:
         self._native_render_fn = native_render_fn
         from .presentation import Sessions
         self.presentations=Sessions(clock_fn)
+        from .data_links import Worker
+        self.data_link_lock = threading.RLock()
+        self.data_link_worker = Worker(self)
 
     # ---------------- lifecycle ----------------
     def start(self) -> None:
-        pass
+        self.data_link_worker.start()
 
     def stop(self) -> None:
+        self.data_link_worker.stop()
         self._close_link()
         self.db.close()
 
@@ -183,7 +188,7 @@ class Services:
                 if slide['id']==slide_id:slide['layout']=layout
         if deck.get('template'):
             from .template_live import document
-            return document(self,deck,slide_id=slide_id,mode='single' if slide_id else mode)
+            return document(self,deck,slide_id=slide_id,mode='single' if slide_id else mode,inline=False)
         document, _ = render_document(deck, assets=self.assets_lookup(), inline=False, mode="single" if slide_id else "stacked", only_slide=slide_id)
         if mode=='present':
             from .render import present_document
@@ -216,6 +221,10 @@ class Services:
         return folder,report
 
     def export(self, deck_id: str, fmt: str) -> dict[str, Any]:
+        with self.data_link_lock:
+            return self._export(deck_id,fmt)
+
+    def _export(self, deck_id: str, fmt: str) -> dict[str, Any]:
         warnings=[]
         if fmt not in EXPORT_FORMATS:
             raise CiceroError(f"Unknown export format {fmt!r}. Use one of: {', '.join(EXPORT_FORMATS)}.")
@@ -235,7 +244,8 @@ class Services:
             data = build_pptx(deck, assets=assets)
             # click stages, auto/mixed/effect animations and slide transitions, written as native OOXML (animations.json)
             from . import animations as motion
-            data, motion_report = motion.apply(data, self.animations_get(deck_id), [s['id'] for s in deck['slides']])
+            data, motion_report = motion.apply(data, self.animations_get(deck_id), [s['id'] for s in deck['slides']],
+                                               transitions={s['id']:s['transition'] for s in deck['slides'] if s.get('transition')})
         elif fmt == "html":
             from .export_html import build_html
 
@@ -256,6 +266,13 @@ class Services:
             from .chart_cache import refresh_numeric_caches
             data,cache_review=refresh_numeric_caches(data)
         export = store.add_export(self, deck_id, fmt, data, deck["title"])
+        from .data_links import inspect,RefArgs
+        linked=inspect(self,RefArgs(deck_id=deck_id))['items']
+        if linked:
+            export['data_snapshot']=[{k:r[k] for k in ('id','source_id','checked_ts','refreshed_ts','error')} for r in linked]
+            warnings.extend('Linked data retained its last good snapshot: '+r['error'] for r in linked if r['error'])
+        if fmt=='pptx' and any(b.get('subtitles') and b['type']=='audio' for s in deck['slides'] for b in s['blocks']):
+            warnings.append('Timed audio captions are available in HTML only; native audio retains its caption label.')
         if cache_review is not None:export['cache_review']=cache_review
         if warnings:export['warnings']=warnings
         if fmt=='pptx':export['animations']={k:motion_report[k] for k in ('animated','transitions')}
@@ -290,7 +307,8 @@ class Services:
         deck = store.deck_view(self, deck_id)
         if not deck['slides']:
             raise CiceroError("The presentation has no slides to export.", code="no_slides")
-        _, report = motion.apply(build_pptx(deck, assets=self.assets_lookup()), self.animations_get(deck_id), [s['id'] for s in deck['slides']])
+        _, report = motion.apply(build_pptx(deck, assets=self.assets_lookup()), self.animations_get(deck_id), [s['id'] for s in deck['slides']],
+                                  transitions={s['id']:s['transition'] for s in deck['slides'] if s.get('transition')})
         return report
 
     def base_url(self) -> str:

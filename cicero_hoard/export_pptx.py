@@ -30,10 +30,17 @@ LANG_IDS = {"es": "es-ES", "en": "en-US"}
 
 
 def stamp_motion(slide,previous,box):
-    if box.build is None or box.build<1 or box.effect=='none':return
     for shape in slide.shapes:
         if shape.shape_id not in previous:
-            shape.name=f'Cicero-step:{box.build}:{box.effect or "fade"}:{box.duration_ms}'
+            if box.object_id:
+                shape._element.find('.//' + qn('p:cNvPr')).set('descr', 'Cicero-object:' + box.object_id)
+                shape.name = '!!' + box.object_id + '-' + str(shape.shape_id - min(s.shape_id for s in slide.shapes if s.shape_id not in previous))
+            if box.build is not None and box.build > 0 and box.effect != 'none':
+                # Keep the existing animation stamp in descr when the name is needed for native morph.
+                stamp = f'Cicero-step:{box.build}:{box.effect or "fade"}:{box.duration_ms}'
+                shape.name = stamp if not box.object_id else shape.name
+                if box.object_id:
+                    shape._element.find('.//' + qn('p:cNvPr')).set('descr', stamp + '|Cicero-object:' + box.object_id)
 
 
 def _rgb(hex_color: str) -> RGBColor:
@@ -214,6 +221,9 @@ def _add_chart(slide: Any, box: Box, theme: dict[str, Any], lang: str) -> None:
 
 
 def _add_box(slide: Any, box: Box, theme: dict[str, Any], lang: str, assets: AssetLookup, title_shape: Any) -> Any:
+    if box.kind == 'media':
+        from .media import add_native
+        return add_native(slide, box, assets)
     if box.kind=='marker':
         shape=slide.shapes.add_shape(MSO_SHAPE.OVAL,_emu(box.x),_emu(box.y),_emu(box.w),_emu(box.h))
         shape.fill.solid();shape.fill.fore_color.rgb=_rgb(_color(theme,box.fill or 'accent'))
@@ -347,5 +357,7 @@ def build_pptx(deck: dict[str, Any], *, assets: AssetLookup) -> bytes:
         if notes:
             slide.notes_slide.notes_text_frame.text = notes
     out = io.BytesIO()
+    from .transitions import apply_native
+    apply_native(prs, deck)
     prs.save(out)
     return out.getvalue()

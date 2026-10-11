@@ -1,5 +1,14 @@
 # Cicero's Hoard
 
+## Movimiento, Multimedia Y Datos Vinculados
+
+`deck_transitions` configura transiciones de pantalla y archivo, morph por identidad y ajustes por diapositiva.
+`media_import` y `media_get` importan e inspeccionan audio/video local o por HTTP(S); se coloca mediante bloques tipados.
+`deck_media_control` controla la reproduccion de la diapositiva activa.
+`dataset_link`, `dataset_links`, `dataset_bind` y `dataset_link_control` ofrecen actualizacion automatica durable,
+snapshots inmutables, recetas visuales y recuperacion del ultimo estado valido. Las mismas funciones estan en el editor.
+El catalogo publico contiene 58 herramientas. Contratos y diferencias de formato: [multimedia y datos](docs/LIVE_MEDIA.md).
+
 Un espacio de trabajo local que convierte un encargo y unos documentos en una presentación editable. Le das un
 objetivo, un público y el material; propone un guion, escribe las diapositivas con notas del orador, te deja revisar
 y aprobar cada diapositiva por separado, aplica un tema y exporta el resultado. Está pensado para que lo usen a la

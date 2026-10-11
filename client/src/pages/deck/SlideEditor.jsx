@@ -8,6 +8,7 @@ import BlockEditor from "./BlockEditor.jsx";
 import { blockToApi, blockToDraft, newBlock } from "./blocks.js";
 import {Play,Eye} from 'lucide-react';
 import DataPanel from './DataPanel.jsx';
+import LinkedData from './LinkedData.jsx';
 
 const toDraft = (slide) => ({
   layout: slide.layout || "bullets",
@@ -186,6 +187,7 @@ export default function SlideEditor({ slide, onDeleted }) {
       <Section title={t("notes")}>
         <textarea className="field" rows={5} value={draft.notes} disabled={off} aria-label={t("notes")} onChange={set("notes")} placeholder={t("notes_ph")} />
       </Section>
+      <LinkedData slide={slide} disabled={off||dirty}/>
 
       <Section title={t("regenerate")}>
         <Field label={t("regenerate_feedback")} help={dirty ? t("regenerate_dirty") : t("regenerate_help")}>

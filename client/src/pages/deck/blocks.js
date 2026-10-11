@@ -22,6 +22,7 @@ export function newBlock(type, t) {
     case "metrics": return { type, items: [{ value: "", label: "", detail: "" }] };
     case "table": return { type, headers: ["", ""], rows: [["", ""]] };
     case 'timeline':return {type,effect:'stages',items:[{label:'',date:'',detail:''},{label:'',date:'',detail:''}]};
+    case 'video':case 'audio':return {type,asset_id:'',caption:'',start:0,volume:1,playback_rate:1,controls:true,autoplay:false,loop:false,muted:false};
     default: return { type: "image", asset_id: "", caption: "" };
   }
 }
@@ -32,6 +33,13 @@ const withText = (obj, key, value) => { const v = (value || "").trim(); if (v) o
 // Throws Error(message) with a user-facing message when a block is not valid.
 function convertBlock(block, t, n) {
   switch (block.type) {
+    case 'video':case 'audio': {
+      if(!block.asset_id)throw new Error(t('media_missing',{n}));
+      const out={...block};
+      for(const key of ['start','volume','playback_rate'])out[key]=Number(block[key]);
+      out.end=block.end===''||block.end==null?null:Number(block.end);
+      return out;
+    }
     case "bullets": return { type: "bullets", items: compact(block.items) };
     case "text": return { type: "text", text: block.text };
     case "quote": { const out = { type: "quote", text: block.text }; withText(out, "attribution", block.attribution); return out; }

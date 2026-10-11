@@ -1,5 +1,5 @@
 import React,{useEffect,useState} from 'react';
-import {ArrowLeft,ChevronLeft,ChevronRight,ExternalLink,Pause,Play,RotateCcw,MonitorOff} from 'lucide-react';
+import {ArrowLeft,ChevronLeft,ChevronRight,ExternalLink,Pause,Play,RotateCcw,MonitorOff,VolumeX,Volume2} from 'lucide-react';
 import {api} from '../api.js';
 import {useApp} from '../App.jsx';
 import './presenter.css';
@@ -7,6 +7,8 @@ import './presenter.css';
 const time=(seconds)=>{const s=Math.max(0,Math.floor(Math.abs(seconds)));return `${seconds<0?'-':''}${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`};
 export default function Presenter({deckId}){
  const {t}=useApp();const [room,setRoom]=useState(null),[notes,setNotes]=useState([]),[error,setError]=useState(''),[busy,setBusy]=useState(false);
+ const [mediaIndex,setMediaIndex]=useState(0),[seek,setSeek]=useState(''),[volume,setVolume]=useState(1);
+ useEffect(()=>{setMediaIndex(0);setSeek('')},[room?.slide_index]);
  useEffect(()=>{
    let active=true,timer;
    const init=async()=>{try{const r=await api.liveStart(deckId,{});const speaker=await api.liveSpeaker(deckId,r.session_id);
@@ -23,6 +25,7 @@ export default function Presenter({deckId}){
    window.location.reload();
  }catch(e){setError(e.message);setBusy(false)}};
  const current=room?.slides[room.slide_index],next=room?.slides[room.slide_index+1];
+ const mediaCommand=async(action,value)=>{setBusy(true);try{await api.mediaControl(deckId,{action,media_index:mediaIndex,...(value==null?{}:{value})});setError('')}catch(e){setError(e.message)}finally{setBusy(false)}};
  const button=(Icon,label,action,extra={})=><button type="button" className="btn btn-icon" title={label} aria-label={label} disabled={busy||!room} onClick={()=>command(action,extra)}><Icon size={20}/></button>;
  return <main className="presenter" id="main" tabIndex={-1}>
    <header className="presenter-toolbar"><a className="btn btn-icon" href={`#/deck/${deckId}/slides`} title={t('back')} aria-label={t('back')}><ArrowLeft size={20}/></a><h1>{t('presenter_console')}</h1>
@@ -43,8 +46,14 @@ export default function Presenter({deckId}){
       <label>{t('target_minutes')}<input className="field" type="number" min="0.5" max="240" step="0.5" defaultValue={room.target_seconds/60} onBlur={e=>{const v=Number(e.target.value);if(v>=.5&&v<=240)command('target',{target_seconds:Math.round(v*60)})}}/></label>
       <label>{t('main_slides')}<input className="field" type="number" min="1" max={room.slides.length} defaultValue={room.main_slide_count} onBlur={e=>{const v=Number(e.target.value);if(Number.isInteger(v)&&v>=1&&v<=room.slides.length)command('main',{main_slide_count:v})}}/></label>
     </div></div>
+    {current.media?.length>0&&<div className="flex flex-wrap items-center gap-2 py-2">
+     <select className="field" style={{width:180}} aria-label={t('media_index')} value={mediaIndex} disabled={busy} onChange={e=>setMediaIndex(Number(e.target.value))}>{current.media.map((m,i)=><option key={i} value={i}>{m.caption||`${t('block_'+m.type)} ${i+1}`}</option>)}</select>
+     {[[Play,'play','media_play'],[Pause,'pause','media_pause'],[VolumeX,'mute','media_muted',1],[Volume2,'mute','media_volume',0]].map(([Icon,action,label,value])=><button type="button" key={label} className="btn btn-icon" disabled={busy} title={t(label)} aria-label={t(label)} onClick={()=>mediaCommand(action,value)}><Icon size={18}/></button>)}
+     <label className="flex items-center gap-2"><Volume2 size={16}/><span className="sr-only-live">{t('media_volume')}</span><input type="range" min="0" max="1" step=".01" value={volume} disabled={busy} onChange={e=>setVolume(Number(e.target.value))} onPointerUp={()=>mediaCommand('volume',volume)} onKeyUp={()=>mediaCommand('volume',volume)}/></label>
+     <input type="number" className="field" style={{width:100}} min="0" value={seek} disabled={busy} aria-label={t('media_seek')} placeholder="s" onChange={e=>setSeek(e.target.value)} onBlur={()=>{if(seek!=='')mediaCommand('seek',Number(seek))}}/>
+    </div>}
     <div className="presenter-workspace"><section className="presenter-current" aria-label={t('current_slide')}>
-       <iframe key={room.session_id} src={room.audience_path} title={t('current_slide')} allow="fullscreen"/>
+       <iframe key={room.session_id} src={room.audience_path+'?monitor=true'} title={t('current_slide')} allow="fullscreen"/>
        <h2>{current.title}</h2>
     </section><aside className="presenter-notes"><h2>{t('notes')}</h2><div className="presenter-note-text" tabIndex={0}>{notes.find(n=>n.id===current.id)?.notes||t('notes_empty')}</div>
        <h2>{t('next_slide')}</h2>{next?<iframe src={api.slidePreviewUrl(deckId,next.id,next.revision)} title={t('next_slide')}/>:<p>{t('end_presentation')}</p>}

@@ -26,11 +26,21 @@ REQUIRED.update({'visual_catalog','slide_visual_update','slide_variants','deck_s
 READ_ONLY.update({'visual_catalog','slide_variants','deck_scene','deck_present'})
 REQUIRED.update({'dataset_import','dataset_get','dataset_transform','dataset_visual','deck_live_start','deck_live_state','deck_live_control'})
 READ_ONLY.update({'dataset_get','dataset_visual','deck_live_state'})
+REQUIRED.update({'deck_transitions','media_import','media_get','dataset_link','dataset_links','dataset_link_control','dataset_bind','deck_media_control'})
+READ_ONLY.update({'media_get','dataset_links'})
 
 
 def test_catalogue_has_every_tool_once():
     names = [t.name for t in at.TOOLS]
-    assert set(names) == REQUIRED and len(names) == len(set(names)) == 50
+    assert set(names) == REQUIRED and len(names) == len(set(names)) == 58
+
+
+def test_large_authored_batch_keeps_all_ids_in_its_receipt(services):
+    deck=at.call_tool(services,'deck_create',{'title':'Batch receipt'})
+    result=at.call_tool(services,'slides_add',{'deck_id':deck['id'],'batch_key':'many',
+        'slides':[{'title':str(i),'notes':'Detailed notes '*300,'blocks':[{'type':'text','text':'Evidence '*150}]} for i in range(19)]},cap=True)
+    assert len(result['receipt']['slide_ids'])==19
+    assert result['truncated']['original_lengths']['slides']==19
 
 
 def test_descriptions_are_short_first_lines_and_neutral():

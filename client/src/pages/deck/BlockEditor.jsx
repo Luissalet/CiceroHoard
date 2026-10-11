@@ -6,6 +6,7 @@ import { Field, ListEditor } from "../../components/ui.jsx";
 import { CHART_KINDS, formatBytes } from "../../format.js";
 import {DiagramEditor,MetricsEditor,TableEditor,TimelineEditor,FrameEditor,MotionEditor} from './VisualEditors.jsx';
 import {AdvancedChartSettings} from './ChartSettings.jsx';
+import MediaEditor from './MediaEditor.jsx';
 
 const MAX_IMAGE = 15 * 1024 * 1024;
 
@@ -105,6 +106,7 @@ export default function BlockEditor({ block, index, count, onChange, onMove, onR
   const name = `${t(`block_${block.type}`)} ${index + 1}`;
   let body;
   switch (block.type) {
+    case 'video':case 'audio':body=<MediaEditor block={block} onChange={onChange} disabled={disabled}/>;break;
     case "bullets":
       body = <ListEditor t={t} items={block.items} label={t("block_item")} addLabel={t("add_item")} disabled={disabled} onChange={(items) => onChange({ ...block, items })} />;
       break;
@@ -153,6 +155,7 @@ export default function BlockEditor({ block, index, count, onChange, onMove, onR
         </span>
       </div>
       {body}
+      <Field label={t('object_id')}><input className="field" value={block.id||''} maxLength={80} disabled={disabled} onChange={e=>onChange({...block,id:e.target.value||undefined})}/></Field>
       <MotionEditor block={block} onChange={onChange} disabled={disabled}/>
       {canvas&&<FrameEditor block={block} onChange={onChange} disabled={disabled} index={index} count={count}/>}
     </div>

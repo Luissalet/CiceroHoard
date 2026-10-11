@@ -29,6 +29,7 @@ import json
 import re
 import tempfile
 import zipfile
+from copy import deepcopy
 from pathlib import Path
 from typing import Any, Optional
 
@@ -165,7 +166,7 @@ def _shapes(root) -> list[dict[str, Any]]:
         if not c:
             continue
         name = c[0].get("name") or ""
-        step = _STEP.match(name)
+        step = _STEP.match(name) or _STEP.match((c[0].get('descr') or '').split('|')[0])
         kind = _kind(el)
         skip = name in ("Decoration", "Footer") or etree.QName(el).localname == "cxnSp" and not step
         out.append({"id": int(c[0].get("id")), "name": name, "kind": kind, "skip": skip,
@@ -209,16 +210,40 @@ def _slide_parts(names: list[str]) -> list[str]:
 
 
 def _insert_timing(xml: str, timing: str) -> str:
-    xml = re.sub(r"<p:timing\b.*?</p:timing>", "", xml, flags=re.S)
+    root = etree.fromstring(xml.encode('utf-8'))
+    existing = root.find('p:timing', NS)
+    media = [] if existing is None else [deepcopy(n) for n in existing.xpath('.//p:video|.//p:audio', namespaces=NS)]
     if not timing:
-        return xml
-    tail = xml.rfind("<p:extLst")
-    close = xml.rfind("</p:sld>")
-    at = tail if 0 <= tail < close and xml.find("</p:cSld>") < tail else close
-    return xml[:at] + timing + "\n" + xml[at:]
+        if media:
+            return xml
+        if existing is not None:
+            root.remove(existing)
+        return etree.tostring(root,encoding='unicode')
+    wrapper = etree.fromstring(('<root xmlns:p="'+NS['p']+'" xmlns:a="'+NS['a']+'" '
+        'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'+timing+'</root>').encode('utf-8'))
+    replacement = wrapper[0]
+    target = replacement.find('p:tnLst/p:par/p:cTn/p:childTnLst', NS)
+    if media and target is None:
+        raise ValueError('Animation timing is missing its root child list.')
+    next_id = max([int(v) for v in replacement.xpath('.//p:cTn/@id', namespaces=NS)] or [0]) + 1
+    for node in media:
+        ids = {}
+        for ctn in node.xpath('.//p:cTn', namespaces=NS):
+            ids[ctn.get('id')] = str(next_id)
+            ctn.set('id', str(next_id)); next_id += 1
+        for ref in node.xpath('.//p:tn', namespaces=NS):
+            if ref.get('val') in ids:
+                ref.set('val',ids[ref.get('val')])
+        target.append(node)
+    if existing is not None:
+        root.replace(existing,replacement)
+    else:
+        extension=root.find('p:extLst',NS)
+        root.insert(list(root).index(extension) if extension is not None else len(root),replacement)
+    return etree.tostring(root,encoding='unicode')
 
 
-def apply(pptx: bytes, settings: dict[str, Any], slide_ids: list[str]) -> tuple[bytes, dict[str, Any]]:
+def apply(pptx: bytes, settings: dict[str, Any], slide_ids: list[str], *, transitions=None) -> tuple[bytes, dict[str, Any]]:
     """The .pptx with timing and transitions written into every slide, and a per-slide report."""
     cfg = normalize(settings or {})
     src = zipfile.ZipFile(io.BytesIO(pptx))
@@ -236,9 +261,13 @@ def apply(pptx: bytes, settings: dict[str, Any], slide_ids: list[str]) -> tuple[
         timing = A.create_sequence_timing_xml(targets, duration=slide_cfg["duration"]) if targets else ""
         xml = _insert_timing(xml, timing)
         transition = slide_cfg["transition"]
-        if transition != "none":
-            xml, _ = T.apply_slide_motion_xml(xml, enter=T.EnterUpdate(policy="replace", effect=transition,
-                                                                       duration=slide_cfg["transition_duration"]),
+        explicit = (transitions or {}).get(sid)
+        if explicit or transition != "none":
+            from .transitions import native_effect
+            effect = native_effect(explicit.get('native_effect') or explicit['effect']) if explicit else transition
+            duration = explicit['duration_ms']/1000 if explicit else slide_cfg['transition_duration']
+            transition = explicit['effect'] if explicit else transition
+            xml, _ = T.apply_slide_motion_xml(xml, enter=T.EnterUpdate(policy="replace", effect=effect,duration=duration),
                                               advance=T.AdvanceUpdate(mode="preserve"))
         changed[part] = xml.encode("utf-8")
         report.append({"slide": index + 1, "slide_id": sid, "mode": slide_cfg["mode"], "transition": transition,

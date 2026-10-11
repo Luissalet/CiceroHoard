@@ -66,6 +66,8 @@ def build_markdown(deck: dict[str, Any]) -> bytes:
                 lines.append(f"*[{labels['image']}{': ' + caption if caption else ''}]*")
             elif kind == "chart":
                 lines += _chart_table(block, lang)
+            elif kind in ('video', 'audio'):
+                lines.append(f'*[{kind}: {block.get("caption") or block["asset_id"]}]*')
             elif kind in ('metrics','timeline'):
                 if block.get('title'):lines.append(f"**{block['title']}**")
                 for item in block['items']:

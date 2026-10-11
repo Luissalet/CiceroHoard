@@ -4,6 +4,7 @@ import { useApp } from "../../App.jsx";
 import { useDeck } from "../../components/deckContext.js";
 import { Empty, Section, useAsync } from "../../components/ui.jsx";
 import { EXPORT_FORMATS, approvedCount, clock, formatBytes } from "../../format.js";
+import TransitionEditor from './TransitionEditor.jsx';
 
 export default function Export() {
   const { t, notify, lang } = useApp();
@@ -23,6 +24,7 @@ export default function Export() {
 
   return (
     <div className="max-w-4xl space-y-4">
+      <TransitionEditor/>
       <Section title={t("export_title")}>
         {deck.template && <p className="help mb-3">{t("template_export_help", { name: deck.template.name })}</p>}
         {slides.length === 0 && <p className="help mb-2">{t("export_no_slides")}</p>}

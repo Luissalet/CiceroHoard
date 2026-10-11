@@ -1,6 +1,6 @@
 // Small helpers shared by the pages: labels, dates, sizes.
 export const LAYOUTS = ["title", "section", "bullets", "two_column", "image_text", "quote", "chart", "closing", "evidence", "comparison", "diagram", "metrics", "table", "image_full", "freeform"];
-export const BLOCK_TYPES = ["bullets", "text", "quote", "columns", "chart", "image", "diagram", "metrics", "table", "timeline"];
+export const BLOCK_TYPES = ["bullets", "text", "quote", "columns", "chart", "image", "diagram", "metrics", "table", "timeline", "video", "audio"];
 export const CHART_KINDS = ["bar", "bar_horizontal", "line", "area", "pie", "donut", "scatter", "bubble", "dot", "dumbbell", "band", "heatmap", "waterfall", "funnel"];
 export const DECK_STATUSES = ["draft", "outline", "review", "ready"];
 export const EXPORT_FORMATS = ["pptx", "pdf", "html", "md"];

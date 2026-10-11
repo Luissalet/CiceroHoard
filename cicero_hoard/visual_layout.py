@@ -7,7 +7,7 @@ def layout_visual(block,x,y,w,h,ctx):
     if block.get('title'):
         untitled={k:v for k,v in block.items() if k!='title'}
         boxes,used=layout_visual(untitled,x,y+48,w,max(1,h-48),ctx)
-        return [Box('text',x,y,w,40,paras=[Para(block['title'],26,bold=True)]),*boxes],used+48
+        return [Box('text',x,y,w,40,paras=[Para(block['title'],26,bold=True)],object_id='heading'),*boxes],used+48
     kind=block['type']
     if kind=='timeline':
         items=block['items'];count=len(items);cw=w/count;boxes=[]
@@ -57,14 +57,15 @@ def layout_visual(block,x,y,w,h,ctx):
     for edge in layout['edges']:
         target=nodes[edge['target']]
         build=target.get('build') if staged else block.get('build')
-        boxes.append(Box('connector',x,y,w,h,data={**edge,'canvas':[w,h]},build=build,effect='wipe' if staged else None))
+        edge_id = 'edge-' + edge['source'] + '-' + edge['target'] + '-' + str(sum(1 for b in boxes if b.kind == 'connector' and b.data['source'] == edge['source'] and b.data['target'] == edge['target']))
+        boxes.append(Box('connector',x,y,w,h,data={**edge,'canvas':[w,h]},build=build,effect='wipe' if staged else None,object_id=edge_id))
         if edge.get('label') and edge.get('label_frame'):
             lx,ly,lw,lh=edge['label_frame']
-            boxes.append(Box('text',x+lx,y+ly,lw,lh,paras=[Para(edge['label'],18*scale,color='muted',align='center')],build=build,effect='fade'))
+            boxes.append(Box('text',x+lx,y+ly,lw,lh,paras=[Para(edge['label'],18*scale,color='muted',align='center')],build=build,effect='fade',object_id=edge_id+'-label'))
     for i,node in enumerate(layout['nodes']):
         build=node.get('build',i+1) if staged else block.get('build')
         left=x+node['x'];top=y+node['y'];nw=node['width'];nh=node['height']
-        boxes.append(Box('node',left,top,nw,nh,fill='surface' if node.get('emphasis') else 'background',data=node,build=build,effect='fade'))
+        boxes.append(Box('node',left,top,nw,nh,fill='surface' if node.get('emphasis') else 'background',data=node,build=build,effect='fade',object_id='node-'+node['id']))
         pad=16*scale
         def text_at(size):
             label=Para(node['label'],size,bold=True,font='heading',line=1.15,align='center',space_after=10*scale if node.get('detail') else 0)
@@ -72,6 +73,6 @@ def layout_visual(block,x,y,w,h,ctx):
         size,overflow=fit_size(text_at,nw-2*pad,nh-2*pad,max(12,round(26*scale)),max(10,round(16*scale)),ctx)
         text=text_at(size)
         if overflow:ctx.overflow_where.append('diagram node: '+node['id'])
-        boxes.append(Box('text',left+pad,top+pad,nw-2*pad,nh-2*pad,paras=text,anchor='middle',build=build,effect='fade'))
+        boxes.append(Box('text',left+pad,top+pad,nw-2*pad,nh-2*pad,paras=text,anchor='middle',build=build,effect='fade',object_id='node-'+node['id']+'-label'))
     if scale<.5:ctx.overflow_where.append('diagram density: use fewer nodes or another direction')
     return boxes,h

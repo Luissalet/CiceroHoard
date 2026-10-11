@@ -114,7 +114,7 @@ def load(svc,deck_id,source_id):
     if source['kind']!='dataset':raise CiceroError('Choose a tabular dataset source.')
     return json.loads(source['text'])
 
-def import_data(svc,args,data=None,filename=''):
+def import_data(svc,args,data=None,filename='',external_origin=None):
     store.deck_view(svc,args.deck_id)
     origin={};warnings=[]
     if data is None and args.path:
@@ -127,6 +127,7 @@ def import_data(svc,args,data=None,filename=''):
     if not data:raise CiceroError('Supply CSV text or a local CSV, TSV or XLSX file.')
     if len(data)>svc.config.max_upload_bytes:raise CiceroError('The data exceeds the existing upload limit.')
     origin.update(filename=filename,sha256=sha256_hex(data))
+    if external_origin:origin.update(external_origin)
     if filename.lower().endswith('.xlsx'):
         try:workbook=load_workbook(io.BytesIO(data),read_only=True,data_only=True,keep_links=False)
         except (BadZipFile,InvalidFileException,ValueError,KeyError) as error:raise CiceroError('The XLSX workbook cannot be read. Export a valid workbook or CSV.') from error

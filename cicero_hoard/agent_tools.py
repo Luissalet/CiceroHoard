@@ -36,9 +36,13 @@ blocks and notes. Correct a figure caption with slide_set_image and one title/no
 Visual capabilities: call visual_catalog(kind='summary') first, then the relevant typed schema (charts, diagrams, metrics, tables or timelines).
 For CSV/TSV/XLSX, dataset_import -> dataset_get -> optional dataset_transform -> dataset_visual.
 Resolve ambiguous separators with number_format es/en; attach returned source_ids through slide_visual_update.
-Imported and derived data are immutable snapshots, not externally live-linked charts. Reimport/remapping is explicit.
+Imported and derived data are immutable snapshots. For automatic local/URL updates use dataset_link -> dataset_bind;
+dataset_links reports schedule/errors; dataset_link_control refreshes, pauses, resumes or unlinks without deleting snapshots.
 Freeform block.frame fractions position content inside the body region; font_size is explicit. Check overlaps and fit.
-Images support contain/cover and normalized crop focus; stable block IDs identify scene objects, not inter-slide morphs.
+Images support contain/cover and normalized crop focus. Reuse stable block IDs between adjacent slides for deck_transitions morph;
+inspect reports matched/entering/leaving IDs. Group, easing, duration and unmatched settings control web morph.
+media_import imports audio/video with poster and metadata. Use typed audio/video blocks with trim, rate, volume, loop,
+autoplay and captions; media_get inspects originals. deck_media_control controls the current live slide's media.
 Do not generate positioning code: diagram nodes/edges are laid out automatically. Numeric x_values keep irregular spacing; nulls are gaps;
 band charts need lower/upper bounds, bubble charts need explicit sizes. Never turn uncertainty into invented intervals.
 Use slide_visual_update with block_index and expected_revision to replace or append one block while preserving notes and other content.
@@ -48,8 +52,10 @@ Use build/effect/duration_ms for meaningful click stages; effect='stages' on dia
 Timelines can also use stages to reveal milestones. deck_live_start returns separate audience and speaker URLs.
 Share only the audience window; deck_live_state/control navigate the local session and operate its paused/resumable clock.
 Sessions live in server memory; restart=true adopts deck edits. Optional expected_version catches concurrent commands.
-deck_present returns a local playback URL. HTML is offline and interactive; PDF shows the complete static state. Native PPTX motion needs
-the optional local office renderer. Read visual_catalog export_notes for differences; do not promise identical effects across formats."""
+deck_present returns a local playback URL. HTML is offline and interactive; PDF shows the complete static state.
+Native PPTX carries timing, transitions and embedded media without an office renderer. Automatic live data refreshes preserve
+navigation and timer; manual slide edits require restarting the live session. Offline exports freeze the current data snapshot.
+Read visual_catalog export_notes for differences; do not promise identical effects across formats."""
 
 
 DeckId = Field(..., min_length=1, max_length=40, description="Deck id (from deck_list or deck_create).")
@@ -719,6 +725,9 @@ def _accountable(tool: Tool) -> Tool:
 
 
 TOOLS = [_accountable(t) for t in TOOLS]
+
+from .agent_workbench import TOOLS as workbench_tools
+TOOLS.extend(workbench_tools)
 
 TOOLS_BY_NAME = {t.name: t for t in TOOLS}
 

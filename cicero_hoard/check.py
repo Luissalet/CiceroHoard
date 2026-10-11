@@ -276,7 +276,7 @@ def check_deck(deck: dict[str, Any], sources: list[dict[str, Any]], assets: Asse
                         bad = chart_values_unsourced(b, slide_reference)
                         if bad:
                             add(slide, "unsourced_chart", "warning", "unsourced_chart", numbers=", ".join(bad[:8]))
-            if t == "image" and assets(b.get("asset_id", "")) is None:
+            if t in ('image', 'audio', 'video') and assets(b.get("asset_id", "")) is None:
                 add(slide, "image_missing", "warning", "image_missing")
         expected = EXPECTED_BLOCK.get(slide.get("layout", ""))
         if expected and not any(b.get("type") == expected for b in slide.get("blocks", [])):

@@ -88,6 +88,31 @@ class QuoteBlock(_Block):
     attribution: Optional[str] = Field(None, max_length=200)
 
 
+class MediaBlock(_Block):
+    type: Literal['video', 'audio']
+    asset_id: str = Field(..., min_length=1, max_length=64)
+    poster_id: Optional[str] = Field(None, max_length=64)
+    caption: Optional[str] = Field(None, max_length=300)
+    autoplay: bool = False
+    loop: bool = False
+    muted: bool = False
+    controls: bool = True
+    start: float = Field(0, ge=0, allow_inf_nan=False)
+    end: Optional[float] = Field(None, gt=0, allow_inf_nan=False)
+    volume: float = Field(1, ge=0, le=1, allow_inf_nan=False)
+    playback_rate: float = Field(1, ge=.25, le=4, allow_inf_nan=False)
+    fit: Literal['contain', 'cover'] = 'contain'
+    subtitles: Optional[str] = Field(None, max_length=100000, description='WebVTT captions, beginning with WEBVTT.')
+
+    @model_validator(mode='after')
+    def _range(self):
+        if self.end is not None and self.end <= self.start:
+            raise ValueError('Media end must be later than start')
+        if self.subtitles and not self.subtitles.lstrip().startswith('WEBVTT'):
+            raise ValueError('Subtitles must use WebVTT')
+        return self
+
+
 class ChartSeries(_Block):
     name: str = Field("", max_length=80)
     values: list[Optional[float]] = Field(default_factory=list, max_length=2000)
@@ -265,7 +290,7 @@ class ColumnsBlock(_Block):
 
 Block = Annotated[
     Union[BulletsBlock, TextBlock, ImageBlock, QuoteBlock, ChartBlock, ColumnsBlock,
-          DiagramBlock, MetricsBlock, TableBlock, TimelineBlock],
+          DiagramBlock, MetricsBlock, TableBlock, TimelineBlock, MediaBlock],
     Field(discriminator="type"),
 ]
 

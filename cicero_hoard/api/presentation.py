@@ -26,6 +26,5 @@ def speaker(request:Request,deck_id:str,session_id:str):
     return {'slides':[{'id':s['id'],'notes':s['notes']} for s in store.deck_view(svc,deck_id)['slides']], 'state':state}
 
 @router.get('/decks/{deck_id}/live/{session_id}/audience.html',response_class=HTMLResponse)
-def audience(request:Request,deck_id:str,session_id:str):
-    headers={**PREVIEW_HEADERS,'Content-Security-Policy':PREVIEW_HEADERS['Content-Security-Policy']+"; connect-src 'self'"}
-    return HTMLResponse(presentation.audience_document(services(request),deck_id,session_id),headers=headers)
+def audience(request:Request,deck_id:str,session_id:str,monitor:bool=False):
+    return HTMLResponse(presentation.audience_document(services(request),deck_id,session_id,monitor=monitor),headers=PREVIEW_HEADERS)

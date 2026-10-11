@@ -1,5 +1,14 @@
 # Cicero's Hoard
 
+## Motion, Media And Linked Data
+
+Use `deck_transitions` for common screen/native transitions, stable-object morph and per-slide overrides.
+Use `media_import` and `media_get` for local or HTTP(S) audio/video, then add typed media blocks.
+`deck_media_control` operates playback on the current live slide.
+`dataset_link`, `dataset_links`, `dataset_bind` and `dataset_link_control` provide durable automatic local/URL
+data refresh, immutable snapshots, typed visual recipes and last-good recovery. The editor exposes the same features.
+The public catalogue now contains 58 tools. See [live media](docs/LIVE_MEDIA.md) for contracts and format differences.
+
 A local workspace that turns a brief and source documents into an editable presentation. You give it an objective,
 an audience and the material; it proposes an outline, writes the slides with speaker notes, lets you review and
 approve each slide one by one, applies a theme and exports the result. It is meant for a person and for an assistant

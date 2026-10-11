@@ -112,6 +112,35 @@ MIGRATIONS: list[str] = [
     """,
     # 4: immutable local PPTX template snapshot and semantic slide bindings.
     "ALTER TABLE decks ADD COLUMN template TEXT;",
+    # 5: linked data recipes and media metadata, without changing immutable source snapshots.
+    """
+    CREATE TABLE data_links (
+      id TEXT PRIMARY KEY,
+      deck_id TEXT NOT NULL REFERENCES decks(id) ON DELETE CASCADE,
+      definition TEXT NOT NULL,
+      source_id INTEGER REFERENCES sources(id) ON DELETE SET NULL,
+      enabled INTEGER NOT NULL DEFAULT 1,
+      interval_s REAL NOT NULL DEFAULT 60,
+      checked_ts REAL,
+      refreshed_ts REAL,
+      error TEXT NOT NULL DEFAULT '',
+      revision INTEGER NOT NULL DEFAULT 1
+    );
+    CREATE TABLE data_bindings (
+      id TEXT PRIMARY KEY,
+      link_id TEXT NOT NULL REFERENCES data_links(id) ON DELETE CASCADE,
+      slide_id TEXT NOT NULL REFERENCES slides(id) ON DELETE CASCADE,
+      block_id TEXT NOT NULL,
+      definition TEXT NOT NULL,
+      last_block TEXT NOT NULL,
+      error TEXT NOT NULL DEFAULT '',
+      UNIQUE(slide_id, block_id)
+    );
+    CREATE TABLE media_metadata (
+      asset_id TEXT PRIMARY KEY REFERENCES assets(id) ON DELETE CASCADE,
+      definition TEXT NOT NULL
+    );
+    """,
 ]
 
 

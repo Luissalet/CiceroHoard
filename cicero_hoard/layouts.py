@@ -262,6 +262,21 @@ def layout_block(block: dict[str, Any], x: float, y: float, w: float, size: int,
         if cap_paras:
             boxes.append(_text_box(cap_paras, x, y + ih + 8, w, ctx))
         return boxes, ih + cap_h
+    if kind in ('video', 'audio'):
+        info = ctx.assets(block.get('asset_id', ''))
+        if not info:
+            return [], 0.0
+        data = dict(block)
+        if not data.get('poster_id') and info.get('metadata', {}).get('poster_id'):
+            data['poster_id'] = info['metadata']['poster_id']
+        caption = block.get('caption') or ''
+        cap = [Para(caption, 16, color='muted')] if caption else []
+        cap_h = paras_height(cap, w, ctx) + (8 if cap else 0)
+        height = min(100 if kind == 'audio' else w * info['height'] / info['width'], max(60, region_h - cap_h))
+        boxes = [Box('media', x, y, w, height, data=data)]
+        if cap:
+            boxes.append(_text_box(cap, x, y + height + 8, w, ctx))
+        return boxes, height + cap_h
     if kind == "chart":
         if not block.get("categories") or not block.get("series"):
             return [], 0.0
@@ -313,9 +328,9 @@ def stack(blocks: list[dict[str, Any]], x: float, y: float, w: float, h: float, 
         for b in blocks:
             got, bh = layout_block(b, 0, cy, w, b.get('font_size') or size, ctx, region_h=h, n_blocks=len(blocks))
             for j,box in enumerate(got):
-                if b.get('id'):box.object_id=f"{b['id']}-{j}"
+                box.object_id=f"{b['id']}-{box.object_id or j}" if b.get('id') else None
                 if box.build is None:box.build=b.get('build')
-                if box.effect is None:box.effect=b.get('effect')
+                if box.effect is None or b.get('effect') == 'none':box.effect=b.get('effect')
                 box.duration_ms=b.get('duration_ms') or 400
             if bh > 0:
                 boxes += got

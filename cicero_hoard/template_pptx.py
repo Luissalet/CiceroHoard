@@ -174,4 +174,6 @@ def build_template_pptx(deck, *, assets):
         prs.part.drop_rel(entry.rId);prs.slides._sldIdLst.remove(entry)
     _drop_library_metadata(prs)
     prs.core_properties.title=deck['title'];prs.core_properties.author="Cicero's Hoard"
+    from .transitions import apply_native
+    apply_native(prs, deck)
     out=io.BytesIO();prs.save(out);return out.getvalue()

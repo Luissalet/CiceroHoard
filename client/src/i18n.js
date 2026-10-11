@@ -611,6 +611,7 @@ export function saveLang(lang) {
 }
 
 Object.assign(DICT.es,{
+ native_transition:'Transicion del archivo PPTX',native_transition_same:'Igual que la pantalla',
  composition_options:'Comparar composiciones',
  layout_evidence:'Visual con conclusión',layout_comparison:'Comparación',layout_diagram:'Diagrama',layout_metrics:'Métricas',layout_table:'Tabla',layout_image_full:'Imagen completa',
  block_diagram:'Diagrama',block_metrics:'Métricas',block_table:'Tabla',
@@ -621,6 +622,7 @@ Object.assign(DICT.es,{
  template_preview_help:'La plantilla se conserva en la vista previa y en las exportaciones.',template_export_help:'Plantilla: {name}. PPTX editable, HTML con movimiento y PDF estático.',export_html_help:'Presentación portátil con navegación y animaciones. Funciona sin conexión.',export_pptx_help:'Texto, gráficos, tablas y diagramas editables. Las animaciones requieren el motor ofimático local.'
 });
 Object.assign(DICT.en,{
+ native_transition:'PPTX transition',native_transition_same:'Same as screen',
  composition_options:'Compare compositions',
  layout_evidence:'Visual with takeaway',layout_comparison:'Comparison',layout_diagram:'Diagram',layout_metrics:'Metrics',layout_table:'Table',layout_image_full:'Full image',block_diagram:'Diagram',block_metrics:'Metrics',block_table:'Table',
  chart_bar_horizontal:'Horizontal bars',chart_area:'Area',chart_donut:'Donut',chart_scatter:'XY scatter',chart_bubble:'Bubble',chart_dot:'Dot plot',chart_dumbbell:'Paired comparison',chart_band:'Line with interval',chart_heatmap:'Heatmap',chart_waterfall:'Waterfall',chart_funnel:'Funnel',
@@ -645,6 +647,19 @@ Object.assign(DICT.en,{
 
 Object.assign(DICT.es,{layout_freeform:'Composicion libre',main_slides:'Diapositivas principales',back:'Volver',data_selected_rows:'Filas seleccionadas'});
 Object.assign(DICT.en,{layout_freeform:'Free composition',main_slides:'Main slides',back:'Back',data_selected_rows:'Selected rows'});
+
+Object.assign(DICT.es,{
+ block_video:'Video',block_audio:'Audio',object_id:'ID de objeto',media_missing:'Falta el archivo multimedia del bloque {n}.',media_wrong_kind:'El archivo no coincide con el tipo del bloque.',media_asset:'Archivo multimedia',media_upload:'Importar archivo',media_url:'URL multimedia',media_import_url:'Importar desde URL',media_start:'Inicio (s)',media_end:'Fin (s)',media_rate:'Velocidad',media_volume:'Volumen',media_autoplay:'Reproduccion automatica',media_loop:'Repetir',media_muted:'Silenciado',media_controls:'Controles',media_poster:'Cambiar portada',media_subtitles:'Subtitulos WebVTT',
+ transitions_title:'Transiciones y movimiento',transition_scope:'Ambito',transition_default:'Toda la presentacion',transition_effect:'Transicion',transition_none:'Sin transicion',transition_fade:'Fundido',transition_slide:'Desplazar',transition_convex:'Convexa',transition_concave:'Concava',transition_zoom:'Zoom',transition_morph:'Morph',transition_easing:'Aceleracion',transition_group:'Grupo morph',transition_unmatched:'Mostrar objetos nuevos',transition_reset:'Restablecer transiciones',native_motion:'Animaciones nativas',motion_mode:'Modo',motion_mode_builds:'Etapas al clic',motion_mode_auto:'Segun el contenido',motion_mode_mixed:'Combinadas',motion_mode_none:'Sin animaciones',motion_trigger:'Inicio',motion_seconds:'Duracion (s)','trigger_after-previous':'Tras la anterior','trigger_on-click':'Al clic',
+ linked_data:'Datos vinculados',data_location_kind:'Origen',data_local_file:'Archivo local',data_location:'Ruta o URL',data_interval:'Intervalo (s)',data_link_create:'Vincular datos',data_link_error:'Error',data_link_active:'Automatico',data_link_paused:'Pausado',data_link_refresh:'Actualizar ahora',data_link_pause:'Pausar actualizacion',data_link_resume:'Reanudar actualizacion',data_link_unlink:'Desvincular',linked_target:'Bloque de destino',linked_bind:'Vincular visual',media_play:'Reproducir multimedia',media_pause:'Pausar multimedia',media_seek:'Posicion (s)',media_index:'Archivo',
+ export_pptx_help:'Texto, graficos y tablas editables; animaciones, transiciones y multimedia nativas.'
+});
+Object.assign(DICT.en,{
+ block_video:'Video',block_audio:'Audio',object_id:'Object ID',media_missing:'Media file is missing from block {n}.',media_wrong_kind:'The file does not match the block type.',media_asset:'Media asset',media_upload:'Import file',media_url:'Media URL',media_import_url:'Import from URL',media_start:'Start (s)',media_end:'End (s)',media_rate:'Speed',media_volume:'Volume',media_autoplay:'Autoplay',media_loop:'Loop',media_muted:'Muted',media_controls:'Controls',media_poster:'Change poster',media_subtitles:'WebVTT subtitles',
+ transitions_title:'Transitions and motion',transition_scope:'Scope',transition_default:'Entire presentation',transition_effect:'Transition',transition_none:'None',transition_fade:'Fade',transition_slide:'Slide',transition_convex:'Convex',transition_concave:'Concave',transition_zoom:'Zoom',transition_morph:'Morph',transition_easing:'Easing',transition_group:'Morph group',transition_unmatched:'Show new objects',transition_reset:'Reset transitions',native_motion:'Native animations',motion_mode:'Mode',motion_mode_builds:'Click stages',motion_mode_auto:'By content',motion_mode_mixed:'Mixed',motion_mode_none:'No animations',motion_trigger:'Start',motion_seconds:'Duration (s)','trigger_after-previous':'After previous','trigger_on-click':'On click',
+ linked_data:'Linked data',data_location_kind:'Source',data_local_file:'Local file',data_location:'Path or URL',data_interval:'Interval (s)',data_link_create:'Link data',data_link_error:'Error',data_link_active:'Automatic',data_link_paused:'Paused',data_link_refresh:'Refresh now',data_link_pause:'Pause refresh',data_link_resume:'Resume refresh',data_link_unlink:'Unlink',linked_target:'Target block',linked_bind:'Bind visual',media_play:'Play media',media_pause:'Pause media',media_seek:'Position (s)',media_index:'Asset',
+ export_pptx_help:'Editable text, charts and tables; native animations, transitions and embedded media.'
+});
 
 export function makeT(lang) {
   const dict = DICT[lang] || DICT.es;
