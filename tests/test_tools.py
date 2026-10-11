@@ -33,7 +33,7 @@ READ_ONLY.update({'media_get','dataset_links'})
 
 def test_catalogue_has_every_tool_once():
     names = [t.name for t in at.TOOLS]
-    assert set(names) == REQUIRED and len(names) == len(set(names)) == 59
+    assert set(names) == REQUIRED and len(names) == len(set(names)) == 60
 
 
 def test_large_authored_batch_keeps_all_ids_in_its_receipt(services):
