@@ -101,8 +101,9 @@ def normalize(raw: dict[str, Any], slide_ids: Optional[set[str]] = None) -> dict
     for sid, layer in ((raw or {}).get("slides") or {}).items():
         if slide_ids is not None and sid not in slide_ids:
             raise ValueError(f"slide '{sid}' is not in this deck")
-        if layer:
-            out["slides"][sid] = _layer(layer, top=False)
+        clean = _layer(layer or {}, top=False)
+        if clean:                                            # an all-null layer (every field inherited) is no override
+            out["slides"][sid] = clean
     return out
 
 

@@ -128,3 +128,20 @@ def test_store_tool_export_and_routes(services, client):
     assert client.get(f"/api/decks/{d2['id']}/animations/preview").json()["animated"] >= 1
     assert client.put(f"/api/decks/{d2['id']}/animations", json={"mode": "wobble"}).status_code == 400
     assert client.delete(f"/api/decks/{d2['id']}/animations").json()["mode"] == "builds"
+
+
+def test_rest_null_drops_one_slide_override_and_keeps_the_rest(client):
+    """The deck panel sends every field it edits: null means «as the presentation» for that field only."""
+    d = client.post("/api/decks", json={"title": "Overrides"}).json()
+    sid = client.post(f"/api/decks/{d['id']}/slides", json={"title": "A", "blocks": [{"type": "text", "text": "x"}]}).json()
+    sid = (sid.get("slide") or sid)["id"]
+    url = f"/api/decks/{d['id']}/animations"
+    base = client.put(url, json={"mode": "auto", "transition": "fade",
+                                 "slides": {sid: {"mode": "none", "transition": "push", "duration": 0.3}}}).json()
+    assert base["slides"][sid] == {"mode": "none", "transition": "push", "duration": 0.3}
+    one = client.put(url, json={"slides": {sid: {"mode": None, "transition": "push"}}})
+    assert one.status_code == 200 and one.json()["slides"][sid] == {"transition": "push", "duration": 0.3}
+    two = client.put(url, json={"slides": {sid: {"mode": "none", "transition": None}}}).json()
+    assert two["slides"][sid] == {"mode": "none", "duration": 0.3}
+    gone = client.put(url, json={"slides": {sid: {"mode": None, "transition": None, "duration": None}}}).json()
+    assert sid not in gone["slides"] and client.get(url).json()["slides"] == {}

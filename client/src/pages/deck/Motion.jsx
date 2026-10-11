@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { api } from "../../api.js";
 import { useApp } from "../../App.jsx";
-import { useDeck } from "../../components/deckContext.js";
+import { useDeck, useDirty } from "../../components/deckContext.js";
 import { ConfirmButton, Field, Section, useAsync } from "../../components/ui.jsx";
 
 // Native animations and transitions of the PPTX export (GET|PUT|DELETE /api/decks/{id}/animations, same code as the
@@ -43,6 +43,9 @@ export default function Motion() {
   const [draft, setDraft] = useState(null);
   const [preview, setPreview] = useState(null);
   useEffect(() => { if (saved.data) setDraft(saved.data); }, [saved.data]);
+  // Same unsaved-changes guard as the other editors: changing tab or leaving asks first.
+  const dirty = !!draft && !!saved.data && JSON.stringify(draft) !== JSON.stringify(saved.data);
+  useDirty(dirty);
 
   const slides = (deck.slides || []).slice().sort((a, b) => a.position - b.position);
   const failure = cat.error || saved.error;
@@ -50,7 +53,6 @@ export default function Motion() {
   if (!draft || !cat.data) return <Section title={t("anim_title")}><p className="help" role="status">{t("loading")}</p></Section>;
 
   const catalogue = cat.data;
-  const dirty = JSON.stringify(draft) !== JSON.stringify(saved.data);
   const set = (key, value) => setDraft((d) => ({ ...d, [key]: value }));
   const setSlide = (sid, key, value) => setDraft((d) => {
     const layer = { ...((d.slides || {})[sid] || {}) };
@@ -60,7 +62,12 @@ export default function Motion() {
 
   const save = async () => {
     const body = Object.fromEntries(DECK_KEYS.map((k) => [k, draft[k]]));
-    body.slides = Object.fromEntries(slides.map((s) => [s.id, (draft.slides || {})[s.id] || {}])); // {} drops an override
+    // Every field this panel edits is sent: null drops that one override («As the presentation»), the rest of the
+    // slide's layer (set elsewhere, e.g. trigger or duration through the tool) is kept; an all-null layer disappears.
+    body.slides = Object.fromEntries(slides.map((s) => {
+      const layer = (draft.slides || {})[s.id] || {};
+      return [s.id, { mode: layer.mode ?? null, transition: layer.transition ?? null }];
+    }));
     const res = await run(t("busy_saving"), () => api.animationsSave(deckId, body));
     if (res) { notify(t("anim_saved")); setPreview(null); saved.reload(); }
   };
