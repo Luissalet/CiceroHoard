@@ -92,7 +92,8 @@ export default function SlideEditor({ slide, onDeleted }) {
     setDraft({ ...draft, blocks });
   };
 
-  const patchBody = () => ({
+  const patchBody = () => {
+    const patch = {
     title: draft.title,
     subtitle: draft.subtitle,
     layout: draft.layout,
@@ -100,7 +101,14 @@ export default function SlideEditor({ slide, onDeleted }) {
     image_prompt: draft.image_prompt,
     blocks: draft.blocks.map((b, i) => blockToApi(b, t, i + 1)),
     sources:draft.sources,
-  });
+    };
+    // Compare editor drafts before API conversion; unchanged fields may have
+    // been updated by Faustus since this editor opened.
+    for (const key of Object.keys(patch)) {
+      if (JSON.stringify(draft[key]) === JSON.stringify(initial[key])) delete patch[key];
+    }
+    return patch;
+  };
   const saveInner = async () => { await api.slideUpdate(deckId, slide.id, patchBody()); await reload(); };
 
   const save = () => run(t("busy_saving"), async () => { await saveInner(); notify(t("saved")); return true; });
