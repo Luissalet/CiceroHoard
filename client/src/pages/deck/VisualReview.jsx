@@ -21,6 +21,7 @@ export default function VisualReview() {
     setStamp(Date.now());
     if (fix) {
       if (res.fixed?.length) { notify(t("vr_fixed", { n: res.fixed.length })); await reload(); }
+      else if (res.skipped?.length) { notify(t("vr_skipped", { list: res.skipped.map((f) => f.position).join(", ") })); await reload(); }
       else notify(t("vr_nothing_fixed"));
     }
   };
@@ -46,6 +47,9 @@ export default function VisualReview() {
           <span className={result.ok ? "chip chip-ok" : "chip chip-danger"}>{result.ok ? t("vr_ok_chip") : t("vr_errors_chip")}</span>{" "}
           {t("vr_summary", { s: slides.length, e: result.errors, w: result.warnings })}
         </p>
+      )}
+      {result?.skipped?.length > 0 && (
+        <p className="help mt-1" role="status">{t("vr_skipped", { list: result.skipped.map((f) => f.position).join(", ") })}</p>
       )}
       {result?.fixed?.length > 0 && (
         <p className="help mt-1">{t("vr_fixed_list", { list: result.fixed.map((f) => f.position).join(", "), before: result.before?.errors ?? "?" })}</p>

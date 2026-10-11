@@ -361,6 +361,7 @@ const DICT = {
     "vr_fix_missing_chart": "Añade el gráfico para el que es este diseño.",
     "vr_fix_missing_image": "Añade la imagen para la que es este diseño.",
     "anim_mode_for": "Animación de la diapositiva {n}",
+    "vr_skipped": "Las diapositivas {list} cambiaron mientras se medían: no se tocaron y se revisan tal como están ahora.",
   },
   en: {
     nav_action: 'Click action', nav_none: 'No link', nav_slide: 'Another slide', nav_url: 'External link',
@@ -723,6 +724,7 @@ const DICT = {
     "vr_fix_missing_chart": "Add the chart this layout is for.",
     "vr_fix_missing_image": "Add the picture this layout is for.",
     "anim_mode_for": "Animation of slide {n}",
+    "vr_skipped": "Slides {list} changed while they were being measured: they were left as they are and reviewed again.",
   },
 };
 
