@@ -1,9 +1,18 @@
 import json
+from pathlib import Path
+import shutil
+import subprocess
 import pytest
 from cicero_hoard import decks,presentation as live
 from cicero_hoard.agent_tools import call_tool
 from cicero_hoard.errors import CiceroError,RevisionConflict
 from conftest import new_deck
+
+def test_pending_media_play_cannot_resume_after_navigation_or_pause():
+ node=shutil.which('node')
+ if not node:pytest.skip('Node.js is required to exercise the audience JavaScript runtime.')
+ result=subprocess.run([node,str(Path(__file__).with_name('playback_race.cjs')),live.__file__],capture_output=True,text=True,timeout=30)
+ assert result.returncode==0,result.stdout+result.stderr
 
 def talk(svc):
  deck=new_deck(svc)
@@ -54,10 +63,12 @@ def test_live_routes_separate_notes_and_reject_changed_session(client):
  assert "deck.on('fragmentshown'" not in response.text and "keyboard:false" in response.text
  assert 'PRIVATE-NOTES' in client.get(path+'/speaker').text
  assert "activate.addEventListener('click'" in response.text
- assert "media.play().then(clearMediaNotice)" in response.text
+ assert "if(attempt===mediaAttempt)clearMediaNotice()" in response.text
  assert "error.name==='NotAllowedError'" in response.text
  assert "mediaNotice.style.display='block'" in response.text
- assert "!deck.getCurrentSlide().contains(pendingMedia)" in response.text
+ assert "pendingMedia&&deck.getCurrentSlide().contains(pendingMedia)" in response.text
+ assert "if(previousSlide!==deck.getCurrentSlide())clearMediaNotice()" in response.text
+ assert "attempt!==mediaAttempt" in response.text and "error.name==='AbortError'" in response.text
  assert "media.pause();clearMediaNotice()" in response.text
  assert client.post(path+'/control',json={'action':'blackout','blackout':True}).json()['blackout']
  decks.patch_slide(client.svc,deck['id'],first['id'],{'title':'Changed'})

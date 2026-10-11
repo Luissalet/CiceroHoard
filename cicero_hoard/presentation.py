@@ -143,20 +143,23 @@ def audience_document(svc,deck_id,session_id,*,monitor=False):
       const mediaNotice=document.createElement('div');mediaNotice.setAttribute('role','alert');
       mediaNotice.style.cssText='position:fixed;top:0;left:0;right:0;z-index:111;background:#173c43;color:white;padding:12px;font:16px Arial;display:none';
       const mediaLabel=document.createElement('span'),activate=document.createElement('button');
-      const spanish=document.documentElement.lang==='es';let pendingMedia=null;
+      const spanish=document.documentElement.lang==='es';let pendingMedia=null,mediaAttempt=0;
       activate.textContent=spanish?'Activar reproduccion':'Enable playback';
       activate.style.cssText='margin-left:16px;padding:8px 12px;border:1px solid white;border-radius:4px;background:transparent;color:white;font:inherit;cursor:pointer';
       mediaNotice.append(mediaLabel,activate);document.body.append(mediaNotice);
-      function clearMediaNotice(){pendingMedia=null;mediaNotice.style.display='none';}
+      function clearMediaNotice(){mediaAttempt++;pendingMedia=null;mediaNotice.style.display='none';}
       function playMedia(media){
-        media.play().then(clearMediaNotice).catch(error=>{
+        if(!deck.getCurrentSlide().contains(media))return;
+        const attempt=++mediaAttempt;
+        media.play().then(()=>{if(attempt===mediaAttempt)clearMediaNotice();}).catch(error=>{
+          if(attempt!==mediaAttempt||!deck.getCurrentSlide().contains(media)||error.name==='AbortError')return;
           pendingMedia=media;mediaLabel.textContent=error.name==='NotAllowedError'
             ?(spanish?'El navegador necesita un clic para reproducir este medio.':'The browser needs a click to play this media.')
             :(spanish?'No se pudo reproducir el medio. Puedes reintentarlo.':'Media could not play. You can retry.');
           mediaNotice.style.display='block';
         });
       }
-      activate.addEventListener('click',()=>{if(pendingMedia)playMedia(pendingMedia);});
+      activate.addEventListener('click',()=>{if(pendingMedia&&deck.getCurrentSlide().contains(pendingMedia))playMedia(pendingMedia);});
       document.querySelectorAll('.slide-media').forEach(media=>media.addEventListener('play',()=>{if(pendingMedia===media)clearMediaNotice();}));
       async function poll(){
         if(working)return;
@@ -165,8 +168,9 @@ def audience_document(svc,deck_id,session_id,*,monitor=False):
           if(state.content_version!==contentVersion){location.reload();return;}
           authoritative=state;
           if(state.version!==version){applying=true;version=state.version;blackout=state.blackout;
+            const previousSlide=deck.getCurrentSlide();
             deck.slide(state.slide_index,0,state.fragment_index);document.body.classList.toggle('blackout',blackout);
-            if(pendingMedia&&!deck.getCurrentSlide().contains(pendingMedia))clearMediaNotice();
+            if(previousSlide!==deck.getCurrentSlide())clearMediaNotice();
             requestAnimationFrame(()=>{applying=false});}
           const command=state.media_command;
           if(command&&command.version!==mediaVersion&&state.slides[state.slide_index].id===command.slide_id){mediaVersion=command.version;
