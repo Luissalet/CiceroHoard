@@ -96,3 +96,74 @@ def test_routes(client):
     assert png.status_code == 200 and png.headers["content-type"] == "image/png" and png.content[:4] == b"\x89PNG"
     assert client.get(f"/api/decks/{d['id']}/visual-review/../../secret").status_code == 404
     assert client.get(f"/api/decks/{d['id']}/visual-review/slide-99.png").status_code == 404
+
+
+def test_fix_never_overwrites_an_edit_made_while_measuring(services):
+    """The automatic fix applies only over the revision that was measured: a slide edited during the measurement keeps
+    the edit and is reported as skipped; the other slides are still fixed, and the deck is reviewed again."""
+    deck = new_deck(services)
+    a = decks.add_slide(services, deck["id"], title="Edited meanwhile", blocks=[{"type": "text", "text": "Viejo"}])
+    b = decks.add_slide(services, deck["id"], title="Untouched", blocks=[{"type": "text", "text": "Mucho texto"}])
+    state = {"calls": 0}
+
+    def measure(d, *, assets, png_dir=None, **_):
+        state["calls"] += 1
+        if state["calls"] == 1:  # the user edits slide A while the browser is measuring
+            decks.patch_slide(services, deck["id"], a["id"], {"blocks": [{"type": "text", "text": "Nuevo", "font_size": 30}]})
+        rows = []
+        for s in d["slides"]:
+            small = s["blocks"][0].get("font_size") in (vr.MIN_FONT, 30)
+            rows.append({"id": s["id"], "found": [] if small else [{"rule": "text_overflow", "where": "x", "detail": "needs 900px",
+                                                                   "need": 900, "have": 500}],
+                         "hasTitle": True, "hasChart": False, "hasImage": False})
+        return rows
+
+    services._visual_measure_fn = measure
+    out = services.visual_review(deck["id"], fix=True)
+    assert [f["slide_id"] for f in out["fixed"]] == [b["id"]]
+    assert [s["slide_id"] for s in out["skipped"]] == [a["id"]]
+    kept = decks.get_slide(services, deck["id"], a["id"])["blocks"][0]
+    assert kept["text"] == "Nuevo" and kept["font_size"] == 30  # the user's edit survives
+    assert decks.get_slide(services, deck["id"], b["id"])["blocks"][0]["font_size"] == vr.MIN_FONT
+    assert out["ok"] and state["calls"] == 2
+
+
+def test_template_deck_is_measured_in_the_scene_the_preview_shows(services, tmp_path):
+    """A template deck is reviewed in its real scene: its own slide size and the template's placement, so a title the
+    template puts past the right edge is reported, and the capture is the preview's picture."""
+    import io
+
+    from pptx import Presentation
+    from pptx.util import Inches, Pt
+
+    from cicero_hoard import agent_tools
+    from conftest import png_bytes
+
+    path = tmp_path / "wide-title.pptx"
+    p = Presentation()
+    p.slide_width, p.slide_height = Inches(16), Inches(9)
+    s = p.slides.add_slide(p.slide_layouts[6])
+    title = s.shapes.add_textbox(Inches(12), Inches(1), Inches(8), Inches(1.5))
+    title.text = "Example title"
+    title.text_frame.paragraphs[0].runs[0].font.size = Pt(40)
+    p.save(path)
+
+    def native_render(data, folder):  # the template furniture as pictures, without an office suite
+        folder.mkdir(parents=True, exist_ok=True)
+        for n in range(1, len(Presentation(io.BytesIO(data)).slides) + 1):
+            (folder / f"slide-{n}.png").write_bytes(png_bytes())
+        return {"ok": True}
+
+    services._native_render_fn = native_render
+    deck = new_deck(services)
+    decks.add_slide(services, deck["id"], title="A title the template places past the edge",
+                    blocks=[{"type": "bullets", "items": ["Uno", "Dos"]}])
+    agent_tools.call_tool(services, "deck_template", {"deck_id": deck["id"], "path": str(path), "bindings": {"bullets": {
+        "source_slide": 1, "title_shape": title.shape_id, "keep_text_shapes": [], "content_frame": [96, 300, 960, 300]}}})
+    try:
+        out = services.visual_review(deck["id"])
+    except PdfUnavailable:
+        pytest.skip("no browser here")
+    off = [f for f in out["slides"][0]["findings"] if f["rule"] == "off_slide"]
+    assert off and "A title the template places" in off[0]["where"], out["slides"][0]["findings"]
+    assert (services.visual_review_dir(deck["id"]) / "slide-01.png").is_file()

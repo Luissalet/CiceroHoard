@@ -18,7 +18,7 @@ from . import decks as store
 from .check import check_deck
 from .config import Config
 from .db import Database
-from .errors import CiceroError
+from .errors import CiceroError, NotFound, RevisionConflict
 from .hoard_link import fam_refs, family, tokens
 from .hoard_link.config import LinkConfig
 from .images import ImageStudio
@@ -317,6 +317,15 @@ class Services:
     def visual_review_dir(self, deck_id: str) -> Path:
         return self.config.data_dir / "visual_review" / deck_id
 
+    def _review_scene(self, deck: dict[str, Any]) -> dict[str, Any]:
+        """For a template deck, the same scene the preview shows (template furniture, its own slide size); the standard
+        rendering otherwise (empty: the review builds it)."""
+        if not deck.get("template"):
+            return {}
+        from .template_live import document, scenes
+        _, width, height = scenes(deck, self.assets_lookup())
+        return {"document": document(self, deck, mode="stacked", inline=True), "size": (int(width), int(height))}
+
     def visual_review(self, deck_id: str, *, fix: bool = False) -> dict[str, Any]:
         """Render every slide in the browser, keep a PNG of each and apply the hard rules; with ``fix`` apply the
         allowed automatic fix (minimum font size on slides whose text overflows) and review again."""
@@ -325,24 +334,34 @@ class Services:
         if not deck["slides"]:
             raise CiceroError("The presentation has no slides to export.", code="no_slides")
         folder = self.visual_review_dir(deck_id)
-        result = vr.review(deck, assets=self.assets_lookup(), png_dir=folder, measure_fn=self._visual_measure_fn)
+        result = vr.review(deck, assets=self.assets_lookup(), png_dir=folder, measure_fn=self._visual_measure_fn,
+                           **self._review_scene(deck))
         if fix:
-            fixed = []
+            fixed, skipped = [], []
             for entry in result["slides"]:
                 if any(f["rule"] == "text_overflow" for f in entry["findings"]):
                     slide = next(s for s in deck["slides"] if s["id"] == entry["slide_id"])
                     blocks = vr.shrink_patch(slide)
-                    if blocks is not None:
-                        store.patch_slide(self, deck_id, slide["id"], {"blocks": blocks}, reason="visual review: minimum font size")
-                        fixed.append({"slide_id": slide["id"], "position": entry["position"], "fix": f"font_size {vr.MIN_FONT} on text and bullets"})
-            if fixed:
+                    if blocks is None:
+                        continue
+                    try:
+                        # only over the revision that was measured: an edit made meanwhile is kept, never overwritten
+                        store.patch_slide(self, deck_id, slide["id"], {"blocks": blocks, "expected_revision": slide["revision"]},
+                                          reason="visual review: minimum font size")
+                    except (RevisionConflict, NotFound):
+                        skipped.append({"slide_id": slide["id"], "position": entry["position"],
+                                        "reason": "the slide changed while it was being measured; it is reviewed again as it is now"})
+                        continue
+                    fixed.append({"slide_id": slide["id"], "position": entry["position"], "fix": f"font_size {vr.MIN_FONT} on text and bullets"})
+            if fixed or skipped:
                 before = {"errors": result["errors"], "warnings": result["warnings"]}
-                result = vr.review(store.deck_view(self, deck_id), assets=self.assets_lookup(), png_dir=folder,
-                                   measure_fn=self._visual_measure_fn)
-                result["fixed"] = fixed
+                current = store.deck_view(self, deck_id)
+                result = vr.review(current, assets=self.assets_lookup(), png_dir=folder, measure_fn=self._visual_measure_fn,
+                                   **self._review_scene(current))
                 result["before"] = before
-            else:
-                result["fixed"] = []
+            result["fixed"] = fixed
+            if skipped:
+                result["skipped"] = skipped
         for entry in result["slides"]:
             if entry.get("png"):
                 entry["png_url"] = f"/api/decks/{deck_id}/visual-review/{Path(entry['png']).name}"

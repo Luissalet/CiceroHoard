@@ -3,7 +3,7 @@ the browser actually laid out (not to estimates).
 
 Rules, each with what may be done about it:
 
-* ``off_slide`` (error): an object crosses the 1280x720 slide edge. Fix: move or shrink it (frame).
+* ``off_slide`` (error): an object crosses the slide edge (1280x720, or the template's own size). Fix: move or shrink it (frame).
 * ``text_overflow`` (error): the text needs more room than its box even at the smallest fitted size. Auto-fix: set the
   slide's text and bullet blocks to the minimum font size (14), then review again; otherwise shorten the text.
 * ``overlap`` (warning): two content objects (text, picture, chart, table) cover each other by more than 4 % of the
@@ -55,7 +55,8 @@ _PROBE = r"""
   const out = [];
   for (const section of document.querySelectorAll('section.slide')) {
     const stage = section.querySelector('.stage'); const sr = stage.getBoundingClientRect();
-    const sx = 1280 / sr.width, sy = 720 / sr.height;
+    const W = stage.offsetWidth || 1280, H = stage.offsetHeight || 720;  // the scene's own size (a template may differ)
+    const sx = W / sr.width, sy = H / sr.height;
     const rel = (r) => ({x: (r.left - sr.left) * sx, y: (r.top - sr.top) * sy, w: r.width * sx, h: r.height * sy});
     const found = []; const content = [];
     const boxes = Array.from(stage.querySelectorAll('.b'));
@@ -67,10 +68,10 @@ _PROBE = r"""
       const label = isText ? (el.innerText || '').trim().slice(0, 60) : isImg ? 'picture' : isChart ? 'chart' : isTable ? 'table' : 'shape';
       // a text box that starts inside the slide and only runs past the bottom grew with its text: that is overflow
       // (and the minimum-font fix applies), not an object placed off the slide
-      const grewDown = isText && r.x >= -2 && r.y >= -2 && r.x + r.w <= 1282 && r.y < 720 && r.y + r.h > 722;
+      const grewDown = isText && r.x >= -2 && r.y >= -2 && r.x + r.w <= W + 2 && r.y < H && r.y + r.h > H + 2;
       if (grewDown) found.push({rule: 'text_overflow', where: label,
-        detail: `needs ${Math.round(r.h)}px, the slide leaves ${Math.round(720 - r.y)}px`, need: Math.round(r.h), have: Math.round(720 - r.y)});
-      else if (r.x < -2 || r.y < -2 || r.x + r.w > 1282 || r.y + r.h > 722) found.push({rule: 'off_slide', where: label,
+        detail: `needs ${Math.round(r.h)}px, the slide leaves ${Math.round(H - r.y)}px`, need: Math.round(r.h), have: Math.round(H - r.y)});
+      else if (r.x < -2 || r.y < -2 || r.x + r.w > W + 2 || r.y + r.h > H + 2) found.push({rule: 'off_slide', where: label,
         detail: `${Math.round(r.x)},${Math.round(r.y)} ${Math.round(r.w)}x${Math.round(r.h)}`});
       if (isText && !grewDown) {
         // the ink of the text, not scrollHeight: a trailing paragraph margin is space, not overflow
@@ -121,28 +122,36 @@ _PROBE = r"""
 }
 """.replace("%OVERLAP%", str(OVERLAP_SHARE))
 
-_FORCE_LAYOUT = (".slide{width:1280px!important;height:720px!important;aspect-ratio:auto!important;margin:0 0 8px 0!important}"
-                 ".stage{transform:none!important}.fragment{opacity:1!important;visibility:visible!important;clip-path:none!important}")
+def _force_layout(width: int, height: int) -> str:
+    """Every slide at its own scene size, unscaled, with every build step shown."""
+    return (f".slide{{width:{width}px!important;height:{height}px!important;aspect-ratio:auto!important;margin:0 0 8px 0!important}}"
+            ".stage{transform:none!important}.fragment{opacity:1!important;visibility:visible!important;clip-path:none!important}")
 
 
-def _launch(p: Any, profile_dir: str) -> Any:
+def _launch(p: Any, profile_dir: str, size: tuple[int, int] = (1280, 720)) -> Any:
     try:
-        context, _ = browser.launch_context(p, profile_dir, headless=True, viewport={"width": 1300, "height": 760})
+        context, _ = browser.launch_context(p, profile_dir, headless=True,
+                                            viewport={"width": int(size[0]) + 20, "height": int(size[1]) + 40})
     except browser.BrowserUnavailable as error:
         raise PdfUnavailable(f"No Chromium is available for the visual review ({error}).") from error
     return context
 
 
-def measure(deck: dict[str, Any], *, assets: AssetLookup, png_dir: Optional[Path] = None) -> list[dict[str, Any]]:
-    """Render the deck and return the raw per-slide measurements (and a PNG per slide when ``png_dir`` is given)."""
+def measure(deck: dict[str, Any], *, assets: AssetLookup, png_dir: Optional[Path] = None, document: Optional[str] = None,
+            size: Optional[tuple[int, int]] = None) -> list[dict[str, Any]]:
+    """Render the deck and return the raw per-slide measurements (and a PNG per slide when ``png_dir`` is given).
+    ``document`` is the HTML to measure when the caller has the real preview scene (a template deck: its furniture and
+    its own slide size, ``size``); otherwise the standard 1280x720 rendering is built here."""
     try:
         from playwright.sync_api import sync_playwright
     except ImportError as error:
         raise PdfUnavailable("The playwright package is not installed.") from error
-    document, _ = render_document(deck, assets=assets, inline=True, mode="stacked")
-    document = document.replace("</head>", f"<style>{_FORCE_LAYOUT}</style></head>", 1)
+    width, height = (int(size[0]), int(size[1])) if size else (1280, 720)
+    if document is None:
+        document, _ = render_document(deck, assets=assets, inline=True, mode="stacked")
+    document = document.replace("</head>", f"<style>{_force_layout(width, height)}</style></head>", 1)
     with sync_playwright() as p, tempfile.TemporaryDirectory(prefix="cicero-review-") as profile:
-        context = _launch(p, profile)
+        context = _launch(p, profile, (width, height))
         try:
             page = context.new_page()
             page.set_content(document, wait_until="load")
@@ -161,8 +170,10 @@ def measure(deck: dict[str, Any], *, assets: AssetLookup, png_dir: Optional[Path
 
 
 def review(deck: dict[str, Any], *, assets: AssetLookup, png_dir: Optional[Path] = None,
-           measure_fn: Optional[Callable[..., list[dict[str, Any]]]] = None) -> dict[str, Any]:
-    rows = (measure_fn or measure)(deck, assets=assets, png_dir=png_dir)
+           measure_fn: Optional[Callable[..., list[dict[str, Any]]]] = None, document: Optional[str] = None,
+           size: Optional[tuple[int, int]] = None) -> dict[str, Any]:
+    scene = {"document": document, "size": size} if document is not None else {}
+    rows = (measure_fn or measure)(deck, assets=assets, png_dir=png_dir, **scene)
     by_id = {s["id"]: s for s in deck.get("slides", [])}
     slides, counts = [], {"error": 0, "warning": 0}
     for position, row in enumerate(rows, 1):
