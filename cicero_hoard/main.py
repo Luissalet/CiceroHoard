@@ -57,6 +57,8 @@ def create_app(config: Config | None = None, services: Services | None = None) -
         "counts": getattr(app.state, "services").counts() if getattr(app.state, "services", None) else {}}))
     for router in ROUTERS:
         app.include_router(router)
+    from .api.copilot import create_router as copilot_router
+    app.include_router(copilot_router(config))
 
     install_pwa(app, name="Cicero's Hoard", short_name="Cicero", theme="#4a1520", background="#2a0c13", cache="cicero-hoard-assets",
                 lang="es", static_dir=STATIC_DIR, version=__version__)

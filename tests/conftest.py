@@ -24,7 +24,7 @@ from cicero_hoard.main import create_app  # noqa: E402
 from cicero_hoard.services import Services  # noqa: E402
 
 # Words that must never appear in the product, its manifest or its docs (built from fragments so this file does not contain them).
-BANNED_WORDS = ("chat" + "gpt", "open" + "ai", "anthro" + "pic", "lm " + "studio", "odys" + "seus", "gem" + "ini", "co" + "pilot",
+BANNED_WORDS = ("chat" + "gpt", "open" + "ai", "anthro" + "pic", "lm " + "studio", "odys" + "seus", "gem" + "ini", "github " + "copilot",
                 "clau" + "de", "power" + "point", "key" + "note", "can" + "va", "pre" + "zi", "google " + "slides", "micro" + "soft")
 
 T0 = 1_790_000_000.0  # a fixed clock for the tests

@@ -34,6 +34,21 @@ export default function Deck({ deckId, tab, query }) {
     }
   }, [deckId]);
   useEffect(() => { reload(); }, [reload]);
+  useEffect(() => {
+    const context = event => {
+      if (event.detail.deckId === deckId) event.detail.editor = { unsaved_changes: dirtyRef.current };
+    };
+    window.addEventListener('cicero:context-request', context);
+    return () => window.removeEventListener('cicero:context-request', context);
+  }, [deckId]);
+  useEffect(() => {
+    const changed = () => {
+      if (!dirtyRef.current) void reload();
+      else notify(t('copilot_saved_changes'));
+    };
+    window.addEventListener('cicero:copilot-updated', changed);
+    return () => window.removeEventListener('cicero:copilot-updated', changed);
+  }, [reload, notify, t]);
 
   // One long operation at a time: buttons read `busy` and disable themselves.
   const run = useCallback(async (label, fn) => {
