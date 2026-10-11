@@ -22,6 +22,8 @@ Counts and last values work with categorical columns. Empty sums are zero; other
 Mapped numeric blocks bypass the ordinary agent result cap so long arrays cannot be silently shortened.
 Import/transform writes have agent undo hooks. A reused snapshot is not removed by undo.
 A cited snapshot is protected by the existing source undo conflict handling.
+Ancestor snapshots are also preserved while derived datasets depend on them. Undo derived snapshots first;
+whole-session undo handles the reverse order and its preview identifies this dependency.
 
 The UI offers file/pasted import, profiles, sample rows, grouping/aggregation and chart/table mapping.
 All filtering and sorting options are exposed through REST/MCP; the current UI does not expose every transform argument.

@@ -99,28 +99,58 @@ def test_agent_mapping_keeps_complete_large_numeric_arrays(services):
  assert len(result['block']['categories'])==2000 and result['block']['series'][0]['values']==list(range(2000))
  assert not result.get('truncated')
 
-@pytest.mark.parametrize('raw,value', [(',5',.5),('-,5',-.5),('+,5',.5)])
-def test_spanish_leading_decimal_separator(raw,value):
- assert ds.numeric(raw,'es')==value
+@pytest.mark.parametrize('raw,mode,expected',[(',5','es',.5),('-,5','es',-.5),('+,5','auto',.5),('.5','en',.5)])
+def test_leading_decimal_separator_is_valid(raw,mode,expected):
+ assert ds.numeric(raw,mode)==expected
 
-def test_tables_map_ten_columns_but_charts_keep_six_series(services):
- from pydantic import ValidationError
- columns=list('ABCDEFGHIJ')
- deck,data=imported(services,text=','.join(columns)+'\n'+','.join(str(i) for i in range(10)))
- args=ds.VisualArgs(deck_id=deck['id'],source_id=data['id'],kind='table',series_columns=columns)
- result=ds.visual(services,args)
- assert result['block']['headers']==columns and len(result['block']['rows'][0])==10
- with pytest.raises(ValidationError):
-  ds.VisualArgs(deck_id=deck['id'],source_id=data['id'],series_columns=columns[:7])
+def test_table_maps_ten_columns_but_chart_still_checks_six(client):
+ deck=new_deck(client.svc)
+ data=client.post(f"/api/decks/{deck['id']}/datasets",json={'text':','.join('C'+str(i) for i in range(10))+'\n'+','.join(str(i) for i in range(10))}).json()
+ base=f"/api/decks/{deck['id']}/datasets/{data['id']}/visual"
+ result=client.post(base,json={'kind':'table','series_columns':data['columns']})
+ assert result.status_code==200 and len(result.json()['block']['headers'])==10
+ assert client.post(base,json={'kind':'chart','category_column':'C0','series_columns':data['columns']}).status_code==400
 
-def test_undo_preserves_original_with_derived_data_in_use(services):
- deck,data=imported(services,text='Region,Amount\nA,1\nA,2')
- derived=ds.transform(services,ds.TransformArgs(deck_id=deck['id'],source_id=data['id'],group_by=['Region'],aggregations=[{'column':'Amount','operation':'sum'}]))
- record=ds.track(services,ds.ImportArgs(deck_id=deck['id']),data)
- for dry_run in (False,True):
-  with pytest.raises(AppError):ds.undo(services,record,dry_run=dry_run)
- slide=decks.add_slide(services,deck['id'],blocks=[{'type':'text','text':'Keep'}],sources=[derived['id']])
- with pytest.raises(AppError):ds.undo(services,record)
- assert ds.load(services,deck['id'],data['id'])['rows']==[['A','1'],['A','2']]
- assert ds.load(services,deck['id'],derived['id'])['origin']['derived_from']==data['id']
- assert decks.deck_view(services,deck['id'])['slides'][0]['sources']==[derived['id']]
+def test_undo_preserves_cited_derived_ancestors_and_handles_reverse_order(services):
+ deck,parent=imported(services)
+ args=ds.TransformArgs(deck_id=deck['id'],source_id=parent['id'],aggregations=[{'column':'Value','operation':'sum'}])
+ child=ds.transform(services,args)
+ slide=decks.add_slide(services,deck['id'],sources=[child['id']],notes='Derived evidence')
+ record=ds.track(services,ds.ImportArgs(deck_id=deck['id']),parent)
+ with pytest.raises(AppError,match='Derived datasets'):ds.undo(services,record)
+ assert ds.load(services,deck['id'],parent['id'])['rows'] and ds.load(services,deck['id'],child['id'])['origin']['derived_from']==parent['id']
+ decks.delete_slide(services,deck['id'],slide['id'])
+ ds.undo(services,ds.track(services,args,child))
+ assert ds.undo(services,record)=={'removed':parent['id']}
+
+def test_transform_cannot_insert_after_parent_removed(services,monkeypatch):
+ deck,parent=imported(services);snapshot=ds._snapshot
+ def interleave(svc,deck_id,title,payload):
+  decks.remove_source(svc,deck_id,parent['id'])
+  return snapshot(svc,deck_id,title,payload)
+ monkeypatch.setattr(ds,'_snapshot',interleave)
+ with pytest.raises(CiceroError,match='parent dataset was removed'):
+  ds.transform(services,ds.TransformArgs(deck_id=deck['id'],source_id=parent['id'],sort_column='Value'))
+ assert not decks.deck_view(services,deck['id'])['sources']
+
+def test_contains_matches_zero_without_treating_it_as_empty(services):
+ deck,data=imported(services,text='Name,Value\nA,0\nB,1',number_format='auto')
+ result=ds.transform(services,ds.TransformArgs(deck_id=deck['id'],source_id=data['id'],filters=[{'column':'Value','operator':'contains','value':'0'}]))
+ assert result['rows']==[['A','0']]
+
+def test_dataset_chain_whole_session_undo_preview_and_execution(client):
+ from test_agent_accountability import agent_call,ok,undo
+ deck=new_deck(client.svc);session='data-chain'
+ parent=ok(agent_call(client,'dataset_import',{'deck_id':deck['id'],'text':'Name,Value\nA,2\nB,3'},session=session))
+ child=ok(agent_call(client,'dataset_transform',{'deck_id':deck['id'],'source_id':parent['id'],
+     'aggregations':[{'column':'Value','operation':'sum'}]},session=session))
+ ok(agent_call(client,'slide_add',{'deck_id':deck['id'],'title':'Evidence','sources':[child['id']]},session=session))
+ preview=ok(undo(client,session,dry_run=True))
+ assert preview['complete'] and len(preview['would_undo'])==3
+ result=ok(undo(client,session,confirm=True))
+ assert result['complete'] and not decks.deck_view(client.svc,deck['id'])['sources'] and not decks.deck_view(client.svc,deck['id'])['slides']
+
+def test_overflowing_aggregate_never_saves_nonfinite_snapshot(services):
+ deck,data=imported(services,text='Name,Value\nA,1e308\nB,1e308',number_format='auto')
+ with pytest.raises(ValueError):ds.transform(services,ds.TransformArgs(deck_id=deck['id'],source_id=data['id'],aggregations=[{'column':'Value','operation':'sum'}]))
+ assert len(decks.deck_view(services,deck['id'])['sources'])==1

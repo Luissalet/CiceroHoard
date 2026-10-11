@@ -11,7 +11,7 @@ from datetime import date,datetime
 from pathlib import Path
 from zipfile import BadZipFile
 from typing import Literal,Optional,Any
-from pydantic import BaseModel,Field,model_validator
+from pydantic import BaseModel,Field
 from openpyxl import load_workbook
 from openpyxl.utils.exceptions import InvalidFileException
 from . import decks as store
@@ -72,12 +72,6 @@ class VisualArgs(BaseModel):
     unit:str=''
     title:str=''
 
-    @model_validator(mode='after')
-    def chart_series_limit(self):
-        if self.kind=='chart' and len(self.series_columns)>6:
-            raise ValueError('Charts support at most six value series; tables support ten columns.')
-        return self
-
 def numeric(value,mode='auto'):
     if value is None or value=='':return None
     if isinstance(value,bool):return None
@@ -105,8 +99,11 @@ def _clean(value):
     return value if isinstance(value,(str,int,float,bool)) or value is None else str(value)
 
 def _snapshot(svc,deck_id,title,payload):
-    text=json.dumps(payload,ensure_ascii=False,separators=(',',':'))
+    text=json.dumps(payload,ensure_ascii=False,separators=(',',':'),allow_nan=False)
     with svc.db.transaction():
+        parent=payload.get('origin',{}).get('derived_from')
+        if parent is not None and not svc.db.one("SELECT id FROM sources WHERE id=? AND deck_id=? AND kind='dataset'",(parent,deck_id)):
+            raise CiceroError('The parent dataset was removed before this transformation completed.')
         # Check and insert under the same transaction so retries cannot create duplicates.
         old=svc.db.one("SELECT * FROM sources WHERE deck_id=? AND kind='dataset' AND sha256=?",(deck_id,sha256_hex(text)))
         source=store._source_dict(old) if old else store._insert_source(svc,deck_id,title or 'Tabular data','dataset',text)
@@ -221,7 +218,7 @@ def transform(svc,args):
         def matches(row):
             value=row[index]
             if f.operator=='isnull':return value in (None,'')
-            if f.operator=='contains':return str(f.value) in str(value or '')
+            if f.operator=='contains':return str(f.value) in ('' if value is None else str(value))
             left=numeric(value,mode);right=numeric(f.value,mode)
             if f.operator in ('gt','ge','lt','le'):
                 if value in (None,''):return False
@@ -273,7 +270,19 @@ def undo(svc,record,dry_run=False):
     if record.get('etag')=='reused':return {'unchanged':True}
     deck_id=_id_of(record,'deck_id');source_id=int(_id_of(record,'source_id') or 0)
     with svc.db.transaction():
-        children=svc.db.query("SELECT id,text FROM sources WHERE deck_id=? AND kind='dataset'",(deck_id,))
-        if any(json.loads(row['text']).get('origin',{}).get('derived_from')==source_id for row in children):
-            raise _conflict('Derived datasets still use this source; undo those derived datasets first.')
+        children=[row['id'] for row in svc.db.query("SELECT id FROM sources WHERE deck_id=? AND kind='dataset' AND json_extract(text,'$.origin.derived_from')=?",(deck_id,source_id))]
+        if children:
+            if dry_run and _session_removes_children(svc,record,deck_id,children):
+                return {'would_remove':source_id,'after':'derived snapshots from this session are undone first'}
+            raise _conflict('Derived datasets still depend on this source. Undo those snapshots first: '+', '.join(map(str,children)))
         return undo_source_add(svc,record,dry_run)
+
+def _session_removes_children(svc,record,deck_id,children):
+    from .agent_undo import _id_of
+    from .hoard_link.agent_journal import Journal
+    rows=Journal(svc.config.data_dir).query(session=str(record.get('session') or ''),kind='write',limit=1000)
+    planned={int(_id_of(r,'source_id') or 0) for r in rows if r.get('ok') and not r.get('undone')
+        and r.get('tool') in ('dataset_import','dataset_transform') and r.get('etag')!='reused'
+        and r.get('id')!=record.get('id') and float(r.get('ts') or 0)>=float(record.get('ts') or 0)
+        and _id_of(r,'deck_id')==deck_id}
+    return set(children).issubset(planned)

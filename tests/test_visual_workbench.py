@@ -59,6 +59,20 @@ def test_numeric_coordinates_and_interval_contracts():
     with pytest.raises(ValidationError):DiagramBlock(nodes=[{'id':'a','label':'A'}],edges=[{'source':'a','target':'absent'}])
     with pytest.raises(ValidationError):DiagramBlock(nodes=[{'id':'a','label':'A'},{'id':'a','label':'Duplicate'}])
 
+@pytest.mark.parametrize('central,lower,upper,zero',[
+    ([2,3],[1,1],[100,100],True),([-2,-3],[-100,-100],[-1,-1],False),
+])
+def test_web_band_extents_include_interval_bounds(central,lower,upper,zero):
+    from lxml import etree
+    b=ChartBlock(chart='band',categories=['A','B'],zero_baseline=zero,
+        series=[{'name':'Observed','values':central,'x_values':[1,2],'lower':lower,'upper':upper}]).model_dump(exclude_none=True)
+    root=etree.fromstring(chart_svg(b,1000,500,get_theme('claro'),'en','Arial').encode())
+    polygons=[node for node in root.iter() if node.get('fill-opacity')=='0.14']
+    assert polygons
+    for polygon in polygons:
+        points=[float(n) for n in polygon.get('points').replace(',',' ').split()]
+        assert all(0<=v<=1000 for v in points[::2]) and all(0<=v<=500 for v in points[1::2])
+
 @pytest.mark.parametrize('blocks',[
     [{'type':'metrics','items':[{'value':'120','label':'Eligible'}]},{'type':'text','text':'Takeaway'}],
     [{'type':'text','text':'Takeaway'},{'type':'bullets','items':['Retained content']}],
