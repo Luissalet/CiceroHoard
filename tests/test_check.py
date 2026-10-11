@@ -1,6 +1,7 @@
 """Deck review: numbers that no source contains, sizes, notes, charts."""
 from __future__ import annotations
 
+import pytest
 from cicero_hoard import check, decks
 from conftest import new_deck, png_bytes
 
@@ -13,6 +14,17 @@ def test_number_variants_match_regional_formats():
     assert 1234.0 in check.number_variants("1.234") and 1234.0 in check.number_variants("1,234")
     assert 1234.5 in check.number_variants("1.234,5") and 1.5 in check.number_variants("1,5")
     assert 12.0 in check.number_variants("12")
+
+
+@pytest.mark.parametrize('media_type', ['audio', 'video'])
+def test_media_only_slide_is_content_and_its_caption_is_checked(media_type):
+    slide={'id':'media','position':1,'layout':'evidence','title':'Media','notes':'Notes',
+           'blocks':[{'type':media_type,'asset_id':'missing','caption':'Sales 987'}]}
+    issues=check.check_deck({'title':'Deck','language':'en','slides':[slide]},
+                          [{'text':'Sales 123'}],lambda _:None)
+    assert 'empty_slide' not in kinds(issues)
+    assert {'image_missing','unsourced_numbers'} <= kinds(issues)
+    assert 'Sales 987' in check.slide_text_parts(slide)
 
 def test_signed_source_values_preserve_signs_and_ranges():
     values=check.all_number_values(['Changes: 3, -6, 4. Bias: \u221212,5. Range 1-3. Large: -123.456.'])

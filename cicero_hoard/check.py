@@ -169,7 +169,7 @@ def slide_text_parts(slide: dict[str, Any]) -> list[str]:
             parts += [b.get('title','')]+[text for item in b['items'] for text in [item['label'],item.get('date',''),item.get('detail','')]]
         elif t=='table':
             parts += [b.get('title','')]+b['headers']+[cell for row in b['rows'] for cell in row]
-        elif t == "image":
+        elif t in ("image", "audio", "video"):
             parts.append(b.get("caption") or "")
     return [p for p in parts if p]
 
@@ -208,7 +208,7 @@ def _is_empty(slide: dict[str, Any]) -> bool:
             return False
         if t == "chart" and b.get("series"):
             return False
-        if t == "image":
+        if t in ("image", "audio", "video"):
             return False
         if t in ('diagram','metrics','table','timeline'):
             return False
