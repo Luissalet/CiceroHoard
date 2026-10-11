@@ -263,6 +263,11 @@ These routes share eight MCP tool implementations. [Full contract](LIVE_MEDIA.md
 
 ## PWA and client
 
+The shared Faustus panel uses `GET /api/copilot/info` (stable app/data-space identity,
+panel and settings URLs), `GET /api/copilot/panel.js` (the bundle served by Faustus),
+and `POST /api/copilot/proxy` (native JSON or raw multipart envelope and streamed response).
+The relay uses the configured Faustus service; it stores no conversations and executes no model.
+
 `GET /manifest.webmanifest` and `GET /sw.js` serve the installable app. Any other path that is not under `/api/` is
 served from `cicero_hoard/static` (the built client), falling back to `index.html`; when the client is not built the
 answer is 503 `{"error": ...}`.

@@ -7,6 +7,7 @@ import Deck from "./pages/Deck.jsx";
 import Preview from "./pages/Preview.jsx";
 import Settings from "./pages/Settings.jsx";
 import Presenter from './pages/Presenter.jsx';
+import FaustusCopilot from './components/FaustusCopilot.jsx';
 
 const NAV = [
   { path: "decks", key: "nav_decks", icon: "M3 5h18v11H3zM8 20h8M12 16v4" },
@@ -126,6 +127,7 @@ export default function App() {
         </main>
       </div>
       <Toast message={toast} onClose={() => setToast(null)} />
+      <FaustusCopilot deckId={route.page === 'deck' ? route.id : null} lang={lang} onChanged={refresh} />
     </AppContext.Provider>
   );
 }

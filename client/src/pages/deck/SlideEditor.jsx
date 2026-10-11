@@ -70,6 +70,16 @@ export default function SlideEditor({ slide, onDeleted }) {
   useEffect(() => setDraft(initial), [initial]);
   const dirty = JSON.stringify(draft) !== initialKey;
   useDirty(dirty);
+  useEffect(() => {
+    const context = event => {
+      if (event.detail.deckId === deckId) event.detail.slideEditor = {
+        slide_id: slide.id, saved_revision: slide.revision, unsaved_changes: dirty,
+        ...(dirty ? { draft: structuredClone(draft) } : {}),
+      };
+    };
+    window.addEventListener('cicero:context-request', context);
+    return () => window.removeEventListener('cicero:context-request', context);
+  }, [deckId, slide.id, slide.revision, dirty, draft]);
   const off = !!busy;
   const approved = slide.status === "approved";
   const hasImage = draft.layout === "image_text" || draft.blocks.some((b) => b.type === "image");
