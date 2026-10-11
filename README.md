@@ -1,5 +1,11 @@
 # Cicero's Hoard
 
+## Interactive Routes
+
+`deck_navigation` configures stable slide links, external URLs and next/previous/return actions on ordinary objects.
+The editor offers the same destination selector. HTML and live sessions restore nested branch origins and click stages;
+native PPTX uses editable slide relationships and last-slide-viewed return. [Contracts](docs/INTERACTIVE_NAVIGATION.md).
+
 ## Motion, Media And Linked Data
 
 Use `deck_transitions` for common screen/native transitions, stable-object morph and per-slide overrides.
@@ -7,7 +13,7 @@ Use `media_import` and `media_get` for local or HTTP(S) audio/video, then add ty
 `deck_media_control` operates playback on the current live slide.
 `dataset_link`, `dataset_links`, `dataset_bind` and `dataset_link_control` provide durable automatic local/URL
 data refresh, immutable snapshots, typed visual recipes and last-good recovery. The editor exposes the same features.
-The public catalogue now contains 58 tools. See [live media](docs/LIVE_MEDIA.md) for contracts and format differences.
+The public catalogue now contains 59 tools. See [live media](docs/LIVE_MEDIA.md) for contracts and format differences.
 
 A local workspace that turns a brief and source documents into an editable presentation. You give it an objective,
 an audience and the material; it proposes an outline, writes the slides with speaker notes, lets you review and
@@ -319,4 +325,4 @@ The vector source is editable in VectorCraft. PPTX embeds the SVG as a picture w
 
 ## Shared Faustus assistant
 
-The Faustus button mounts the common panel served by the configured Faustus service. Conversation storage, model choice, streaming, recovery and project memory live in Faustus. Cicero supplies its data-space identity, deck, selected slide/revision, editor selection and unsaved slide draft. Its 58 native domain tools and slide revisions remain available. Existing decks, notes, sources and manual unsaved edits are preserved. Configure CICERO_FAUSTUS_URL or the existing backend.json Faustus connection. This requires a reachable Faustus service with the shared copilot contract; no private chat/model fallback is created.
+The Faustus button mounts the common panel served by the configured Faustus service. Conversation storage, model choice, streaming, recovery and project memory live in Faustus. Cicero supplies its data-space identity, deck, selected slide/revision, editor selection and unsaved slide draft. Its 59 native domain tools and slide revisions remain available. Existing decks, notes, sources and manual unsaved edits are preserved. Configure CICERO_FAUSTUS_URL or the existing backend.json Faustus connection. This requires a reachable Faustus service with the shared copilot contract; no private chat/model fallback is created.

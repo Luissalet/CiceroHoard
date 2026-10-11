@@ -42,6 +42,9 @@ def catalog(svc,args):
             'playback':['start','end','volume','playback_rate','loop','autoplay','muted','controls','subtitles']},
         'linked_data':{'tools':['dataset_link','dataset_links','dataset_bind','dataset_link_control'],
             'origins':['local CSV/TSV/XLSX','HTTP(S) CSV/TSV/XLSX'],'offline':'immutable current snapshot'},
+        'navigation':{'tool':'deck_navigation','block_field':'action','kinds':['slide','url','next','previous','return'],
+                      'identity':'stable destination slide_id; inspection reports deleted targets',
+                      'live_controls':['branch','return'],'native_return':'last slide viewed; no stage restoration'},
         'export_notes':{'band':'filled region in web; central and bounding curves in editable PPTX',
             'heatmap':'editable colored table in PPTX','funnel':'editable stage shapes in PPTX',
             'annotations':'point labels in web; editable analytical captions in PPTX',
@@ -95,7 +98,7 @@ def scene(svc,args):
             boxes=plan.boxes;warnings=plan.overflow_where
         result.append({'slide_id':slide['id'],'revision':slide['revision'],'title':slide['title'],
             'objects':[{'id':b.object_id or f'{slide["id"]}/{i}','kind':b.kind,'frame':[round(v,2) for v in (b.x,b.y,b.w,b.h)],
-                'text':[p.text for p in b.paras],'font_sizes':[round(p.size,2) for p in b.paras],'build':b.build,'effect':b.effect} for i,b in enumerate(boxes)],'warnings':warnings})
+                'text':[p.text for p in b.paras],'font_sizes':[round(p.size,2) for p in b.paras],'build':b.build,'effect':b.effect,'action':b.action} for i,b in enumerate(boxes)],'warnings':warnings})
     return {'schema_version':'cicero.scene.v1','canvas':[w,h],'slides':result,'basis':'shared export geometry'}
 
 def present(svc,args):

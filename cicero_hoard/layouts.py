@@ -61,6 +61,7 @@ class Box:
     effect: Optional[str] = None
     duration_ms: int = 400
     object_id: Optional[str] = None
+    action: Optional[dict[str, Any]] = None
 
 
 def is_card(box: Box) -> bool:
@@ -332,6 +333,7 @@ def stack(blocks: list[dict[str, Any]], x: float, y: float, w: float, h: float, 
                 if box.build is None:box.build=b.get('build')
                 if box.effect is None or b.get('effect') == 'none':box.effect=b.get('effect')
                 box.duration_ms=b.get('duration_ms') or 400
+                box.action=b.get('action')
             if bh > 0:
                 boxes += got
                 cy += bh + GAP

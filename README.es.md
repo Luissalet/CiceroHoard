@@ -1,5 +1,11 @@
 # Cicero's Hoard
 
+## Recorridos Interactivos
+
+`deck_navigation` configura enlaces por objeto a diapositivas con ID estable, URLs, siguiente/anterior y retorno.
+El editor ofrece el mismo selector. HTML y las sesiones en vivo recuperan el origen y el paso de cada rama;
+PPTX utiliza enlaces nativos y vuelta a la ultima diapositiva vista. [Contratos](docs/INTERACTIVE_NAVIGATION.md).
+
 ## Movimiento, Multimedia Y Datos Vinculados
 
 `deck_transitions` configura transiciones de pantalla y archivo, morph por identidad y ajustes por diapositiva.
@@ -7,7 +13,7 @@
 `deck_media_control` controla la reproduccion de la diapositiva activa.
 `dataset_link`, `dataset_links`, `dataset_bind` y `dataset_link_control` ofrecen actualizacion automatica durable,
 snapshots inmutables, recetas visuales y recuperacion del ultimo estado valido. Las mismas funciones estan en el editor.
-El catalogo publico contiene 58 herramientas. Contratos y diferencias de formato: [multimedia y datos](docs/LIVE_MEDIA.md).
+El catalogo publico contiene 59 herramientas. Contratos y diferencias de formato: [multimedia y datos](docs/LIVE_MEDIA.md).
 
 Un espacio de trabajo local que convierte un encargo y unos documentos en una presentación editable. Le das un
 objetivo, un público y el material; propone un guion, escribe las diapositivas con notas del orador, te deja revisar
@@ -333,4 +339,4 @@ El original vectorial se edita en VectorCraft. El PPTX contiene el SVG como imag
 
 ## Asistente compartido de Faustus
 
-El botón Faustus monta el panel común servido por Faustus. Conversaciones, modelo, streaming, recuperación y memoria del proyecto viven allí. Cicero aporta su espacio de datos, presentación, diapositiva y revisión, selección y borrador sin guardar. Mantiene sus 58 herramientas de dominio y las revisiones para deshacer. Se conservan presentaciones, notas, fuentes y cambios manuales sin guardar. La conexión utiliza CICERO_FAUSTUS_URL o backend.json. Requiere Faustus disponible con el contrato común; no crea otro chat ni otro modelo privado.
+El botón Faustus monta el panel común servido por Faustus. Conversaciones, modelo, streaming, recuperación y memoria del proyecto viven allí. Cicero aporta su espacio de datos, presentación, diapositiva y revisión, selección y borrador sin guardar. Mantiene sus 59 herramientas de dominio y las revisiones para deshacer. Se conservan presentaciones, notas, fuentes y cambios manuales sin guardar. La conexión utiliza CICERO_FAUSTUS_URL o backend.json. Requiere Faustus disponible con el contrato común; no crea otro chat ni otro modelo privado.

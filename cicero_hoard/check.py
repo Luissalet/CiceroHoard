@@ -36,6 +36,7 @@ MSG = {
         "chart_empty": "El gráfico no tiene categorías o series.",
         "chart_pie_series": "Un gráfico circular solo usa la primera serie.",
         "image_missing": "Una imagen de la diapositiva ya no existe.",
+        "link_missing": "La diapositiva de destino del enlace ya no existe: {target}.",
         "image_prompt_only": "Hay una descripción de imagen pero ninguna imagen.",
         "layout_content": "El diseño «{layout}» espera un bloque de tipo {expected}.",
         "unsourced_chart": "Valores del gráfico que no aparecen en ninguna fuente: {numbers}.",
@@ -54,6 +55,7 @@ MSG = {
         "chart_empty": "The chart has no categories or series.",
         "chart_pie_series": "A pie chart only uses the first series.",
         "image_missing": "An image on this slide no longer exists.",
+        "link_missing": "The link destination slide no longer exists: {target}.",
         "image_prompt_only": "There is an image description but no image.",
         "layout_content": "The \"{layout}\" layout expects a block of type {expected}.",
         "unsourced_chart": "Chart values that appear in no source: {numbers}.",
@@ -254,6 +256,9 @@ def check_deck(deck: dict[str, Any], sources: list[dict[str, Any]], assets: Asse
                 add(slide, "overflow_risk", "warning", "overflow_risk", chars=chars, budget=budget)
         for b in slide.get("blocks", []):
             t = b.get("type")
+            action=b.get('action') or {}
+            if action.get('kind')=='slide' and action['slide_id'] not in {s['id'] for s in slides}:
+                add(slide,'link_missing','warning','link_missing',target=action['slide_id'])
             lists = [b.get("items", [])] if t == "bullets" else [b.get("left", []), b.get("right", [])] if t == "columns" else []
             for items in lists:
                 if len(items) > MAX_BULLETS:

@@ -7,6 +7,14 @@ from .sources import read_upload
 
 router = APIRouter(prefix='/api')
 
+@router.get('/decks/{deck_id}/navigation')
+def navigation_get(request:Request,deck_id:str):
+    return tool(request,'deck_navigation',deck_id=deck_id)
+
+@router.put('/decks/{deck_id}/navigation')
+async def navigation_set(request:Request,deck_id:str):
+    return tool(request,'deck_navigation',**{**await request.json(),'deck_id':deck_id})
+
 @router.post('/decks/{deck_id}/live/media')
 async def media_control(request: Request, deck_id: str):
     return tool(request, 'deck_media_control', **{**await request.json(), 'deck_id': deck_id})

@@ -65,7 +65,7 @@ def test_the_shared_bridge_lists_and_calls_the_tools_of_the_running_app(running_
 
     tools, no_reason, created, missing, refused = asyncio.run(go())
     assert no_reason.is_error and no_reason.body["code"] == "reason_required"
-    assert len(tools) == 58 and next(t for t in tools if t["name"] == "slides_generate")["x-timeout-s"] >= 600
+    assert len(tools) == 59 and next(t for t in tools if t["name"] == "slides_generate")["x-timeout-s"] >= 600
     assert not created.is_error and created.body["title"] == "Vía puente"
     assert missing.is_error and missing.body["code"] == "not_found"
     assert refused.is_error and refused.body["code"] == "confirm_required"

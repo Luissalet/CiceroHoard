@@ -7,6 +7,7 @@ import { CHART_KINDS, formatBytes } from "../../format.js";
 import {DiagramEditor,MetricsEditor,TableEditor,TimelineEditor,FrameEditor,MotionEditor} from './VisualEditors.jsx';
 import {AdvancedChartSettings} from './ChartSettings.jsx';
 import MediaEditor from './MediaEditor.jsx';
+import ActionEditor from './ActionEditor.jsx';
 
 const MAX_IMAGE = 15 * 1024 * 1024;
 
@@ -157,6 +158,7 @@ export default function BlockEditor({ block, index, count, onChange, onMove, onR
       {body}
       <Field label={t('object_id')}><input className="field" value={block.id||''} maxLength={80} disabled={disabled} onChange={e=>onChange({...block,id:e.target.value||undefined})}/></Field>
       <MotionEditor block={block} onChange={onChange} disabled={disabled}/>
+      <ActionEditor block={block} onChange={onChange} disabled={disabled}/>
       {canvas&&<FrameEditor block={block} onChange={onChange} disabled={disabled} index={index} count={count}/>}
     </div>
   );

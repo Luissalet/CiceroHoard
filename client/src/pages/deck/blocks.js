@@ -88,6 +88,6 @@ export function blockToApi(block,t,n){
   if(block.build!==undefined&&block.build!==null)out.build=Number(block.build);
   if(block.effect)out.effect=block.effect;
   if(block.duration_ms)out.duration_ms=Number(block.duration_ms);
-  for(const key of ['id','frame','font_size','fit','position'])if(block[key]!=null&&block[key]!=='')out[key]=block[key];
+  for(const key of ['id','frame','font_size','fit','position','action'])if(block[key]!=null&&block[key]!=='')out[key]=block[key];
   return out;
 }

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import base64
 import html
+import json
 import math
 import re
 from pathlib import Path
@@ -268,6 +269,12 @@ def slide_section(slide: dict[str, Any], *, deck: dict[str, Any], theme: dict[st
 def motion_box_html(box,theme,lang,assets,src):
     content=box_html(box,theme,lang,assets,src)
     if box.object_id:content=content.replace('class="b',f'data-id="{esc(box.object_id)}" class="b',1)
+    if box.action:
+        action=box.action
+        href=action.get('url') if action['kind']=='url' else '#s-'+action['slide_id'] if action['kind']=='slide' else '#'
+        label=action.get('label') or ''
+        geo=f'position:absolute;left:{_px(box.x)};top:{_px(box.y)};width:{_px(box.w)};height:{_px(box.h)}'
+        content=f'<a class="slide-action" style="{geo}" href="{esc(href)}" data-action="{esc(json.dumps(action))}" title="{esc(label)}"'+(' target="_blank" rel="noopener noreferrer"' if action['kind']=='url' else '')+(' aria-label="'+esc(label)+'"' if label else '')+'>'+content+'</a>'
     if box.build is not None and box.build>0 and box.effect!='none':
         effect=box.effect or 'fade'
         return f'<div class="fragment visual-{effect}" data-fragment-index="{box.build-1}" style="position:absolute;inset:0;--motion-duration:{box.duration_ms}ms">{content}</div>'
@@ -425,6 +432,7 @@ def present_document(document: str,width=1280,height=720) -> str:
     .reveal .visual-wipe,.reveal .visual-draw{{clip-path:inset(0 100% 0 0)}}
     .reveal .visual-wipe.visible,.reveal .visual-draw.visible{{clip-path:inset(0)}}
     .reveal .progress{{color:#219BC3}}.reveal .controls{{color:#219BC3}}
+    .slide-action{{display:block;color:inherit;text-decoration:none}}.slide-action>.b{{left:0!important;top:0!important;width:100%!important;height:100%!important;cursor:pointer}}.slide-action:focus-visible{{outline:3px solid var(--accent);outline-offset:3px}}.slide-action:hover>.t{{text-decoration:underline}}
     .elapsed{{position:fixed;left:12px;bottom:10px;font:14px Arial;color:#657681;z-index:20}}
     @media print{{.fragment{{opacity:1!important;visibility:visible!important;clip-path:none!important}}}}
     @media(prefers-reduced-motion:reduce){{.reveal .fragment{{clip-path:none!important;transition:none!important}}}}
@@ -436,6 +444,22 @@ def present_document(document: str,width=1280,height=720) -> str:
       transition:reduced?'none':'fade',transitionSpeed:'fast',autoAnimate:!reduced,
       keyboard:{{66:()=>document.body.classList.toggle('blackout')}}}});
     deck.initialize();
+    const routeHistory=[];
+    async function routeAction(action){{
+      if(document.body.dataset.sessionControl){{
+        const response=await fetch(document.body.dataset.sessionControl,{{method:'POST',headers:{{'Content-Type':'application/json'}},body:JSON.stringify(action.kind==='slide'?{{action:'branch',slide_id:action.slide_id}}:{{action:action.kind}})}});
+        if(!response.ok)throw Error((await response.json()).error||'Navigation failed');return;
+      }}
+      if(action.kind==='return'){{const previous=routeHistory.pop();if(previous)deck.slide(previous.h,previous.v,previous.f);return;}}
+      if(action.kind==='next'){{deck.next();return;}}if(action.kind==='previous'){{deck.prev();return;}}
+      const target=document.getElementById('s-'+action.slide_id);
+      if(!target)throw Error(document.documentElement.lang==='es'?'La diapositiva de destino ya no existe.':'The destination slide no longer exists.');
+      const index=Array.from(document.querySelectorAll('.reveal .slides>section')).indexOf(target);
+      routeHistory.push(deck.getIndices());deck.slide(index,0,-1);
+    }}
+    const routeStatus=document.createElement('div');routeStatus.setAttribute('role','alert');routeStatus.style.cssText='position:fixed;top:0;left:0;right:0;padding:12px;background:#a22;color:white;z-index:112;display:none';document.body.append(routeStatus);
+    // Capture internal actions before the presentation engine's own hash-link listener.
+    document.addEventListener('click',event=>{{const link=event.target.closest('.slide-action');if(!link)return;const action=JSON.parse(link.dataset.action);if(action.kind==='url')return;event.preventDefault();event.stopPropagation();routeStatus.style.display='none';routeAction(action).catch(error=>{{routeStatus.textContent=error.message;routeStatus.style.display='block';}});}},true);
     deck.on('ready',()=>{{
       const saved=sessionStorage.getItem('cicero-resume:'+location.pathname);
       if(saved){{sessionStorage.removeItem('cicero-resume:'+location.pathname);try{{const p=JSON.parse(saved);deck.slide(p.h,p.v,p.f)}}catch{{}}}}

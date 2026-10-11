@@ -176,4 +176,6 @@ def build_template_pptx(deck, *, assets):
     prs.core_properties.title=deck['title'];prs.core_properties.author="Cicero's Hoard"
     from .transitions import apply_native
     apply_native(prs, deck)
+    from .navigation import apply_native as apply_navigation
+    apply_navigation(prs,deck)
     out=io.BytesIO();prs.save(out);return out.getvalue()

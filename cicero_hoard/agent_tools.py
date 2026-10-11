@@ -56,6 +56,10 @@ deck_present returns a local playback URL. HTML is offline and interactive; PDF 
 Native PPTX carries timing, transitions and embedded media without an office renderer. Automatic live data refreshes preserve
 navigation and timer; manual slide edits require restarting the live session. Offline exports freeze the current data snapshot.
 Read visual_catalog export_notes for differences; do not promise identical effects across formats."""
+AGENT_INSTRUCTIONS += """\nInteractive routes: deck_navigation inspects or sets a block.action (slide, url, next, previous, return).
+Use stable destination slide_id, not position; expected_revision preserves concurrent edits. Inspect lists broken targets.
+In live sessions deck_live_control(action='branch', slide_id=...) records the origin and return restores its click stage.
+Offline HTML supports nested route returns. Native return means last slide viewed, not a stage-aware return stack."""
 
 
 DeckId = Field(..., min_length=1, max_length=40, description="Deck id (from deck_list or deck_create).")
@@ -678,7 +682,9 @@ TOOLS: list[Tool] = [
 _WAIT_S = {"outline_generate": 300.0, "slides_generate": 900.0, "slide_regenerate": 300.0, "deck_export": 240.0, "slide_image": 660.0}
 from . import datasets
 from . import presentation
+from . import navigation
 TOOLS.extend([
+    Tool('deck_navigation','Inspect, set or clear interactive object links. Stable slide IDs survive reorder.\nTargets: slide, URL, next, previous, return. Live branch/return restores the origin stage.',navigation.NavigationArgs,_ann(False,False,True),navigation.run,capped=False),
     Tool('deck_live_start','Start or reuse a local session with separate audience and presenter URLs.\nTimer starts paused; restart=true adopts slide edits and resets state. Abrir consola de defensa.',presentation.StartArgs,_ann(False,False,True),presentation.start),
     Tool('deck_live_state','Read audience-safe navigation, stages, blackout and timer state. No speaker notes. Estado de la presentacion.',presentation.StateArgs,_ann(True),presentation.state),
     Tool('deck_live_control','Advance or reverse stages, jump slides, blackout and control the timer.\nexpected_version detects concurrent controls. Live controls do not change deck content. Controlar presentacion.',presentation.ControlArgs,_ann(False,False,False),presentation.control),

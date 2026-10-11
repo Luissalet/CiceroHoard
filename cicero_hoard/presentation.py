@@ -20,7 +20,8 @@ class StateArgs(BaseModel):
 
 class ControlArgs(BaseModel):
     deck_id:str
-    action:Literal['next','previous','goto','sync','pause','resume','reset','blackout','target','main']
+    action:Literal['next','previous','goto','sync','branch','return','pause','resume','reset','blackout','target','main']
+    slide_id:Optional[str]=Field(None,max_length=40)
     slide_index:Optional[int]=Field(None,ge=0,le=39)
     fragment_index:Optional[int]=Field(None,ge=-1,le=39)
     blackout:Optional[bool]=None
@@ -41,7 +42,8 @@ class Sessions:
     def public(self,room):
         elapsed=room['elapsed']+(max(0,self.clock()-room['resumed']) if room['running'] else 0)
         return {k:room[k] for k in ('session_id','deck_id','version','slide_index','fragment_index','blackout','running','target_seconds','main_slide_count','slides','content_version','media_command')}|{
-            'elapsed_seconds':round(elapsed,2),'remaining_seconds':round(room['target_seconds']-elapsed,2)}
+            'elapsed_seconds':round(elapsed,2),'remaining_seconds':round(room['target_seconds']-elapsed,2),
+            'return_depth':len(room['navigation_stack'])}
 
 def start(svc,args):
     deck=store.deck_view(svc,args.deck_id)
@@ -60,7 +62,7 @@ def start(svc,args):
                              for b in slide['blocks'] if b['type'] in ('audio','video')]})
             sessions.rooms[args.deck_id]={'session_id':uuid.uuid4().hex,'deck_id':args.deck_id,'version':1,'slide_index':0,'fragment_index':-1,
                 'blackout':False,'running':False,'elapsed':0,'resumed':sessions.clock(),'target_seconds':args.target_seconds,
-                'main_slide_count':args.main_slide_count or len(slides),'slides':slides,'content_version':1,'media_command':None}
+                'main_slide_count':args.main_slide_count or len(slides),'slides':slides,'content_version':1,'media_command':None,'navigation_stack':[]}
         room=sessions.rooms[args.deck_id]
         return sessions.public(room)|{
             'presenter_url':svc.base_url()+f"/#/presenter/{args.deck_id}",
@@ -88,10 +90,16 @@ def control(svc,args):
         elif args.action=='previous':
             if fragment>=0:fragment-=1
             elif slide>0:slide-=1;fragment=room['slides'][slide]['steps']-1
-        elif args.action in ('goto','sync'):
-            if args.slide_index is None or args.slide_index>=len(room['slides']):raise CiceroError('Choose an existing zero-based slide index.')
-            slide=args.slide_index;fragment=args.fragment_index if args.fragment_index is not None else -1
+        elif args.action in ('goto','sync','branch'):
+            target=next((i for i,s in enumerate(room['slides']) if s['id']==args.slide_id),None) if args.slide_id else args.slide_index
+            if target is None or target>=len(room['slides']):raise CiceroError('Choose an existing slide ID or zero-based index.')
+            slide=target;fragment=args.fragment_index if args.fragment_index is not None else -1
             if fragment>=room['slides'][slide]['steps']:raise CiceroError('The fragment index exceeds the stages on this slide.')
+            if args.action=='branch' and (slide,fragment)!=(room['slide_index'],room['fragment_index']):
+                room['navigation_stack'].append((room['slide_index'],room['fragment_index']))
+        elif args.action=='return':
+            if not room['navigation_stack']:raise CiceroError('There is no branch origin to return to.')
+            slide,fragment=room['navigation_stack'].pop()
         elif args.action=='blackout':room['blackout']=args.blackout if args.blackout is not None else not room['blackout']
         elif args.action in ('pause','resume','reset'):
             if room['running']:room['elapsed']+=max(0,sessions.clock()-room['resumed'])
@@ -133,6 +141,7 @@ def audience_document(svc,deck_id,session_id,*,monitor=False):
     initial = validate_room(svc,deck_id,session_id)
     document=svc.preview_html(deck_id,mode='present')
     base=f'/api/decks/{deck_id}/live/{session_id}'
+    document=document.replace('<body ',f'<body data-session-control="{base}/control" ',1)
     runtime='''<script>
     (()=>{
       const base=BASE;let version=0,applying=false,blackout=false,working=false,authoritative=null;

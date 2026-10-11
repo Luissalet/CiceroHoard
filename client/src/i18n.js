@@ -1,6 +1,9 @@
 // UI strings. Spanish is the default; English is used only when the browser language is English.
 const DICT = {
   es: {
+    nav_action: 'Accion al pulsar', nav_none: 'Sin enlace', nav_slide: 'Otra diapositiva', nav_url: 'Enlace externo',
+    nav_next: 'Siguiente paso', nav_previous: 'Paso anterior', nav_return: 'Volver al origen',
+    nav_destination: 'Destino', nav_missing: 'Destino no disponible', nav_label: 'Nombre del enlace',
     "template_title": "Plantilla PPTX",
     "template_help": "Carga una presentación de referencia para conservar su tamaño, fondos, logotipos y tipografías al exportar a PPTX. Cicero guarda una copia para reutilizarla aunque cambie el archivo original.",
     "template_upload": "Cargar plantilla PPTX",
@@ -296,6 +299,9 @@ const DICT = {
     "what_slides": "Diapositivas",
   },
   en: {
+    nav_action: 'Click action', nav_none: 'No link', nav_slide: 'Another slide', nav_url: 'External link',
+    nav_next: 'Next step', nav_previous: 'Previous step', nav_return: 'Return to origin',
+    nav_destination: 'Destination', nav_missing: 'Destination unavailable', nav_label: 'Link name',
     "template_title": "PPTX template",
     "template_help": "Upload a reference presentation to retain its size, backgrounds, logos and fonts in the PPTX export. Cicero stores a copy for reuse even if the original file changes.",
     "template_upload": "Upload PPTX template",

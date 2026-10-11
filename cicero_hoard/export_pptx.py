@@ -41,6 +41,9 @@ def stamp_motion(slide,previous,box):
                 shape.name = stamp if not box.object_id else shape.name
                 if box.object_id:
                     shape._element.find('.//' + qn('p:cNvPr')).set('descr', stamp + '|Cicero-object:' + box.object_id)
+            if box.action:
+                from .navigation import stamp
+                stamp(shape,box.action)
 
 
 def _rgb(hex_color: str) -> RGBColor:
@@ -359,5 +362,7 @@ def build_pptx(deck: dict[str, Any], *, assets: AssetLookup) -> bytes:
     out = io.BytesIO()
     from .transitions import apply_native
     apply_native(prs, deck)
+    from .navigation import apply_native as apply_navigation
+    apply_navigation(prs,deck)
     prs.save(out)
     return out.getvalue()

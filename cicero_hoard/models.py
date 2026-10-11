@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 from typing import Annotated, Any, Literal, Optional, Union
+from urllib.parse import urlsplit
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -37,6 +38,26 @@ def _strip_list(values: Any, limit: int, maxlen: int) -> list[str]:
     return out
 
 
+class NavigationAction(BaseModel):
+    model_config = ConfigDict(extra='forbid', str_strip_whitespace=True)
+    kind: Literal['slide','url','next','previous','return']
+    slide_id: Optional[str] = Field(None,min_length=1,max_length=40)
+    url: Optional[str] = Field(None,min_length=1,max_length=2000)
+    label: Optional[str] = Field(None,max_length=200)
+
+    @model_validator(mode='after')
+    def _destination(self):
+        if self.kind=='slide' and not self.slide_id:raise ValueError('A slide action needs slide_id')
+        if self.kind!='slide' and self.slide_id:raise ValueError('Only slide actions use slide_id')
+        if self.kind=='url':
+            if not self.url or any(ord(c)<32 for c in self.url):raise ValueError('Supply a valid link URL')
+            parsed=urlsplit(self.url)
+            if not ((parsed.scheme in ('http','https') and parsed.hostname) or (parsed.scheme=='mailto' and parsed.path)):
+                raise ValueError('Links use HTTP, HTTPS or mailto URLs')
+        elif self.url:raise ValueError('Only URL actions use url')
+        return self
+
+
 class _Block(BaseModel):
     model_config = ConfigDict(extra="ignore", str_strip_whitespace=True)
     build: Optional[int] = Field(None, ge=0, le=40)
@@ -45,6 +66,7 @@ class _Block(BaseModel):
     id: Optional[str] = Field(None,max_length=60,pattern=r'^[a-zA-Z0-9_-]+$')
     frame: Optional[list[float]] = Field(None,min_length=4,max_length=4)
     font_size: Optional[int] = Field(None,ge=14,le=96)
+    action: Optional[NavigationAction] = None
 
     @field_validator('frame')
     @classmethod

@@ -455,5 +455,5 @@ HOOKS: dict[str, dict[str, Callable[..., Any]]] = {
 }
 
 #: writes that create or edit drafts and never delete or publish: what a token with the ``drafts`` profile may call
-DRAFT_SAFE = {"deck_create", "deck_update", "deck_theme", "theme_from_tokens", "source_add", "slide_add", "slides_add", "slide_update",
+DRAFT_SAFE = {"deck_navigation", "deck_create", "deck_update", "deck_theme", "theme_from_tokens", "source_add", "slide_add", "slides_add", "slide_update",
               "slide_edit_text", "slide_set_image", "slide_regenerate", "slide_image", "asset_import", "slides_reorder"}

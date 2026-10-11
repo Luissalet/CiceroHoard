@@ -1,5 +1,12 @@
 # HTTP API
 
+## Interactive Object Navigation
+
+GET `/api/decks/{id}/navigation` inspects destinations and broken slide links.
+PUT uses the `deck_navigation` arguments (`action: set|clear`, `slide_id`, `block_index`, `target`, `expected_revision`).
+Live control accepts `branch` with a stable `slide_id` and `return`; state includes `return_depth`.
+See [interactive navigation](INTERACTIVE_NAVIGATION.md) for HTML/native return differences.
+
 Base URL `http://127.0.0.1:5194`. The server accepts local requests only (see the guard below). Bodies and answers
 are JSON unless stated. Ids of decks, slides, outline items, assets and exports are 12-character hex strings; source
 ids are integers (per installation). Slide positions are 1-based.
