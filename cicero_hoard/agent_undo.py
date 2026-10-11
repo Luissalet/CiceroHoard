@@ -266,6 +266,14 @@ def track_slide_revert(svc: Any, args: Any, result: dict) -> dict:
     return {"objects": [], "etag": ""} if args.revision is None else _slide_track(svc, args.deck_id, args.slide_id)
 
 
+def capture_navigation(svc: Any, args: Any) -> dict:
+    return {"noop": True} if args.action == 'inspect' else capture_slide(svc,args)
+
+
+def track_navigation(svc: Any, args: Any, result: dict) -> dict:
+    return {"objects": [], "etag": ""} if args.action == 'inspect' else track_slide(svc,args,result)
+
+
 def undo_slide(svc: Any, record: dict, dry_run: bool = False) -> dict:
     before = _before(record)
     if before.get("noop"):
@@ -434,6 +442,7 @@ def undo_generate(svc: Any, record: dict, dry_run: bool = False) -> dict:
 
 #: tool name -> the hooks to attach (``dataclasses.replace(tool, **HOOKS[name])``)
 HOOKS: dict[str, dict[str, Callable[..., Any]]] = {
+    "deck_navigation": {"capture": capture_navigation, "track": track_navigation, "undo": undo_slide},
     "deck_create": {"track": track_deck_create, "undo": undo_deck_create},
     "deck_update": {"capture": capture_deck_update, "track": track_deck_update, "undo": undo_deck_fields},
     "deck_theme": {"capture": capture_deck_theme, "track": track_deck_theme, "undo": undo_deck_fields},

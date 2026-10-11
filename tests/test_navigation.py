@@ -69,6 +69,7 @@ def test_native_internal_url_and_return_links_survive_reorder_and_motion(service
     assert any(s.name.startswith('!!details') for s in linked)
     html,_=render_document(deck,assets=services.assets_lookup(),inline=True)
     assert 'data-action=' in html and '#s-'+detail['id'] in html
+    assert '.slide-action>.b{left:0!important;top:0!important;' in html
     assert 'routeHistory.push(deck.getIndices())' in present_document(html)
 
 def test_routes_and_live_html_use_authoritative_navigation(client):
@@ -92,3 +93,25 @@ def test_template_native_actions_keep_destination_and_branding(services,tmp_path
     assert any(s.name=='Empty decorative banner' for s in prs.slides[0].shapes)
     link=next(s for s in prs.slides[0].shapes if s.click_action.action==PP_ACTION.NAMED_SLIDE)
     assert link.click_action.target_slide==prs.slides[1]
+
+def test_navigation_session_undo_restores_link_and_inspection_is_a_noop(client):
+    from test_agent_accountability import agent_call,undo
+    d,first,detail=route_deck(client.svc)
+    args={'deck_id':d['id'],'action':'set','slide_id':first['id'],'block_index':0,
+          'target':{'kind':'slide','slide_id':detail['id']}}
+    response=agent_call(client,'deck_navigation',args,session='route-edit')
+    assert response.status_code==200
+    reverted=undo(client,'route-edit',confirm=True).json()
+    assert reverted['complete'],reverted
+    assert 'action' not in decks.get_slide(client.svc,d['id'],first['id'])['blocks'][0]
+    assert agent_call(client,'deck_navigation',{'deck_id':d['id']},session='route-read').status_code==200
+    assert undo(client,'route-read',confirm=True).json()['complete']
+
+def test_navigation_undo_does_not_overwrite_a_later_manual_edit(client):
+    from test_agent_accountability import agent_call,undo
+    d,first,detail=route_deck(client.svc)
+    assert agent_call(client,'deck_navigation',{'deck_id':d['id'],'action':'set','slide_id':first['id'],'block_index':0,
+        'target':{'kind':'slide','slide_id':detail['id']}},session='route-edit').status_code==200
+    decks.patch_slide(client.svc,d['id'],first['id'],{'notes':'Later manual notes'})
+    assert not undo(client,'route-edit',confirm=True).json()['complete']
+    assert decks.get_slide(client.svc,d['id'],first['id'])['notes']=='Later manual notes'

@@ -289,6 +289,10 @@ body{font-family:"Segoe UI",Arial,sans-serif;background:#1c1f26;min-height:100vh
 .slide{position:relative;width:min(100%,1280px);aspect-ratio:16/9;margin:0 auto 28px;overflow:hidden;background:#000;box-shadow:0 6px 28px rgba(0,0,0,.45)}
 .stage{position:absolute;left:0;top:0;width:1280px;height:720px;transform-origin:0 0;transform:scale(var(--s,1));background:var(--background);color:var(--text);overflow:hidden}
 .b{position:absolute}
+.slide-action{display:block;color:inherit;text-decoration:none}
+.slide-action>.b{left:0!important;top:0!important;width:100%!important;height:100%!important;cursor:pointer}
+.slide-action:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+.slide-action:hover>.t{text-decoration:underline}
 .t{display:flex;flex-direction:column;overflow-wrap:break-word}
 .t ul{list-style:disc}
 .t li::marker{color:var(--accent)}
@@ -432,7 +436,6 @@ def present_document(document: str,width=1280,height=720) -> str:
     .reveal .visual-wipe,.reveal .visual-draw{{clip-path:inset(0 100% 0 0)}}
     .reveal .visual-wipe.visible,.reveal .visual-draw.visible{{clip-path:inset(0)}}
     .reveal .progress{{color:#219BC3}}.reveal .controls{{color:#219BC3}}
-    .slide-action{{display:block;color:inherit;text-decoration:none}}.slide-action>.b{{left:0!important;top:0!important;width:100%!important;height:100%!important;cursor:pointer}}.slide-action:focus-visible{{outline:3px solid var(--accent);outline-offset:3px}}.slide-action:hover>.t{{text-decoration:underline}}
     .elapsed{{position:fixed;left:12px;bottom:10px;font:14px Arial;color:#657681;z-index:20}}
     @media print{{.fragment{{opacity:1!important;visibility:visible!important;clip-path:none!important}}}}
     @media(prefers-reduced-motion:reduce){{.reveal .fragment{{clip-path:none!important;transition:none!important}}}}
