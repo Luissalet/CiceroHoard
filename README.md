@@ -93,7 +93,8 @@ picture zoom, cards and text fly in, then the click stages), `mixed`, `none` or 
 `trigger` (after-previous or on-click), `duration`, `transition` (none or any of 48, Morph included) and
 `transition_duration`, deck-wide or per slide. Footers and background shapes never animate. The animation and
 transition XML comes from PPT Master (MIT, vendored in `cicero_hoard/vendor/ppt_master` with its licence) and every
-export is read back with its validators.
+export is read back with its validators. In the app, the Export tab has the same settings (deck and per slide) and a
+Check button that lists what the next PPTX will carry per slide.
 
 Before exporting, `deck_visual_review` (`POST /api/decks/{id}/visual-review`, PNGs at
 `/api/decks/{id}/visual-review/slide-NN.png`) renders every slide in the browser and measures what was laid out: objects
@@ -102,6 +103,8 @@ behind it (4.5:1, 3:1 for large text), pictures that do not load, and a missing 
 Each finding says its fix; `fix: true` applies the one automatic fix the rules allow (minimum font size on the slides
 whose text overflows) and reviews again. PDF represents the complete static state. The user can share
 their local presentation window remotely; no publication is necessary.
+A text box that starts on the slide and only runs past the bottom grew with its text, so it counts as overflow. In the
+app, the Review tab runs the visual review, shows the capture of each flagged slide and offers the automatic fix.
 
 ## Data And Live Presentation
 

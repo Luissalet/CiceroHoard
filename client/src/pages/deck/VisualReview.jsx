@@ -43,7 +43,7 @@ export default function VisualReview() {
       {count === 0 && <p className="help mt-2">{t("export_no_slides")}</p>}
       {result && (
         <p className="mt-2 text-[13px]" role="status">
-          <span className={result.ok ? "chip chip-ok" : "chip chip-danger"}>{result.ok ? t("vr_ok_chip") : t("vr_errors_chip", { n: result.errors })}</span>{" "}
+          <span className={result.ok ? "chip chip-ok" : "chip chip-danger"}>{result.ok ? t("vr_ok_chip") : t("vr_errors_chip")}</span>{" "}
           {t("vr_summary", { s: slides.length, e: result.errors, w: result.warnings })}
         </p>
       )}
@@ -71,7 +71,7 @@ export default function VisualReview() {
                     <span className={f.severity === "error" ? "chip chip-danger" : "chip chip-amber"}>{t(`vr_sev_${f.severity}`)}</span>
                     <span className="min-w-0 [overflow-wrap:anywhere]">
                       <strong>{t(`vr_rule_${f.rule}`)}</strong>
-                      {f.where ? <span className="mono"> · {f.where}</span> : null}
+                      {f.where ? <span className="help"> · «{f.where}»</span> : null}
                       {f.detail ? <span className="help"> ({f.detail})</span> : null}
                       <span className="help block">{t(`vr_fix_${f.rule}`)}{f.auto_fix ? ` ${t("vr_auto_fix_note")}` : ""}</span>
                     </span>

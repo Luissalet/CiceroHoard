@@ -94,7 +94,8 @@ tabla con barrido, imagen con zoom, tarjetas y texto que entran volando, y despu
 o cualquiera de los 203 efectos nativos --, `trigger` (tras el anterior o al clic), `duration`, `transition`
 (ninguna o cualquiera de las 48, Morph incluida) y `transition_duration`, para todo el deck o por diapositiva. Los
 pies y las formas de fondo nunca se animan. El XML de animaciones y transiciones viene de PPT Master (MIT, copiado
-en `cicero_hoard/vendor/ppt_master` con su licencia) y cada exportación se relee con sus validadores.
+en `cicero_hoard/vendor/ppt_master` con su licencia) y cada exportación se relee con sus validadores. En la app, la pestaña Exportar tiene los mismos ajustes (por deck y por
+diapositiva) y un botón Comprobar que enseña lo que llevará el próximo PPTX en cada diapositiva.
 
 Antes de exportar, `deck_visual_review` (`POST /api/decks/{id}/visual-review`, PNG en
 `/api/decks/{id}/visual-review/slide-NN.png`) renderiza cada diapositiva en el navegador y mide lo que quedó: objetos
@@ -103,6 +104,9 @@ contra lo que de verdad tiene detrás (4,5:1, 3:1 en texto grande), imágenes qu
 faltan para el diseño. Cada aviso trae su arreglo; `fix: true` aplica el único arreglo automático que permiten las reglas
 (letra mínima en las diapositivas cuyo texto desborda) y vuelve a revisar. PDF contiene el estado estático completo.
 La ventana local se puede compartir durante una presentación remota, sin publicar el documento.
+Una caja de texto que empieza en la diapositiva y solo se sale por abajo creció con su texto, así que cuenta como
+desborde. En la app, la pestaña Revisar lanza la revisión visual, enseña la captura de cada diapositiva con avisos y
+ofrece el arreglo automático.
 
 ## Datos Y Presentacion En Vivo
 
