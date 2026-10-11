@@ -449,6 +449,8 @@ def present_document(document: str,width=1280,height=720) -> str:
     deck.initialize();
     const routeHistory=[];
     async function routeAction(action){{
+      const origin=deck.getIndices();
+      if(deck.isOverview())deck.toggleOverview(false);
       if(document.body.dataset.sessionControl){{
         const response=await fetch(document.body.dataset.sessionControl,{{method:'POST',headers:{{'Content-Type':'application/json'}},body:JSON.stringify(action.kind==='slide'?{{action:'branch',slide_id:action.slide_id}}:{{action:action.kind}})}});
         if(!response.ok)throw Error((await response.json()).error||'Navigation failed');return;
@@ -458,11 +460,11 @@ def present_document(document: str,width=1280,height=720) -> str:
       const target=document.getElementById('s-'+action.slide_id);
       if(!target)throw Error(document.documentElement.lang==='es'?'La diapositiva de destino ya no existe.':'The destination slide no longer exists.');
       const index=Array.from(document.querySelectorAll('.reveal .slides>section')).indexOf(target);
-      routeHistory.push(deck.getIndices());deck.slide(index,0,-1);
+      routeHistory.push(origin);deck.slide(index,0,-1);
     }}
     const routeStatus=document.createElement('div');routeStatus.setAttribute('role','alert');routeStatus.style.cssText='position:fixed;top:0;left:0;right:0;padding:12px;background:#a22;color:white;z-index:112;display:none';document.body.append(routeStatus);
     // Capture internal actions before the presentation engine's own hash-link listener.
-    document.addEventListener('click',event=>{{const link=event.target.closest('.slide-action');if(!link)return;const action=JSON.parse(link.dataset.action);if(action.kind==='url')return;event.preventDefault();event.stopPropagation();routeStatus.style.display='none';routeAction(action).catch(error=>{{routeStatus.textContent=error.message;routeStatus.style.display='block';}});}},true);
+    document.addEventListener('click',event=>{{const link=event.target.closest('.slide-action');if(!link)return;const action=JSON.parse(link.dataset.action);event.stopImmediatePropagation();if(action.kind==='url')return;event.preventDefault();routeStatus.style.display='none';routeAction(action).catch(error=>{{routeStatus.textContent=error.message;routeStatus.style.display='block';}});}},true);
     deck.on('ready',()=>{{
       const saved=sessionStorage.getItem('cicero-resume:'+location.pathname);
       if(saved){{sessionStorage.removeItem('cicero-resume:'+location.pathname);try{{const p=JSON.parse(saved);deck.slide(p.h,p.v,p.f)}}catch{{}}}}

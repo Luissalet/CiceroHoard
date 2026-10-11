@@ -70,7 +70,9 @@ def test_native_internal_url_and_return_links_survive_reorder_and_motion(service
     html,_=render_document(deck,assets=services.assets_lookup(),inline=True)
     assert 'data-action=' in html and '#s-'+detail['id'] in html
     assert '.slide-action>.b{left:0!important;top:0!important;' in html
-    assert 'routeHistory.push(deck.getIndices())' in present_document(html)
+    document=present_document(html)
+    assert 'routeHistory.push(origin)' in document and 'const origin=deck.getIndices()' in document
+    assert 'event.stopImmediatePropagation()' in document and 'deck.toggleOverview(false)' in document
 
 def test_routes_and_live_html_use_authoritative_navigation(client):
     d,first,detail=route_deck(client.svc)
