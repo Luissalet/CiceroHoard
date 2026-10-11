@@ -93,8 +93,9 @@ picture zoom, cards and text fly in, then the click stages), `mixed`, `none` or 
 `trigger` (after-previous or on-click), `duration`, `transition` (none or any of 48, Morph included) and
 `transition_duration`, deck-wide or per slide. Footers and background shapes never animate. The animation and
 transition XML comes from PPT Master (MIT, vendored in `cicero_hoard/vendor/ppt_master` with its licence) and every
-export is read back with its validators. In the app, the Export tab has the same settings (deck and per slide) and a
-Check button that lists what the next PPTX will carry per slide.
+export is read back with its validators. In the app, the Export tab sets the presentation-wide motion and the transitions in
+its transitions panel, gives each slide its own animation in «Animations per slide» and lists what the next PPTX will
+carry per slide with Check.
 
 Before exporting, `deck_visual_review` (`POST /api/decks/{id}/visual-review`, PNGs at
 `/api/decks/{id}/visual-review/slide-NN.png`) renders every slide in the browser and measures what was laid out: objects

@@ -94,8 +94,9 @@ tabla con barrido, imagen con zoom, tarjetas y texto que entran volando, y despu
 o cualquiera de los 203 efectos nativos --, `trigger` (tras el anterior o al clic), `duration`, `transition`
 (ninguna o cualquiera de las 48, Morph incluida) y `transition_duration`, para todo el deck o por diapositiva. Los
 pies y las formas de fondo nunca se animan. El XML de animaciones y transiciones viene de PPT Master (MIT, copiado
-en `cicero_hoard/vendor/ppt_master` con su licencia) y cada exportación se relee con sus validadores. En la app, la pestaña Exportar tiene los mismos ajustes (por deck y por
-diapositiva) y un botón Comprobar que enseña lo que llevará el próximo PPTX en cada diapositiva.
+en `cicero_hoard/vendor/ppt_master` con su licencia) y cada exportación se relee con sus validadores. En la app, la pestaña Exportar fija la animación de toda la presentación y las
+transiciones en su panel de transiciones, da a cada diapositiva su propia animación en «Animaciones por diapositiva» y
+enseña con Comprobar lo que llevará el próximo PPTX en cada diapositiva.
 
 Antes de exportar, `deck_visual_review` (`POST /api/decks/{id}/visual-review`, PNG en
 `/api/decks/{id}/visual-review/slide-NN.png`) renderiza cada diapositiva en el navegador y mide lo que quedó: objetos

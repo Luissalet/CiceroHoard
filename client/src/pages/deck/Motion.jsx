@@ -2,18 +2,17 @@ import React, { useEffect, useState } from "react";
 import { api } from "../../api.js";
 import { useApp } from "../../App.jsx";
 import { useDeck, useDirty } from "../../components/deckContext.js";
-import { ConfirmButton, Field, Section, useAsync } from "../../components/ui.jsx";
+import { ConfirmButton, Section, useAsync } from "../../components/ui.jsx";
 
-// Native animations and transitions of the PPTX export (GET|PUT|DELETE /api/decks/{id}/animations, same code as the
-// deck_animations tool). Deck settings plus per-slide overrides of mode and transition; "Check" reads what the next
-// export would carry from the saved settings.
-const DECK_KEYS = ["mode", "trigger", "duration", "transition", "transition_duration"];
+// Native animations of the PPTX export, per slide (GET|PUT|DELETE /api/decks/{id}/animations, same code as the
+// deck_animations tool). The deck-wide mode and the transitions live in the transitions panel above; here each slide can
+// take its own animation mode, and «Check» lists what the next PPTX will carry, slide by slide, from the saved settings.
 const pretty = (key) => key.replace(/^(entrance|emphasis|exit|path)_/, "").replace(/_/g, " ");
 
-function ModeSelect({ id, value, onChange, catalogue, t, inherit }) {
+function ModeSelect({ value, onChange, catalogue, t, label }) {
   return (
-    <select id={id} className="field" value={value ?? ""} onChange={(e) => onChange(e.target.value)}>
-      {inherit && <option value="">{t("anim_inherit")}</option>}
+    <select className="field" aria-label={label} value={value ?? ""} onChange={(e) => onChange(e.target.value)}>
+      <option value="">{t("anim_inherit")}</option>
       <optgroup label={t("anim_modes")}>
         {catalogue.modes.map((m) => <option key={m} value={m}>{t(`anim_mode_${m}`)}</option>)}
       </optgroup>
@@ -26,49 +25,31 @@ function ModeSelect({ id, value, onChange, catalogue, t, inherit }) {
   );
 }
 
-function TransitionSelect({ id, value, onChange, catalogue, t, inherit }) {
-  return (
-    <select id={id} className="field" value={value ?? ""} onChange={(e) => onChange(e.target.value)}>
-      {inherit && <option value="">{t("anim_inherit")}</option>}
-      {catalogue.transitions.map((k) => <option key={k} value={k}>{k === "none" ? t("anim_none") : pretty(k)}</option>)}
-    </select>
-  );
-}
+const modesOf = (settings) => Object.fromEntries(Object.entries(settings?.slides || {}).map(([sid, layer]) => [sid, layer.mode || ""]));
 
 export default function Motion() {
   const { t, notify } = useApp();
   const { deckId, deck, run, busy } = useDeck();
-  const cat = useAsync(() => api.animationsCatalogue(), []);
+  const cat = useAsync(() => api.animationCatalogue(), []);
   const saved = useAsync(() => api.animations(deckId), [deckId]);
   const [draft, setDraft] = useState(null);
   const [preview, setPreview] = useState(null);
-  useEffect(() => { if (saved.data) setDraft(saved.data); }, [saved.data]);
+  useEffect(() => { if (saved.data) setDraft(modesOf(saved.data)); }, [saved.data]);
   // Same unsaved-changes guard as the other editors: changing tab or leaving asks first.
-  const dirty = !!draft && !!saved.data && JSON.stringify(draft) !== JSON.stringify(saved.data);
+  const dirty = !!draft && !!saved.data && JSON.stringify(draft) !== JSON.stringify(modesOf(saved.data));
   useDirty(dirty);
 
   const slides = (deck.slides || []).slice().sort((a, b) => a.position - b.position);
   const failure = cat.error || saved.error;
   if (failure) return <Section title={t("anim_title")}><p className="help">{failure.message}</p></Section>;
   if (!draft || !cat.data) return <Section title={t("anim_title")}><p className="help" role="status">{t("loading")}</p></Section>;
-
   const catalogue = cat.data;
-  const set = (key, value) => setDraft((d) => ({ ...d, [key]: value }));
-  const setSlide = (sid, key, value) => setDraft((d) => {
-    const layer = { ...((d.slides || {})[sid] || {}) };
-    if (value === "" || value == null) delete layer[key]; else layer[key] = value;
-    return { ...d, slides: { ...(d.slides || {}), [sid]: layer } };
-  });
 
   const save = async () => {
-    const body = Object.fromEntries(DECK_KEYS.map((k) => [k, draft[k]]));
-    // Every field this panel edits is sent: null drops that one override («As the presentation»), the rest of the
-    // slide's layer (set elsewhere, e.g. trigger or duration through the tool) is kept; an all-null layer disappears.
-    body.slides = Object.fromEntries(slides.map((s) => {
-      const layer = (draft.slides || {})[s.id] || {};
-      return [s.id, { mode: layer.mode ?? null, transition: layer.transition ?? null }];
-    }));
-    const res = await run(t("busy_saving"), () => api.animationsSave(deckId, body));
+    // Only the mode is sent: null drops that slide's own mode («as the presentation») and keeps any other per-slide
+    // setting made elsewhere (transition, trigger or duration through the tool); a layer left empty disappears.
+    const body = { slides: Object.fromEntries(slides.map((s) => [s.id, { mode: draft[s.id] || null }])) };
+    const res = await run(t("busy_saving"), () => api.animationsSet(deckId, body));
     if (res) { notify(t("anim_saved")); setPreview(null); saved.reload(); }
   };
   const reset = async () => {
@@ -79,7 +60,7 @@ export default function Motion() {
     const res = await run(t("anim_busy_check"), () => api.animationsPreview(deckId));
     if (res) setPreview(res);
   };
-
+  const deckMode = saved.data.mode;
   const right = (
     <div className="flex flex-wrap gap-2">
       <button type="button" className="btn btn-primary" disabled={!!busy || !dirty} onClick={save}>{t("save")}</button>
@@ -92,61 +73,30 @@ export default function Motion() {
 
   return (
     <Section title={t("anim_title")} right={right}>
-      <p className="help mb-3">{t("anim_help")}</p>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        <Field label={t("anim_mode")} help={t(`anim_mode_${catalogue.modes.includes(draft.mode) ? draft.mode : "effect"}_help`)}>
-          <ModeSelect id="motion-mode" value={draft.mode} onChange={(v) => set("mode", v)} catalogue={catalogue} t={t} />
-        </Field>
-        <Field label={t("anim_trigger")}>
-          <select className="field" value={draft.trigger} onChange={(e) => set("trigger", e.target.value)}>
-            {catalogue.triggers.map((k) => <option key={k} value={k}>{t(`anim_trigger_${k.replace("-", "_")}`)}</option>)}
-          </select>
-        </Field>
-        <Field label={t("anim_duration")}>
-          <input className="field num" type="number" min="0.05" max="10" step="0.05" value={draft.duration}
-            onChange={(e) => set("duration", e.target.value === "" ? "" : Number(e.target.value))} />
-        </Field>
-        <Field label={t("anim_transition")}>
-          <TransitionSelect id="motion-transition" value={draft.transition} onChange={(v) => set("transition", v)} catalogue={catalogue} t={t} />
-        </Field>
-        <Field label={t("anim_transition_duration")}>
-          <input className="field num" type="number" min="0.05" max="10" step="0.05" value={draft.transition_duration}
-            disabled={draft.transition === "none"}
-            onChange={(e) => set("transition_duration", e.target.value === "" ? "" : Number(e.target.value))} />
-        </Field>
-      </div>
-
+      <p className="help mb-3">{t("anim_help", { mode: catalogue.modes.includes(deckMode) ? t(`anim_mode_${deckMode}`) : pretty(deckMode || "") })}</p>
       {slides.length > 0 && (
-        <details className="mt-4">
-          <summary className="cursor-pointer text-[13px] font-semibold">{t("anim_per_slide", { n: Object.values(draft.slides || {}).filter((l) => Object.keys(l).length).length })}</summary>
-          <div className="mt-2 overflow-x-auto">
-            <table className="grid">
-              <thead>
-                <tr>
-                  <th scope="col">#</th>
-                  <th scope="col">{t("anim_slide")}</th>
-                  <th scope="col">{t("anim_mode")}</th>
-                  <th scope="col">{t("anim_transition")}</th>
+        <div className="overflow-x-auto">
+          <table className="grid">
+            <thead>
+              <tr>
+                <th scope="col">#</th>
+                <th scope="col">{t("anim_slide")}</th>
+                <th scope="col">{t("anim_mode")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {slides.map((s, n) => (
+                <tr key={s.id}>
+                  <td className="num">{n + 1}</td>
+                  <td className="[overflow-wrap:anywhere]">{s.title || t("untitled")}</td>
+                  <td><ModeSelect value={draft[s.id]} label={t("anim_mode_for", { n: n + 1 })} catalogue={catalogue} t={t}
+                    onChange={(v) => setDraft((d) => ({ ...d, [s.id]: v }))} /></td>
                 </tr>
-              </thead>
-              <tbody>
-                {slides.map((s, n) => {
-                  const layer = (draft.slides || {})[s.id] || {};
-                  return (
-                    <tr key={s.id}>
-                      <td className="num">{n + 1}</td>
-                      <td className="[overflow-wrap:anywhere]">{s.title || t("untitled")}</td>
-                      <td><ModeSelect id={`motion-mode-${s.id}`} value={layer.mode} inherit onChange={(v) => setSlide(s.id, "mode", v)} catalogue={catalogue} t={t} /></td>
-                      <td><TransitionSelect id={`motion-tr-${s.id}`} value={layer.transition} inherit onChange={(v) => setSlide(s.id, "transition", v)} catalogue={catalogue} t={t} /></td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </details>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
-
       {dirty && <p className="help mt-2" role="status">{t("anim_unsaved")}</p>}
       {preview && (
         <div className="mt-4">

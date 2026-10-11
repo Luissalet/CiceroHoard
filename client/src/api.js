@@ -117,9 +117,6 @@ export const api = {
   check: (id) => request("GET", `${deckBase(id)}/check`),
   visualReview: (id, fix) => request("POST", `${deckBase(id)}/visual-review`, { body: { fix: !!fix } }),
 
-  animationsCatalogue: () => request("GET", "/api/animations/catalogue"),
-  animations: (id) => request("GET", `${deckBase(id)}/animations`),
-  animationsSave: (id, body) => request("PUT", `${deckBase(id)}/animations`, { body }),
   animationsReset: (id) => request("DELETE", `${deckBase(id)}/animations`),
   animationsPreview: (id) => request("GET", `${deckBase(id)}/animations/preview`),
 
