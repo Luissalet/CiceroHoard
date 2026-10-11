@@ -5,6 +5,7 @@ import { useDeck } from "../../components/deckContext.js";
 import { Empty, Section, useAsync } from "../../components/ui.jsx";
 import { EXPORT_FORMATS, approvedCount, clock, formatBytes } from "../../format.js";
 import TransitionEditor from './TransitionEditor.jsx';
+import Motion from "./Motion.jsx";
 
 export default function Export() {
   const { t, notify, lang } = useApp();
@@ -29,6 +30,7 @@ export default function Export() {
         {deck.template && <p className="help mb-3">{t("template_export_help", { name: deck.template.name })}</p>}
         {slides.length === 0 && <p className="help mb-2">{t("export_no_slides")}</p>}
         {slides.length > 0 && pending > 0 && <p className="help mb-2">{t("export_pending", { n: pending })}</p>}
+        {slides.length > 0 && <p className="help mb-2">{t("export_review_hint")} <a href={`#/deck/${deckId}/review`}>{t("tab_review")}</a></p>}
         <div className="grid gap-2 sm:grid-cols-2">
           {EXPORT_FORMATS.map((f) => (
             <div key={f} className="rounded-md border p-3" style={{ borderColor: "var(--line)" }}>
@@ -38,6 +40,7 @@ export default function Export() {
           ))}
         </div>
       </Section>
+      <Motion />
       <Section title={t("exports_previous")}>
         {list.error && <p className="help">{list.error.message}</p>}
         {!list.error && !list.loading && items.length === 0 && <p className="help">{t("exports_empty")}</p>}

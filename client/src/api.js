@@ -115,6 +115,13 @@ export const api = {
   designSystems: () => request("GET", "/api/themes/design-systems"),
   themeFromTokens: (tokens_id, mode) => request("POST", "/api/themes/from-tokens", { body: { tokens_id, mode } }),
   check: (id) => request("GET", `${deckBase(id)}/check`),
+  visualReview: (id, fix) => request("POST", `${deckBase(id)}/visual-review`, { body: { fix: !!fix } }),
+
+  animationsCatalogue: () => request("GET", "/api/animations/catalogue"),
+  animations: (id) => request("GET", `${deckBase(id)}/animations`),
+  animationsSave: (id, body) => request("PUT", `${deckBase(id)}/animations`, { body }),
+  animationsReset: (id) => request("DELETE", `${deckBase(id)}/animations`),
+  animationsPreview: (id) => request("GET", `${deckBase(id)}/animations/preview`),
 
   exportCreate: (id, format) => request("POST", `${deckBase(id)}/export`, { body: { format } }),
   exports: (id) => request("GET", `${deckBase(id)}/exports`),

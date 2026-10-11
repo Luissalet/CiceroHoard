@@ -4,6 +4,7 @@ import { goReplace, useApp } from "../../App.jsx";
 import { useDeck } from "../../components/deckContext.js";
 import { Empty, useAsync } from "../../components/ui.jsx";
 import { approvedCount } from "../../format.js";
+import VisualReview from "./VisualReview.jsx";
 
 export default function Review() {
   const { t } = useApp();
@@ -58,6 +59,7 @@ export default function Review() {
           </li>
         ))}
       </ul>
+      <VisualReview />
     </div>
   );
 }
