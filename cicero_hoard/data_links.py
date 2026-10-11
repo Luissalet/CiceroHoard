@@ -192,7 +192,7 @@ def _apply(svc, deck_id, binding, result):
         old = blocks[index]
         previous = jload(binding['last_block'], {})
         # Layout and stage edits are preserved; manual changes to data are never overwritten.
-        style = ('frame', 'font_size', 'build', 'effect', 'duration_ms')
+        style = ('frame', 'font_size', 'build', 'effect', 'duration_ms', 'action')
         if {k: v for k, v in old.items() if k not in style} != {k: v for k, v in previous.items() if k not in style}:
             raise RevisionConflict('The linked visual was edited manually; bind it again to resume data updates.')
         block = {**result['block'], **{k: old[k] for k in style if k in old}, 'id': binding['block_id']}

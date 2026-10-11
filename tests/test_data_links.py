@@ -51,6 +51,24 @@ def test_error_retains_last_good_and_manual_data_edit_not_overwritten(services,t
     assert dl.inspect(services,dl.RefArgs(deck_id=deck['id']))['items'][0]['bindings'][0]['error']
 
 
+def test_object_navigation_edits_do_not_conflict_with_linked_chart_refresh(services,tmp_path):
+    from cicero_hoard.agent_tools import call_tool
+    deck,path,link,slide=setup(services,tmp_path,enabled=False)
+    target=decks.add_slide(services,deck['id'],title='Detail',blocks=[{'type':'text','text':'More'}])
+    call_tool(services,'deck_navigation',{'deck_id':deck['id'],'slide_id':slide['id'],'block_index':1,'action':'set',
+        'target':{'kind':'slide','slide_id':target['id']}})
+    path.write_text('Region,Value\nNorth,37\nSouth,24\n',encoding='utf-8')
+    refreshed=dl.refresh(services,deck['id'],link['link_id'])
+    assert not refreshed['bindings'][0].get('error')
+    latest=decks.get_slide(services,deck['id'],slide['id'])
+    assert latest['blocks'][1]['series'][0]['values']==[37,24]
+    assert latest['blocks'][1]['action']=={'kind':'slide','slide_id':target['id']}
+    call_tool(services,'deck_navigation',{'deck_id':deck['id'],'slide_id':slide['id'],'block_index':1,'action':'clear'})
+    path.write_text('Region,Value\nNorth,40\nSouth,25\n',encoding='utf-8')
+    assert not dl.refresh(services,deck['id'],link['link_id'])['bindings'][0].get('error')
+    assert 'action' not in decks.get_slide(services,deck['id'],slide['id'])['blocks'][1]
+
+
 def test_notes_only_save_preserves_feed_and_stale_visual_edit_conflicts(services, tmp_path):
     from cicero_hoard.agent_tools import call_tool
     deck, path, link, old = setup(services, tmp_path, enabled=False)
