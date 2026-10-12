@@ -5,6 +5,8 @@ import {useDeck} from '../../components/deckContext.js';
 import {Field} from '../../components/ui.jsx';
 import {api} from '../../api.js';
 import Collaboration from './Collaboration.jsx';
+import DesignLoop from './DesignLoop.jsx';
+import Benchmark from './Benchmark.jsx';
 
 export default function VisualLab(){
  const {t}=useApp(),{deckId,deck,run,busy,reload}=useDeck();
@@ -17,9 +19,11 @@ export default function VisualLab(){
  const loadPolls=async()=>{const r=await api.poll(deckId,{action:'list'});setPolls(r.polls);};
  return <div className="space-y-4">
   <div role="tablist" aria-label={t('tab_lab')} className="flex flex-wrap gap-2">
-   {['variants','polls','collaboration','connections'].map(key=><button key={key} role="tab" aria-selected={mode===key} className="btn btn-sm" onClick={()=>{setMode(key);if(key==='polls')void run(t('busy_loading'),loadPolls);}}>{t('lab_'+key)}</button>)}
+   {['design','variants','benchmark','polls','collaboration','connections'].map(key=><button key={key} role="tab" aria-selected={mode===key} className="btn btn-sm" onClick={()=>{setMode(key);if(key==='polls')void run(t('busy_loading'),loadPolls);}}>{t('lab_'+key)}</button>)}
   </div>
   <Field label={t('lab_slide')}><select className="field max-w-xl" value={slide} disabled={busy} onChange={e=>{setSlide(e.target.value);setVariants([]);setSelected(null);}}>{deck.slides.map(s=><option key={s.id} value={s.id}>{s.position}. {s.title}</option>)}</select></Field>
+  {mode==='design'&&slide&&<DesignLoop key={slide} slideId={slide}/>}
+  {mode==='benchmark'&&<Benchmark/>}
   {mode==='variants'&&<>
    <div className="flex flex-wrap gap-2"><button className="btn" disabled={busy||!slide} onClick={generate}><Wand2 size={16}/>{t('lab_generate')}</button><button className="btn" disabled={busy||!variants.length} onClick={compare}><ScanEye size={16}/>{t('lab_compare')}</button><button className="btn" disabled={busy||!selected} onClick={apply}><Check size={16}/>{t('lab_apply')}</button><button className="btn" disabled={busy||!selected} onClick={critique}>{t('lab_critique')}</button></div>
    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{variants.map(v=><button key={v.id} className="text-left border p-3 space-y-2" style={{borderColor:selected?.id===v.id?'var(--accent)':'var(--line)',borderRadius:6}} onClick={()=>setSelected(v)}>

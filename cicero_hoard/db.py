@@ -160,6 +160,13 @@ MIGRATIONS: list[str] = [
     CREATE TABLE poll_rounds(id TEXT PRIMARY KEY,poll_id TEXT NOT NULL REFERENCES polls(id) ON DELETE CASCADE,
       votes TEXT NOT NULL,created_ts REAL NOT NULL);
     """,
+    # 8: inspectable design runs and local paired evaluation.
+    """
+    CREATE TABLE design_runs(id TEXT PRIMARY KEY,deck_id TEXT NOT NULL REFERENCES decks(id) ON DELETE CASCADE,
+      state TEXT NOT NULL,created_ts REAL NOT NULL,updated_ts REAL NOT NULL);
+    CREATE TABLE visual_benchmarks(id TEXT PRIMARY KEY,deck_id TEXT NOT NULL REFERENCES decks(id) ON DELETE CASCADE,
+      state TEXT NOT NULL,created_ts REAL NOT NULL,updated_ts REAL NOT NULL);
+    """,
 ]
 
 

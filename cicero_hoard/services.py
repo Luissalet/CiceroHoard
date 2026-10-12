@@ -61,6 +61,10 @@ class Services:
         self.presentations=Sessions(clock_fn)
         from .data_links import Worker
         self.data_link_lock = threading.RLock()
+        self.design_lock=threading.RLock()
+        self.design_active=set()
+        self.benchmark_locks={}
+        self.benchmark_lock=threading.RLock()
         self.data_link_worker = Worker(self)
 
     # ---------------- lifecycle ----------------

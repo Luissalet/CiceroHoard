@@ -28,7 +28,13 @@
     "local-audience-polls",
     "chart-series-point-data-animation",
     "local-sql-linked-snapshots",
-    "local-yjs-text-collaboration"
+    "local-yjs-text-collaboration",
+    "autonomous-multimodal-design-loop",
+    "end-to-end-blind-workflow-benchmark",
+    "content-led-compositions",
+    "offline-gltf-models-textures-lights-clips",
+    "fourteen-chart-motion-types",
+    "granular-yjs-object-field-order-collaboration"
   ],
   "placeholders": [
     "CICERO_DIR",

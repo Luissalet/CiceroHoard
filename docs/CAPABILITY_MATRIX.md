@@ -18,14 +18,15 @@ Research sources describe inspiration; only verified Cicero behavior is counted 
 | Offline staged presentation | Implemented | Self-contained HTML runtime, no live session dependency |
 | Inter-slide matched-object morphing | Implemented | Stable block/node IDs, matched objects in web and native transitions |
 | Embedded audio/video | Implemented | Playback controls, trim/rate/loop/volume, video captions, offline HTML and native media; PDF static |
-| Rich 3D and camera paths | Implemented for editable primitives | Three objects, transforms, materials, labels, camera keyframes and orbit; desktop/mobile nonblank/motion verified. Native/PDF posters; imported meshes unsupported |
+| Rich 3D and camera paths | Implemented for primitives and imported models | Offline complete GLB/glTF/ZIP resource graph, textures, materials, lights, clips, camera paths and orbit. Native/PDF posters |
 | Authored slide branching | Implemented | Typed object actions, stable destinations, nested origin/stage return in HTML and live sessions, native slide links |
 | Audience polls | Implemented locally | Persistent replaceable votes, open/close, archived rounds and recovery, live audience counts; remote voters require a reachable host |
 | Auto refresh linked charts | Implemented | Persisted mappings update charts/tables and audience content without losing navigation |
-| Real collaborative editing | Implemented for text and atomic block values | Yjs character merge, local WebSockets and presence; two-window edits verified. Not granular simultaneous block composition |
-| Varied compositions and agent correction loop | Implemented | Eight layouts plus custom candidates; real render/native MCP images, measured compare, revision-aware apply and undo |
-| Series, points and data-state motion | Implemented for six chart kinds | ECharts bars/horizontal bars/lines/areas/scatter/bubbles retain analytical labels; other charts static, native files keep base data |
+| Real collaborative editing | Implemented with granular objects/fields/order | Yjs text, nested object maps, identity order and deletion tombstones; independent point/object edits, manual reconciliation and undo tests |
+| Varied compositions and agent correction loop | Implemented | Eight frame presets, eight content-led archetypes and native model-driven proposals; structured, image-model or external critique; image-bound review, resume/cancel/apply/undo |
+| Series, points and data-state motion | Implemented for all14 chart kinds | Shared ECharts builder; custom series interpolate stable geometry, nulls retain gaps; native files keep base data |
 | Paired composition evaluation | Implemented; superiority not established | Explicit independent baseline, preserved source/revision, measured deltas. Demonstration ties the direct composition and detects a regressing layout; not end-to-end harness superiority |
+| End-to-end workflow evaluation | Implemented; empirical outcome is corpus-specific | Independent actual PPTX baselines, common native rasterizer, source checks, randomized A/B images and fixed rubric. All failed cases, ties and regressions retained |
 | Full parity or superiority over references | Not established | Requires a wider versioned inventory and comparative task evaluation |
 
 ## Primary Research

@@ -186,7 +186,8 @@ def _para_style(p: Para, lang_fonts: dict[str, str]) -> str:
 def box_html(box: Box, theme: dict[str, Any], lang: str, assets: AssetLookup, src: Callable[[str], str]) -> str:
     geo = f"left:{_px(box.x)};top:{_px(box.y)};width:{_px(box.w)};height:{_px(box.h)}"
     if box.kind=='scene3d':
-        return f'<div class="b scene3d" style="{geo}" data-scene="{esc(json.dumps(box.data))}" role="img" aria-label="{esc(box.data.get("caption") or "3D scene")}"></div>'
+        from .scene3d import render_data
+        return f'<div class="b scene3d" style="{geo}" data-scene="{esc(json.dumps(render_data(box.data,assets)))}" role="img" aria-label="{esc(box.data.get("caption") or "3D scene")}"></div>'
     if box.kind=='poll':
         b=box.data
         choices=''.join(f'<button type="button" aria-pressed="false">{esc(label)} <span>{b.get("results",[])[i] if i<len(b.get("results",[])) else 0}</span></button>' for i,label in enumerate(b.get('options',[])))
@@ -222,7 +223,7 @@ def box_html(box: Box, theme: dict[str, Any], lang: str, assets: AssetLookup, sr
     if box.kind=='table':
         rows=[box.data['headers'],*box.data['rows']];head=rows[0]
         body=''.join(('<tr style="background:var(--surface)" >' if i in (box.data.get('highlight_rows') or []) else '<tr>')+''.join(f'<td>{esc(cell)}</td>' for cell in row)+'</tr>' for i,row in enumerate(rows[1:]))
-        size=max(13,min(24,box.h/len(rows)*.46))
+        size=max(13,min(box.data.get('font_size') or 24,box.h/len(rows)*.46))
         return f'<div class="b" style="{geo}"><table class="visual-table" style="font-size:{size}px"><thead><tr>'+''.join(f'<th>{esc(cell)}</th>' for cell in head)+f'</tr></thead><tbody>{body}</tbody></table></div>'
     if box.kind in ("rect","rule"):
         radius = f";border-radius:{int(theme['radius'])}px" if theme.get("radius") and is_card(box) else ""
@@ -232,7 +233,8 @@ def box_html(box: Box, theme: dict[str, Any], lang: str, assets: AssetLookup, sr
         return f'<img class="b" style="{geo};object-fit:{fit};object-position:{position[0]*100}% {position[1]*100}%" src="{esc(src(box.image["asset_id"]))}" alt="{esc(box.image.get("alt", ""))}">'
     if box.kind == "chart" and box.chart:
         svg = chart_svg(box.chart, box.w, box.h, theme, lang, css_font_stack(theme["fonts"]["body"]))
-        return f'<div class="b" style="{geo}" data-chart="{esc(json.dumps(box.chart))}" data-chart-id="{esc(box.object_id or "chart")}" data-palette="{esc(json.dumps(theme["colors"]))}">{svg}</div>'
+        scale=box.chart['font_size']/18 if box.chart.get('font_size') else theme.get('chart_font_points',13.5)/13.5
+        return f'<div class="b" style="{geo}" data-chart="{esc(json.dumps(box.chart))}" data-chart-id="{esc(box.object_id or "chart")}" data-font-scale="{scale}" data-palette="{esc(json.dumps(theme["colors"]))}">{svg}</div>'
     if box.kind == "text":
         justify = {"top": "flex-start", "middle": "center", "bottom": "flex-end"}.get(box.anchor, "flex-start")
         inner: list[str] = []
@@ -251,7 +253,7 @@ def box_html(box: Box, theme: dict[str, Any], lang: str, assets: AssetLookup, sr
                 tag = "h2" if box.role == "title" else "p"
                 inner.append(f'<{tag} style="{_para_style(p, {})}">{esc(p.text)}</{tag}>')
                 i += 1
-        return f'<div class="b t" style="{geo};justify-content:{justify}">{"".join(inner)}</div>'
+        return f'<div class="b t" data-role="{esc(box.role or "content")}" style="{geo};justify-content:{justify}">{"".join(inner)}</div>'
     return ""
 
 
@@ -477,8 +479,8 @@ def present_document(document: str,width=1280,height=720) -> str:
     // Capture internal actions before the presentation engine's own hash-link listener.
     document.addEventListener('click',event=>{{const link=event.target.closest('.slide-action');if(!link)return;const action=JSON.parse(link.dataset.action);event.stopImmediatePropagation();if(action.kind==='url')return;event.preventDefault();routeStatus.style.display='none';routeAction(action).catch(error=>{{routeStatus.textContent=error.message;routeStatus.style.display='block';}});}},true);
     deck.on('ready',()=>{{
-      const saved=sessionStorage.getItem('cicero-resume:'+location.pathname);
-      if(saved){{sessionStorage.removeItem('cicero-resume:'+location.pathname);try{{const p=JSON.parse(saved);deck.slide(p.h,p.v,p.f)}}catch{{}}}}
+      try{{const saved=sessionStorage.getItem('cicero-resume:'+location.pathname);
+      if(saved){{sessionStorage.removeItem('cicero-resume:'+location.pathname);const p=JSON.parse(saved);deck.slide(p.h,p.v,p.f)}}}}catch{{}}
     }});
     const liveUrl=document.body.dataset.liveUrl;
     if(liveUrl)setInterval(async()=>{{try{{const r=await fetch(liveUrl);if(!r.ok)return;const s=await r.json();
@@ -503,7 +505,9 @@ def advanced_runtime(document):
         return ''
     file=Path(__file__).resolve().parent/'static/visual-runtime/advanced.js'
     if not file.exists():return ''
-    return '<script>'+file.read_text(encoding='utf-8').replace('</','<\\/')+'</script>'
+    licenses=file.parent/'LICENSES.txt'
+    notice='<!-- Bundled runtime licenses\n'+licenses.read_text(encoding='utf-8').replace('--','- -')+'\n-->' if licenses.is_file() else ''
+    return notice+'<script>'+file.read_text(encoding='utf-8').replace('</','<\\/')+'</script>'
 
 
 def linked_attributes(deck, inline):

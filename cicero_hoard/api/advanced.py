@@ -1,15 +1,38 @@
 """Advanced authoring and evidence tools share the native agent implementations."""
 from pathlib import Path
-from fastapi import APIRouter,Request,WebSocket,WebSocketDisconnect
+from fastapi import APIRouter,Request,WebSocket,WebSocketDisconnect,UploadFile,File
 from fastapi.responses import HTMLResponse,FileResponse
 from fastapi.concurrency import run_in_threadpool
 from .deps import services,tool
-from .. import visual_lab,advanced
+from .. import visual_lab,advanced,scene3d,benchmark
 from ..errors import CiceroError,NotFound
 from pydantic import ValidationError
 from ..render import present_document
 
 router=APIRouter(prefix='/api')
+
+@router.post('/decks/{deck_id}/benchmarks')
+async def evaluate(request:Request,deck_id:str):
+    return await run_in_threadpool(tool,request,'deck_benchmark',**{**await request.json(),'deck_id':deck_id})
+
+@router.get('/decks/{deck_id}/benchmarks/{benchmark_id}/{token}.png')
+def blind_png(request:Request,deck_id:str,benchmark_id:str,token:str):
+    state=benchmark._get(services(request),benchmark.BenchmarkArgs(deck_id=deck_id,benchmark_id=benchmark_id))
+    pair=next((p for c in state['cases'] for p in c.get('blind_pairs',[]) if p['token']==token),None)
+    if pair is None:raise NotFound('Blind evidence not found')
+    return FileResponse(pair['path'],media_type='image/png')
+
+@router.post('/decks/{deck_id}/models')
+async def model_import(request:Request,deck_id:str):
+    return await run_in_threadpool(tool,request,'scene_model_import',**{**await request.json(),'deck_id':deck_id})
+
+@router.post('/decks/{deck_id}/models/upload')
+async def model_upload(request:Request,deck_id:str,file:UploadFile=File(...)):
+    return await run_in_threadpool(scene3d.import_bytes,services(request),deck_id,await file.read(),file.filename or 'model.glb')
+
+@router.post('/decks/{deck_id}/design')
+async def design(request:Request,deck_id:str):
+    return await run_in_threadpool(tool,request,'deck_design',**{**await request.json(),'deck_id':deck_id})
 
 @router.post('/decks/{deck_id}/visual-lab')
 async def lab(request:Request,deck_id:str):

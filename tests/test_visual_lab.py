@@ -39,6 +39,12 @@ def test_custom_correction_rejects_content_and_notes_changes(services):
     accepted=lab.run(services,lab.LabArgs(deck_id=d['id'],slide_id=s['id'],action='candidate',patch={'layout':'freeform','blocks':blocks}))
     assert accepted['content_preserved']
 
+def test_legacy_invalid_geometry_can_be_corrected_without_rejecting_its_facts(services):
+    d=new_deck(services);s=decks.add_slide(services,d['id'],layout='freeform',blocks=[{'type':'text','text':'Exact evidence','frame':[.9,0,.3,1]}])
+    corrected=deepcopy(s['blocks']);corrected[0]['frame']=[0,0,1,1]
+    result=lab.run(services,lab.LabArgs(deck_id=d['id'],slide_id=s['id'],action='candidate',patch={'blocks':corrected}))
+    assert result['content_preserved']
+
 
 def test_stale_variants_do_not_replace_manual_work(services):
     d,s=example(services)

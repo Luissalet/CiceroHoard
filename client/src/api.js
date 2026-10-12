@@ -42,6 +42,10 @@ const deckBase = (id) => `/api/decks/${e(id)}`;
 const slideBase = (id, sid) => `${deckBase(id)}/slides/${e(sid)}`;
 
 export const api = {
+  design:(id,body)=>request('POST',`${deckBase(id)}/design`,{body}),
+  benchmark:(id,body)=>request('POST',`${deckBase(id)}/benchmarks`,{body}),
+  modelImport:(id,body)=>request('POST',`${deckBase(id)}/models`,{body}),
+  modelUpload:(id,file)=>{const form=new FormData();form.append('file',file);return request('POST',`${deckBase(id)}/models/upload`,{form});},
   visualLab: (id,body)=>request('POST',`/api/decks/${id}/visual-lab`,{body}),
   poll: (id,body)=>request('POST',`/api/decks/${id}/polls`,{body}),
   connector: (id,body)=>request('POST',`/api/decks/${id}/connectors`,{body}),

@@ -23,7 +23,7 @@ def chart_svg(block: dict,width: float,height: float,theme: dict,lang: str) -> s
     if not block.get('categories') or not block.get('series'):
         return f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" role="img" aria-label="No data"></svg>'
     return _run(json.dumps({'kind':'chart','block':block,'width':width,'height':height,
-        'palette':theme['colors'],'font':theme['fonts']['body'],'font_scale':theme.get('chart_font_points',13.5)/13.5,'lang':lang},sort_keys=True))
+        'palette':theme['colors'],'font':theme['fonts']['body'],'font_scale':block['font_size']/18 if block.get('font_size') else theme.get('chart_font_points',13.5)/13.5,'lang':lang},sort_keys=True))
 
 def graph_layout(block: dict,width: float,height: float) -> dict:
     layout=json.loads(_run(json.dumps({'kind':'diagram','block':block},sort_keys=True)))

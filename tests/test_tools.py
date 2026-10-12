@@ -28,13 +28,13 @@ REQUIRED.update({'dataset_import','dataset_get','dataset_transform','dataset_vis
 READ_ONLY.update({'dataset_get','dataset_visual','deck_live_state'})
 REQUIRED.update({'deck_transitions','media_import','media_get','dataset_link','dataset_links','dataset_link_control','dataset_bind','deck_media_control'})
 REQUIRED.add('deck_navigation')
-REQUIRED.update({'deck_visual_lab','deck_poll','slide_collaborate','dataset_connect'})
+REQUIRED.update({'deck_visual_lab','deck_poll','slide_collaborate','dataset_connect','deck_design','deck_benchmark','scene_model_import'})
 READ_ONLY.update({'media_get','dataset_links'})
 
 
 def test_catalogue_has_every_tool_once():
     names = [t.name for t in at.TOOLS]
-    assert set(names) == REQUIRED and len(names) == len(set(names)) == 64
+    assert set(names) == REQUIRED and len(names) == len(set(names)) == 67
 
 
 def test_large_authored_batch_keeps_all_ids_in_its_receipt(services):

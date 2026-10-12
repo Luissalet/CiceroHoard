@@ -118,7 +118,11 @@ _PROBE = r"""
     }
     const hasTitle = !!stage.querySelector('.t h2'); const hasChart = content.some(c => c.label === 'chart');
     const hasImage = !!stage.querySelector('img.b');
-    out.push({id: section.id.replace(/^s-/, ''), found, hasTitle, hasChart, hasImage});
+    const fonts=Array.from(stage.querySelectorAll('.t h2,.t p,.t li,svg text,td,th'))
+      .filter(node=>node.textContent.trim()&&node.closest('[data-role]')?.dataset.role!=='footer')
+      .map(node=>({text:node.textContent.trim().slice(0,80),size:parseFloat(getComputedStyle(node).fontSize)}))
+      .filter(item=>Number.isFinite(item.size));
+    out.push({id: section.id.replace(/^s-/, ''), found, hasTitle, hasChart, hasImage, fonts});
   }
   return out;
 }
@@ -199,6 +203,7 @@ def review(deck: dict[str, Any], *, assets: AssetLookup, png_dir: Optional[Path]
             f.pop("have", None)
             counts[f["severity"]] += 1
         entry = {"slide_id": row["id"], "position": position, "title": slide.get("title", ""), "findings": findings}
+        if 'fonts' in row:entry['fonts']=row['fonts']
         if row.get("png"):
             entry["png"] = row["png"]
         slides.append(entry)

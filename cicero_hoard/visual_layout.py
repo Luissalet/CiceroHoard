@@ -25,13 +25,14 @@ def layout_visual(block,x,y,w,h,ctx):
                 paras=[Para(item['label'],size,bold=True,font='heading',align='center',space_after=12)]
                 if item.get('detail'):paras.append(Para(item['detail'],max(14,size*.78),color='muted',align='center'))
                 return paras
-            size,overflow=fit_size(make,cw-20,max(1,h-(axis-y)-40),26,16,ctx)
+            size,overflow=fit_size(make,cw-20,max(1,h-(axis-y)-40),block.get('font_size') or 26,16,ctx)
             if overflow:ctx.overflow_where.append('timeline milestone: '+item['label'])
             boxes.append(Box('text',left+10,axis+36,cw-20,max(1,h-(axis-y)-40),paras=make(size),build=stage))
         return boxes,h
     if kind=='table':
         if h/(len(block['rows'])+1)<32:ctx.overflow_where.append('table density: split the rows across slides')
-        return [Box('table',x,y,w,min(h,56*(len(block['rows'])+1)),data=block)],min(h,56*(len(block['rows'])+1))
+        rowh=max(56,(block.get('font_size') or 24)*1.5+16)
+        return [Box('table',x,y,w,min(h,rowh*(len(block['rows'])+1)),data=block)],min(h,rowh*(len(block['rows'])+1))
     if kind=='metrics':
         items=block['items'];columns=min(3,len(items),max(1,int(w//190)));rows=(len(items)+columns-1)//columns
         cellw=w/columns;cellh=min(h/rows,220);boxes=[]
@@ -72,7 +73,7 @@ def layout_visual(block,x,y,w,h,ctx):
         def text_at(size):
             label=Para(node['label'],size,bold=True,font='heading',line=1.15,align='center',space_after=10*scale if node.get('detail') else 0)
             return [label,Para(node['detail'],size*18/26,color='muted',align='center',line=1.2)] if node.get('detail') else [label]
-        size,overflow=fit_size(text_at,nw-2*pad,nh-2*pad,max(12,round(26*scale)),max(10,round(16*scale)),ctx)
+        size,overflow=fit_size(text_at,nw-2*pad,nh-2*pad,block.get('font_size') or max(12,round(26*scale)),max(10,round(16*scale)),ctx)
         text=text_at(size)
         if overflow:ctx.overflow_where.append('diagram node: '+node['id'])
         boxes.append(Box('text',left+pad,top+pad,nw-2*pad,nh-2*pad,paras=text,anchor='middle',build=build,effect='fade',object_id='node-'+node['id']+'-label'))

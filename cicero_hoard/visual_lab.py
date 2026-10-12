@@ -11,6 +11,7 @@ from .hoard_link.ids import new_ulid
 from .util import jdump,jload
 from .layouts import build_plan
 from .themes import theme_of
+from .compositions import ARCHETYPES,CHART_STYLES,chart_semantics
 
 STYLES=('original','balanced','visual_left','visual_right','focus','comparison','editorial','stacked')
 VISUALS={'image','chart','diagram','metrics','table','timeline','scene3d','poll'}
@@ -20,21 +21,32 @@ class LabArgs(BaseModel):
     action:Literal['variants','candidate','render','compare','apply','improve','critique','benchmark','history']='variants'
     slide_id:Optional[str]=None
     variant_id:Optional[str]=None
-    variant_ids:Optional[list[str]]=Field(None,max_length=12)
+    variant_ids:Optional[list[str]]=None
     baseline_id:Optional[str]=None
-    styles:list[Literal['original','balanced','visual_left','visual_right','focus','comparison','editorial','stacked']]=Field(default_factory=lambda:list(STYLES))
+    styles:list[str]=Field(default_factory=lambda:list(STYLES))
     expected_revision:Optional[int]=Field(None,ge=1)
     include_image:bool=False
     use_model:bool=False
     patch:Optional[SlidePatch]=None
 
 def content_signature(slide):
-    blocks=SlidePatch(blocks=deepcopy(slide['blocks'])).model_dump(exclude_none=True)['blocks']
+    blocks=deepcopy(slide['blocks'])
     for block in blocks:
         for key in ('frame','font_size','build','effect','duration_ms'):block.pop(key,None)
+        if block['type']=='chart':
+            for key in CHART_STYLES:block.pop(key,None)
+            for series in block.get('series',[]):series.pop('color',None)
+        if block['type']=='diagram':block.pop('direction',None)
+    blocks=SlidePatch(blocks=blocks).model_dump(exclude_none=True)['blocks']
+    for block in blocks:
+        if block['type']=='chart':block['chart']=chart_semantics(block['chart'],block.get('stacked',False))
     return jdump(blocks)
 
 def composition(slide,style):
+    if style in ARCHETYPES:
+        from .compositions import compose
+        return compose(slide,style)
+    if style not in STYLES:raise CiceroError('Unknown composition style')
     draft=deepcopy(slide)
     if style=='original':return draft
     draft['layout']='freeform';blocks=draft['blocks'];count=len(blocks)
@@ -100,15 +112,21 @@ def render(svc,args,vid):
     if deck.get('template'):
         from .template_live import scenes
         boxes=scenes(deck,svc.assets_lookup())[0][0]['boxes']
-    text_sizes=[p.size for b in boxes if b.role!='footer' for p in b.paras]
+    rendered_fonts=result['slides'][0].get('fonts')
+    text_sizes=[p['size'] for p in rendered_fonts] if rendered_fonts is not None else [p.size for b in boxes if b.role!='footer' for p in b.paras]
     metrics={'errors':result['errors'],'warnings':result['warnings'],'objects':len(plan.boxes),
              'min_font_px':round(min(text_sizes),1) if text_sizes else None,
-             'readability_penalty':sum(p<18 for p in text_sizes),'overflow_estimate':len(plan.overflow_where)}
-    metrics['constraint_score']=max(0,100-30*metrics['errors']-8*metrics['warnings']-4*metrics['readability_penalty'])
+             'readability_penalty':sum(p<18 for p in text_sizes),'legibility_errors':sum(p<14 for p in text_sizes),
+             'overflow_estimate':len(plan.overflow_where),
+             'font_basis':'computed browser text, table and SVG labels' if rendered_fonts is not None else 'scene estimate'}
+    metrics['constraint_score']=max(0,100-30*(metrics['errors']+metrics['legibility_errors'])-8*metrics['warnings']-4*metrics['readability_penalty'])
     png=folder/'slide-01.png'
+    from .util import sha256_hex
+    png_hash=sha256_hex(png.read_bytes())
+    metrics['png_sha256']=png_hash
     svc.db.execute('UPDATE visual_variants SET metrics=?,png=? WHERE id=?',(jdump(metrics),str(png),vid))
     output={'id':vid,'label':row['label'],'metrics':metrics,'findings':result['slides'][0]['findings'],
-            'png_url':svc.base_url()+f'/api/decks/{args.deck_id}/visual-lab/{vid}.png','png_path':str(png),
+            'png_url':svc.base_url()+f'/api/decks/{args.deck_id}/visual-lab/{vid}.png','png_path':str(png),'png_sha256':png_hash,
             'basis':'Measured fit and readability constraints, not an aesthetic grade or a superiority claim.'}
     if args.include_image:output['_image']={'mime':'image/png','data':base64.b64encode(png.read_bytes()).decode()}
     return output
@@ -119,12 +137,21 @@ def critique(svc,args,variant):
     messages=[{'role':'system','content':'You review presentation design. Do not rewrite facts, values, labels or citations. Return JSON: strengths (list), issues (list), preferred_style (one of '+','.join(STYLES)+'), rationale (string). Judge the actual image, not a style stereotype.'},
               {'role':'user','content':jdump({'slide':decks.get_slide(svc,args.deck_id,args.slide_id or _row(svc,args,variant['id'])['slide_id']),
                                             'measurements':variant['metrics'],'findings':variant['findings']})}]
-    try:
-        reply=svc.link_sync.chat(messages,images=[Path(variant['png_path']).read_bytes()],capability='vision',max_tokens=1800,temperature=.2)
-        from .generate import json_from_text
-        return {'used_model':True,'model':getattr(reply,'model',None),'visual_input':True,'review':json_from_text(reply.text)}
-    except Exception as error:
-        raise CiceroError('The configured visual model could not review the image: '+str(error)[:250],code='visual_model_unavailable') from error
+    from .generate import json_from_text
+    for attempt in range(2):
+        try:
+            # A multimodal global model accepts images on its ordinary chat route.
+            reply=svc.link_sync.chat(messages,images=[Path(variant['png_path']).read_bytes()],capability='llm',max_tokens=4096,temperature=.2,effort='low')
+        except Exception as error:
+            raise CiceroError('The configured global model could not review image content: '+str(error)[:250],code='visual_model_unavailable') from error
+        try:
+            review=json_from_text(reply.text)
+            if not isinstance(review,dict) or not isinstance(review.get('issues'),list) or not isinstance(review.get('strengths'),list):
+                raise ValueError('The image review needs strengths and issues arrays')
+            return {'used_model':True,'model':getattr(reply,'model',None),'visual_input':True,'route':'global multimodal chat','review':review}
+        except (ValueError,TypeError) as error:
+            if attempt==0:messages.append({'role':'user','content':'Return only valid JSON with strengths and issues arrays, preferred_style and rationale. Keep the review concise.'})
+            else:raise CiceroError('The global model answered but the image review was not valid JSON: '+str(error)[:250],code='visual_review_invalid') from error
 
 def run(svc,args):
     deck=decks.deck_view(svc,args.deck_id)

@@ -11,8 +11,8 @@ from .deps import services, tool
 router = APIRouter(prefix="/api")
 
 PREVIEW_HEADERS = {
-    # The preview is our own generated document: it needs inline style/script and same-origin images, nothing else.
-    "Content-Security-Policy": "default-src 'none'; img-src 'self' data:; media-src 'self' data: blob:; connect-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; frame-ancestors 'self'",
+    # Packaged model buffers and decoder workers remain offline; no external origins.
+    "Content-Security-Policy": "default-src 'none'; img-src 'self' data: blob:; media-src 'self' data: blob:; connect-src 'self' data: blob:; worker-src blob:; style-src 'unsafe-inline'; script-src 'unsafe-inline' 'wasm-unsafe-eval'; frame-ancestors 'self'",
     "X-Content-Type-Options": "nosniff",
     "Cache-Control": "no-store",
 }

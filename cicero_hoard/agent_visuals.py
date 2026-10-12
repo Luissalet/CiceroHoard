@@ -9,7 +9,7 @@ from .layouts import build_plan
 from .themes import theme_of
 
 class CatalogArgs(BaseModel):
-    kind: Literal['summary','charts','diagrams','metrics','tables','timelines','media','scenes3d','polls'] = 'summary'
+    kind: Literal['summary','charts','diagrams','metrics','tables','timelines','media','scenes3d','polls','compositions'] = 'summary'
 
 class SceneArgs(BaseModel):
     deck_id: str = Field(...,max_length=40)
@@ -24,6 +24,11 @@ class VisualUpdateArgs(BaseModel):
     source_ids: Optional[list[int]] = Field(None,max_length=50)
 
 def catalog(svc,args):
+    if args.kind=='compositions':
+        from .compositions import ARCHETYPES,Proposal
+        from .visual_lab import STYLES
+        return {'schema_version':'cicero.compositions.v1','archetypes':ARCHETYPES,'frame_presets':STYLES,'proposal_schema':Proposal.model_json_schema(),
+                'tools':['deck_visual_lab','deck_design','deck_benchmark'],'preservation':'Values, notes, citations, labels and analytic semantics remain invariant.'}
     types=['bar','bar_horizontal','line','area','pie','donut','scatter','bubble','dot','dumbbell','band','heatmap','waterfall','funnel']
     if args.kind!='summary':
         cls={'charts':ChartBlock,'diagrams':DiagramBlock,'metrics':MetricsBlock,'tables':TableBlock,'timelines':TimelineBlock,'media':MediaBlock,'scenes3d':Scene3DBlock,'polls':PollBlock}[args.kind]
@@ -33,8 +38,12 @@ def catalog(svc,args):
                 'Use build and effect for click-triggered stages. Tables and diagrams export as editable objects.']}
     return {'schema_version':'cicero.visuals.v2','charts':types,'blocks':['diagram','metrics','table','timeline','video','audio','scene3d','poll'],'layouts':list(LAYOUTS),
         'visual_lab':{'tool':'deck_visual_lab','cycle':['variants','candidate','render','compare','critique','apply','benchmark'],'evidence':'Native MCP image content when include_image=true; real PNG/geometry, not a claimed aesthetic grade'},
-        'advanced':{'tools':['deck_poll','slide_collaborate','dataset_connect'],'scene3d':'Three runtime, camera keyframes and orbit; native/PDF snapshot',
-                    'collaboration':'Yjs text CRDT; block arrays are atomic map values','data_animation':['series','points','update','states']},
+        'autonomous_design':{'tool':'deck_design','critics':['structured','vision','external'],'model':'Configured global multimodal chat, including images; no fixed model or text-only fallback',
+                             'evidence':'Source revision, variant and PNG hash; cancel/resume and selective undo'},
+        'end_to_end_benchmark':{'tool':'deck_benchmark','baseline':'Independently authored PPTX','rasterizer':'Same native office engine/canvas','rubric':['legibility','hierarchy','evidence_visibility','narrative_clarity','composition'],'scope':'Selected briefs; failures and ties retained, no universal superiority claim'},
+        'advanced':{'tools':['deck_poll','slide_collaborate','dataset_connect','scene_model_import'],'scene3d':'Three primitives and fully packaged GLB/glTF models, textures/materials/lights, clips, camera keyframes and orbit; native/PDF snapshot',
+                    'collaboration':'Yjs character merge, stable object maps, nested fields and identity ordering; tombstones preserve concurrent deletion',
+                    'data_animation':['series','points','update','states'],'animated_chart_kinds':types},
         'composition':{'canvas':'normalized block.frame [x,y,width,height] inside the content area','font_size':[14,96],
                        'image_fit':['contain','cover'],'image_position':'normalized horizontal and vertical crop focus'},
         'motion':{'effects':['none','fade','wipe','draw','stages'],'trigger':'click','duration_ms':[100,2000],

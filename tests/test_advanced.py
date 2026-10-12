@@ -37,6 +37,7 @@ def test_real_yjs_concurrent_text_edits_and_manual_notes_preserved(services):
     d=new_deck(services);s=decks.add_slide(services,d['id'],title='AB',notes='Original',blocks=[{'type':'text','text':'Keep'}])
     args={'deck_id':d['id'],'slide_id':s['id']}
     initial=a.collaboration(services,a.CollaborationArgs(**args))
+    s=decks.get_slide(services,d['id'],s['id'])
     left=a.merge_document(initial['state'],{},patches={'title':'L AB'})
     right=a.merge_document(initial['state'],{},patches={'title':'AB R'})
     a.collaboration(services,a.CollaborationArgs(**args,action='apply',update=left['state'],actor='left'))
@@ -81,6 +82,7 @@ def test_invalid_collaborative_blocks_do_not_persist(services):
     d=new_deck(services);s=decks.add_slide(services,d['id'],title='Valid',blocks=[{'type':'text','text':'Keep'}])
     args={'deck_id':d['id'],'slide_id':s['id']}
     state=a.collaboration(services,a.CollaborationArgs(**args))
+    s=decks.get_slide(services,d['id'],s['id'])
     invalid=a.merge_document(state['state'],{},patches={'blocks':[{'type':'text','text':7}]})
     for kwargs in ({'patches':{'blocks':[{'type':'text','text':7}]}},{'update':invalid['state']}):
         with pytest.raises(ValidationError):a.collaboration(services,a.CollaborationArgs(**args,action='apply',**kwargs))

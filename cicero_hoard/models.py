@@ -326,9 +326,39 @@ class ColumnsBlock(_Block):
         return _strip_list(value, MAX_ITEMS, MAX_ITEM_CHARS)
 
 
+class SceneMaterial(BaseModel):
+    color:Optional[str]=Field(None,pattern=r'^#[0-9a-fA-F]{6}$')
+    roughness:Optional[float]=Field(None,ge=0,le=1,allow_inf_nan=False)
+    metalness:Optional[float]=Field(None,ge=0,le=1,allow_inf_nan=False)
+    opacity:Optional[float]=Field(None,ge=0,le=1,allow_inf_nan=False)
+    wireframe:Optional[bool]=None
+
+class SceneLight(BaseModel):
+    type:Literal['hemisphere','ambient','directional','point','spot']='directional'
+    color:str=Field('#FFFFFF',pattern=r'^#[0-9a-fA-F]{6}$')
+    ground_color:str=Field('#667788',pattern=r'^#[0-9a-fA-F]{6}$')
+    intensity:float=Field(3,ge=0,allow_inf_nan=False)
+    position:list[float]=Field(default_factory=lambda:[5,9,7],min_length=3,max_length=3)
+    target:list[float]=Field(default_factory=lambda:[0,0,0],min_length=3,max_length=3)
+    distance:float=Field(0,ge=0,allow_inf_nan=False)
+    angle:float=Field(math.pi/3,gt=0,le=math.pi/2,allow_inf_nan=False)
+    cast_shadow:bool=False
+    @field_validator('position','target')
+    @classmethod
+    def _finite(cls,v):
+        if any(not math.isfinite(x) for x in v):raise ValueError('Light coordinates must be finite')
+        return v
+
 class SceneObject(BaseModel):
     id:str=Field(...,min_length=1,max_length=60,pattern=r'^[a-zA-Z0-9_-]+$')
-    shape:Literal['box','sphere','cylinder','cone','torus']='box'
+    shape:Literal['box','sphere','cylinder','cone','torus','model']='box'
+    asset_id:Optional[str]=None
+    fit:bool=True
+    material:Optional[SceneMaterial]=None
+    animation_clip:Optional[int]=Field(None,ge=0)
+    animation_speed:float=Field(1,ge=0,allow_inf_nan=False)
+    cast_shadow:bool=False
+    receive_shadow:bool=False
     position:list[float]=Field(default_factory=lambda:[0,0,0],min_length=3,max_length=3)
     rotation:list[float]=Field(default_factory=lambda:[0,0,0],min_length=3,max_length=3)
     scale:list[float]=Field(default_factory=lambda:[1,1,1],min_length=3,max_length=3)
@@ -336,6 +366,10 @@ class SceneObject(BaseModel):
     label:str=Field('',max_length=100)
     roughness:float=Field(.65,ge=0,le=1,allow_inf_nan=False)
     metalness:float=Field(.1,ge=0,le=1,allow_inf_nan=False)
+    @model_validator(mode='after')
+    def _model(self):
+        if self.shape=='model' and not self.asset_id:raise ValueError('An imported model needs asset_id')
+        return self
     @field_validator('position','rotation','scale')
     @classmethod
     def _finite(cls,v):
@@ -358,8 +392,12 @@ class Scene3DBlock(_Block):
     camera_path:list[CameraPose]=Field(default_factory=lambda:[CameraPose(position=[6,5,8])],min_length=1,max_length=30)
     background:str=Field('#F4F6F8',pattern=r'^#[0-9a-fA-F]{6}$')
     orbit:bool=True
+    auto_frame:bool=False
     loop:bool=True
     grid:bool=False
+    lights:Optional[list[SceneLight]]=None
+    exposure:float=Field(1,gt=0,allow_inf_nan=False)
+    shadows:bool=False
     caption:str=Field('',max_length=300)
     poster_id:Optional[str]=Field(None,max_length=64)
     @model_validator(mode='after')

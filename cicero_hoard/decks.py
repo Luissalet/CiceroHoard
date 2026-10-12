@@ -294,6 +294,11 @@ def _check_blocks(svc: Any, deck_id: str, blocks: list[dict[str, Any]]) -> None:
     if len(set(ids)) != len(ids):
         raise CiceroError('Block IDs must be unique within a slide.')
     for b in blocks:
+        if b.get('type')=='scene3d':
+            for obj in b.get('objects',[]):
+                if obj.get('shape')!='model':continue
+                asset=svc.db.one('SELECT mime FROM assets WHERE id=? AND deck_id=?',(obj.get('asset_id'),deck_id))
+                if not asset or asset['mime']!='model/gltf+json':raise CiceroError('Import this scene model into the presentation first')
         if b.get("type") in ('image', 'video', 'audio'):
             asset = svc.db.one("SELECT * FROM assets WHERE id = ? AND deck_id = ?", (b["asset_id"], deck_id))
             if asset is None:

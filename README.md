@@ -13,7 +13,11 @@ Use `media_import` and `media_get` for local or HTTP(S) audio/video, then add ty
 `deck_media_control` operates playback on the current live slide.
 `dataset_link`, `dataset_links`, `dataset_bind` and `dataset_link_control` provide durable automatic local/URL
 data refresh, immutable snapshots, typed visual recipes and last-good recovery. The editor exposes the same features.
-The public catalogue now contains 64 tools. See [live media](docs/LIVE_MEDIA.md) and [advanced authoring](docs/ADVANCED_AUTHORING.md) for contracts and format differences.
+The public catalogue now contains 67 tools. See [live media](docs/LIVE_MEDIA.md) and [advanced authoring](docs/ADVANCED_AUTHORING.md) for contracts and format differences.
+
+`deck_design` runs a model-driven create/render/correct loop using the configured global model, with real image content in vision mode. External image feedback is bound to a source revision, variant and PNG hash; runs support resumption, cancellation and selective undo.
+`scene_model_import` packages local GLB/glTF/ZIP resources offline, retaining textures, materials, lights and clips.
+`deck_benchmark` compares complete independently authored PPTX workflows using a common native rasterizer and a fixed blind rubric. Failures, ties and regressions remain in the report; selected cases cannot establish universal superiority.
 
 A local workspace that turns a brief and source documents into an editable presentation. You give it an objective,
 an audience and the material; it proposes an outline, writes the slides with speaker notes, lets you review and
@@ -206,7 +210,7 @@ turns that off; the slow tools publish how long the bridge waits for them). Regi
 | `deck_visual_review` | render every slide in the browser, keep a PNG of each and check hard rules before exporting; `fix` applies the minimum font size where text overflows |
 | `deck_visual_lab` | create content-preserving composition variants, render native MCP images, compare measured constraints, correct custom frames, apply and benchmark against an explicit baseline |
 | `deck_poll` | create, vote, open/close, reset and recover local audience poll rounds; obtain a slide block |
-| `slide_collaborate` | merge persistent Yjs text updates and atomic block replacements; publish local presence |
+| `slide_collaborate` | merge persistent Yjs text, stable objects, nested fields and identity order; publish local presence |
 | `dataset_connect` | connect a local SQL read query or optional spreadsheet adapter to the scheduled immutable snapshot worker |
 | `slide_image` | generate a picture for a slide with the image studio |
 | `asset_import` | copy an existing local PNG/JPEG/WEBP figure; use its returned asset ID in an image block; repeated imports reuse the image within this deck |
@@ -341,4 +345,4 @@ The vector source is editable in VectorCraft. PPTX embeds the SVG as a picture w
 
 ## Shared Faustus assistant
 
-The Faustus button mounts the common panel served by the configured Faustus service. Conversation storage, model choice, streaming, recovery and project memory live in Faustus. Cicero supplies its data-space identity, deck, selected slide/revision, editor selection and unsaved slide draft. Its 64 native domain tools and slide revisions remain available. Existing decks, notes, sources and manual unsaved edits are preserved. Configure CICERO_FAUSTUS_URL or the existing backend.json Faustus connection. This requires a reachable Faustus service with the shared copilot contract; no private chat/model fallback is created.
+The Faustus button mounts the common panel served by the configured Faustus service. Conversation storage, model choice, streaming, recovery and project memory live in Faustus. Cicero supplies its data-space identity, deck, selected slide/revision, editor selection and unsaved slide draft. Its 67 native domain tools and slide revisions remain available. Existing decks, notes, sources and manual unsaved edits are preserved. Configure CICERO_FAUSTUS_URL or the existing backend.json Faustus connection. This requires a reachable Faustus service with the shared copilot contract; no private chat/model fallback is created.

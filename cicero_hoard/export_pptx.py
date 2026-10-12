@@ -149,7 +149,7 @@ def _add_chart(slide: Any, box: Box, theme: dict[str, Any], lang: str) -> None:
     text_hex, muted_hex = _color(theme, "text"), _color(theme, "muted")
     palette = series_colors(theme)
     font_scale = theme.get('chart_font_scale', 1)
-    chart_font = theme.get('chart_font_points', 11 * font_scale)
+    chart_font = block['font_size']*.75 if block.get('font_size') else theme.get('chart_font_points', 11 * font_scale)
     chart.font.size = Pt(chart_font)
     chart.font.name = theme["fonts"]["body"]
     chart.font.color.rgb = _rgb(text_hex)

@@ -13,7 +13,11 @@ PPTX utiliza enlaces nativos y vuelta a la ultima diapositiva vista. [Contratos]
 `deck_media_control` controla la reproduccion de la diapositiva activa.
 `dataset_link`, `dataset_links`, `dataset_bind` y `dataset_link_control` ofrecen actualizacion automatica durable,
 snapshots inmutables, recetas visuales y recuperacion del ultimo estado valido. Las mismas funciones estan en el editor.
-El catalogo publico contiene 59 herramientas. Contratos y diferencias de formato: [multimedia y datos](docs/LIVE_MEDIA.md).
+El catalogo publico contiene 67 herramientas. Contratos y diferencias de formato: [multimedia y datos](docs/LIVE_MEDIA.md).
+
+`deck_design` ejecuta un ciclo de crear/renderizar/corregir con el modelo global configurado, enviando imagenes reales en modo vision. La revision externa queda vinculada a version, variante y hash de PNG. Permite continuar, cancelar y deshacer los cambios propios.
+`scene_model_import` incorpora GLB/glTF/ZIP completos con texturas, materiales, iluminacion y clips, tambien offline.
+`deck_benchmark` compara flujos completos frente a PPTX creados independientemente, con el mismo renderizador y una rubrica ciega. El informe conserva fallos, empates y regresiones; no acredita superioridad universal.
 
 Un espacio de trabajo local que convierte un encargo y unos documentos en una presentación editable. Le das un
 objetivo, un público y el material; propone un guion, escribe las diapositivas con notas del orador, te deja revisar

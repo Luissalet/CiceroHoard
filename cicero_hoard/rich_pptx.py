@@ -15,7 +15,7 @@ def add_table(slide,box,theme,lang):
     from .export_pptx import _emu,_rgb,_fill_text
     data=box.data;rows=[data['headers'],*data['rows']]
     frame=slide.shapes.add_table(len(rows),len(rows[0]),_emu(box.x),_emu(box.y),_emu(box.w),_emu(box.h))
-    size=max(13,min(24*theme.get('chart_font_scale',1),box.h/len(rows)*.38))
+    size=max(13,min((data.get('font_size') or 24)*theme.get('chart_font_scale',1),box.h/len(rows)*.46))
     for i,row in enumerate(rows):
         for j,value in enumerate(row):
             cell=frame.table.cell(i,j);cell.margin_left=cell.margin_right=_emu(10);cell.margin_top=cell.margin_bottom=_emu(6)
@@ -118,7 +118,7 @@ def add_chart(slide,box,theme,lang):
     chart=frame.chart;ids=list(dict.fromkeys(x.get('val') for x in chart._chartSpace.iter(qn('c:axId'))));mapping={v:str(100+i) for i,v in enumerate(ids)}
     for el in chart._chartSpace.iter():
         if el.tag in (qn('c:axId'),qn('c:crossAx')):el.set('val',mapping[el.get('val')])
-    points=theme.get('chart_font_points',18);chart.font.size=Pt(points);chart.font.name=theme['fonts']['body']
+    points=b['font_size']*.75 if b.get('font_size') else theme.get('chart_font_points',18);chart.font.size=Pt(points);chart.font.name=theme['fonts']['body']
     chart.font.color.rgb=_rgb(theme['colors']['text']);chart.has_title=False
     chart.has_legend=(b.get('show_legend',len(series)>1)) and kind not in ('dumbbell','dot','funnel','waterfall')
     if chart.has_legend:
