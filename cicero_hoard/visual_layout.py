@@ -33,7 +33,7 @@ def layout_visual(block,x,y,w,h,ctx):
         if h/(len(block['rows'])+1)<32:ctx.overflow_where.append('table density: split the rows across slides')
         return [Box('table',x,y,w,min(h,56*(len(block['rows'])+1)),data=block)],min(h,56*(len(block['rows'])+1))
     if kind=='metrics':
-        items=block['items'];columns=min(3,len(items));rows=(len(items)+columns-1)//columns
+        items=block['items'];columns=min(3,len(items),max(1,int(w//190)));rows=(len(items)+columns-1)//columns
         cellw=w/columns;cellh=min(h/rows,220);boxes=[]
         for i,item in enumerate(items):
             left=x+(i%columns)*cellw;top=y+(i//columns)*cellh

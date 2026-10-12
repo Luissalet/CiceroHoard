@@ -125,7 +125,7 @@ def static_deck(svc,deck):
             if block['type']=='chart':block.update(animation='none',states=None)
             base={k:block[k] for k in ('id','frame','font_size','build','effect','duration_ms','action') if k in block}
             if block['type']=='poll':
-                slide['blocks'][index]={**base,'type':'table','title':block['question'],'headers':['Option','Votes'],
+                slide['blocks'][index]={**base,'type':'table','title':block['question'],'headers':['Opcion','Votos'] if deck.get('language')=='es' else ['Option','Votes'],
                     'rows':[[label,str(block['results'][i])] for i,label in enumerate(block['options'])]}
             if block['type']=='scene3d':
                 poster=block.get('poster_id')
