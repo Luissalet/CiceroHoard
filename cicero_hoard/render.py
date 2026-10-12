@@ -503,7 +503,7 @@ def advanced_runtime(document):
         return ''
     file=Path(__file__).resolve().parent/'static/visual-runtime/advanced.js'
     if not file.exists():return ''
-    return '<script>'+file.read_text(encoding='utf-8').replace('</script','<\\/script')+'</script>'
+    return '<script>'+file.read_text(encoding='utf-8').replace('</','<\\/')+'</script>'
 
 
 def linked_attributes(deck, inline):

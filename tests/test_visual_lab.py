@@ -81,6 +81,18 @@ def test_comparison_rejects_unpaired_slides(services):
     with pytest.raises(CiceroError,match='same slide'):lab.run(services,lab.LabArgs(deck_id=d['id'],action='compare',variant_ids=ids))
 
 
+def test_bundled_runtime_has_no_structural_closing_tags(services):
+    from cicero_hoard.presentation import start,StartArgs,audience_document
+    d=new_deck(services)
+    decks.add_slide(services,d['id'],title='Scene',blocks=[{'type':'scene3d','objects':[{'id':'one'}]}])
+    preview=services.preview_html(d['id'],mode='present')
+    assert preview.count('</body>')==1
+    room=start(services,StartArgs(deck_id=d['id']))
+    audience=audience_document(services,d['id'],room['session_id'])
+    assert audience.count('const contentVersion=')==1
+    assert audience.count('</body>')==1
+
+
 def test_png_requires_render_and_websocket_errors_recover(client):
     d,s=example(client.svc)
     v=lab.run(client.svc,lab.LabArgs(deck_id=d['id'],slide_id=s['id']))['variants'][0]
