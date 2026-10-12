@@ -1,0 +1,2 @@
+[console_scripts]
+cicero-hoard = cicero_hoard.__main__:main
