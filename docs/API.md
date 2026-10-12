@@ -249,7 +249,8 @@ Navigation uses zero-based slide indices and normalized fragment groups (`-1` be
 The clock starts paused and tracks elapsed time across pause/resume. Commands include `next`, `previous`,
 `goto`, `sync`, `blackout`, `pause`, `resume`, `reset`, `target` and `main`.
 `expected_version` detects concurrent navigation. Sessions are in-memory; restart after deck edits or server restart.
-This is local screen sharing, not a hosted remote broadcast. Offline HTML contains no live polling or speaker notes.
+This is local screen sharing, not a hosted remote broadcast. Offline HTML contains no live navigation polling or speaker notes;
+authored audience poll blocks require the running service to collect votes.
 
 `freeform` layout uses normalized `block.frame: [x,y,width,height]` inside the body area.
 `block.font_size` sets text size; `block.id` identifies scene objects. Overlapping regions generate fit warnings.
