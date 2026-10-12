@@ -98,24 +98,42 @@ def test_chart_entrances_wait_for_activation_and_replay(services):
     from playwright.sync_api import sync_playwright
     from cicero_hoard import visual_review as vr
     d=new_deck(services)
-    decks.add_slide(services,d['id'],title='Start',blocks=[{'type':'text','text':'Context'}])
+    decks.add_slide(services,d['id'],title='Start',layout='freeform',blocks=[{'type':'scene3d','objects':[{'id':'one'}],
+        'camera_path':[{'time':0,'position':[6,5,8]},{'time':10,'position':[-6,5,8]}]}])
     decks.add_slide(services,d['id'],title='Animated evidence',blocks=[{'type':'chart','chart':'bar','animation':'series','categories':['A','B'],
-        'series':[{'name':'Value','values':[12,20]}]}])
+        'series':[{'name':'Value','values':[12,20]}],'animation_ms':100,
+        'states':[{'categories':['A','B'],'series':[{'name':'Value','values':[30,40]}]}]}])
     with sync_playwright() as p,tempfile.TemporaryDirectory() as profile:
         context=vr._launch(p,profile)
         try:
-            page=context.new_page();page.set_content(services.preview_html(d['id'],mode='present'),wait_until='load')
+            page=context.new_page();page.emulate_media(reduced_motion='no-preference');page.set_content(services.preview_html(d['id'],mode='present'),wait_until='load')
             page.wait_for_function("document.querySelector('[data-chart]').closest('section').classList.contains('future')")
             chart=page.locator('[data-chart]')
             assert chart.get_attribute('data-animation-activation') is None
             assert chart.locator('svg').count()==1
+            page.wait_for_function("document.querySelector('.scene3d').dataset.ready==='true'")
             page.evaluate('deck.slide(1)')
             page.wait_for_function("document.querySelector('[data-chart]').dataset.animationActivation==='1'")
+            import json
+            camera=json.loads(page.locator('.scene3d').get_attribute('data-camera'))
             page.evaluate('deck.slide(0)')
             page.wait_for_function("document.querySelector('[data-chart]').closest('section').classList.contains('future')")
             page.evaluate('deck.slide(1)')
             page.wait_for_function("document.querySelector('[data-chart]').dataset.animationActivation==='2'")
             assert chart.get_attribute('data-animation-ready')=='true'
+            page.wait_for_timeout(400)
+            assert chart.get_attribute('data-state')=='0'
+            page.wait_for_function("document.querySelector('[data-chart]').dataset.state==='1'")
+            page.evaluate('deck.slide(0)')
+            page.evaluate('deck.slide(1); queueMicrotask(()=>{deck.slide(0);queueMicrotask(()=>deck.slide(1))})')
+            page.wait_for_function("document.querySelector('[data-chart]').dataset.animationReady==='true'&&document.querySelector('[data-chart]').dataset.state==='0'")
+            page.wait_for_timeout(200)
+            assert chart.get_attribute('data-animation-activation')=='3'
+            frame=page.locator('.scene3d').get_attribute('data-frame')
+            page.evaluate('deck.slide(0)')
+            page.wait_for_function("document.querySelector('.scene3d').dataset.frame!=="+repr(frame))
+            resumed=json.loads(page.locator('.scene3d').get_attribute('data-camera'))
+            assert abs(resumed[0]-camera[0])<.5
         finally:context.close()
 
 

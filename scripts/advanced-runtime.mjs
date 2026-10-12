@@ -24,12 +24,14 @@ function scene(el){
   const controls=new OrbitControls(camera,canvas);controls.enabled=b.orbit!==false;controls.enableDamping=true;controls.target.fromArray(initial.target||[0,0,0]);
   let touched=false;controls.addEventListener('start',()=>{touched=true;});
   const resize=()=>{const w=Math.max(1,el.clientWidth),h=Math.max(1,el.clientHeight);renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();};
-  new ResizeObserver(resize).observe(el);resize();const start=performance.now();
+  new ResizeObserver(resize).observe(el);resize();let lastFrame=performance.now(),elapsed=0;
   function draw(){
     if(!document.documentElement.contains(el)){renderer.dispose();controls.dispose();return;}
     const hidden=el.closest('section')?.classList.contains('past')||el.closest('section')?.classList.contains('future');
+    const now=performance.now(),delta=(now-lastFrame)/1000;lastFrame=now;
     if(!hidden){
-      if(!reduced&&!touched&&path.length>1){const duration=path.at(-1).time;const elapsed=(performance.now()-start)/1000;
+      elapsed+=delta;
+      if(!reduced&&!touched&&path.length>1){const duration=path.at(-1).time;
         const t=b.loop===false?Math.min(duration,elapsed):elapsed%duration;let end=path.findIndex(p=>p.time>=t);if(end<1)end=1;
         const a=path[end-1],z=path[end],mix=THREE.MathUtils.smoothstep(t,a.time,z.time);
         camera.position.fromArray(a.position).lerp(new THREE.Vector3().fromArray(z.position),mix);
@@ -48,7 +50,7 @@ function animatedChart(el){
   if(!['bar','bar_horizontal','line','area','scatter','bubble'].includes(b.chart))return;
   const key='cicero-chart:'+location.pathname+':'+el.dataset.chartId,previous=readSession(key);
   const section=el.closest('section'),isPresented=()=>!el.closest('.reveal')||section?.classList.contains('present');
-  let chart=null,visible=false,activation=0;
+  let chart=null,visible=false,activation=0,generation=0,animationFrame=null,stateTimer=null;
   const option=data=>({animation:true,animationDuration:b.animation_ms||1000,animationDurationUpdate:b.animation_ms||1000,
     animationEasingUpdate:'cubicInOut',color:[palette.accent,palette.accent2,'#b36b44','#528d6a'],
     title:{text:data.title===b.title?'':data.title||'',textStyle:{fontSize:22,color:palette.text}},
@@ -66,21 +68,29 @@ function animatedChart(el){
       markPoint:{symbol:'pin',symbolSize:20,label:{fontSize:18,position:'top',formatter:p=>p.name},data:(b.annotations||[]).filter(a=>a.series===i&&a.category<s.values.length).map(a=>({name:a.text,coord:s.x_values?[s.x_values[a.category],s.values[a.category]]:horizontal?[s.values[a.category],data.categories[a.category]]:[data.categories[a.category],s.values[a.category]]}))},
       animationDelay:b.animation==='series'?i*250:b.animation==='points'?j=>j*80:0,universalTransition:true}))});
   let current=b,state=0;
+  const states=b.states||[],dwell=Math.max(2000,(b.animation_ms||1000)*2);
+  const animationSpan=data=>(b.animation_ms||1000)+(b.animation==='series'?Math.max(0,data.series.length-1)*250:b.animation==='points'?Math.max(0,data.categories.length-1)*80:0);
+  function stop(){generation++;if(animationFrame!==null)cancelAnimationFrame(animationFrame);if(stateTimer!==null)clearTimeout(stateTimer);animationFrame=stateTimer=null;}
+  function nextState(token){
+    if(token!==generation||!isPresented())return;
+    current={...b,...states[state++%states.length]};chart.setOption(option(current),{replaceMerge:['series']});writeSession(key,JSON.stringify(current));el.dataset.state=String(state);
+    stateTimer=setTimeout(()=>nextState(token),animationSpan(current)+dwell);
+  }
   function activate(){
     const now=isPresented();
+    if(now!==visible)stop();
     if(now&&!visible){
+      const token=generation;
       const first=!chart;
       if(first){el.innerHTML='';chart=echarts.init(el,null,{renderer:'svg'});}else chart.clear();
       current=b;state=0;el.dataset.state='0';el.dataset.animationReady='false';
       if(first&&b.animation==='update'&&previous)try{chart.setOption({...option(JSON.parse(previous)),animation:false});}catch{}
-      requestAnimationFrame(()=>{if(!isPresented())return;chart.resize();chart.setOption(option(b),{replaceMerge:['series']});writeSession(key,JSON.stringify(b));el.dataset.animationReady='true';el.dataset.animationActivation=String(++activation);});
+      animationFrame=requestAnimationFrame(()=>{if(token!==generation||!isPresented())return;animationFrame=null;chart.resize();chart.setOption(option(b),{replaceMerge:['series']});writeSession(key,JSON.stringify(b));el.dataset.animationReady='true';el.dataset.animationActivation=String(++activation);if(states.length)stateTimer=setTimeout(()=>nextState(token),animationSpan(b)+dwell);});
     }
     visible=now;
   }
   if(section)new MutationObserver(activate).observe(section,{attributes:true,attributeFilter:['class']});
   activate();
-  const states=b.states||[];
-  if(states.length)setInterval(()=>{if(chart&&isPresented()){current={...b,...states[state++%states.length]};chart.setOption(option(current),{replaceMerge:['series']});writeSession(key,JSON.stringify(current));el.dataset.state=String(state);}},Math.max(2000,(b.animation_ms||1000)*2));
   new ResizeObserver(()=>chart?.resize()).observe(el);
   addEventListener('beforeunload',()=>writeSession(key,JSON.stringify(current)));
 }
