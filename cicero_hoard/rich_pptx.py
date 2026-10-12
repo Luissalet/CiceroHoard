@@ -51,10 +51,22 @@ def add_chart(slide,box,theme,lang):
     if not cats or not series:
         from .errors import CiceroError
         raise CiceroError('Add chart categories and series before exporting editable evidence.')
+    captions=[]
+    if kind in ('pie','donut','funnel'):
+        captions.extend(v for v in (b.get('y_label'),b.get('unit')) if v)
+    elif b.get('y_label') and b.get('unit') and b['y_label']!=b['unit']:captions.append(b['unit'])
+    if b.get('x_label'):captions.append(b['x_label'])
+    context=[f"{cats[n['category']]}: {n['text']}" for n in b.get('annotations',[])]
+    context += [f"{r['label']}: {fmt_num(r['value'],lang)}" for r in b.get('references',[])]
+    if context:captions.append(' | '.join(context))
+    plot_height=max(100,box.h-30*len(captions))
+    for i,caption in enumerate(captions):
+        _add_box(slide,Box('text',box.x,box.y+plot_height+i*30,box.w,28,
+            paras=[Para(caption,18,color='muted',align='center')]),theme,lang,None,None)
     if kind=='heatmap':
         values=[v for s in series for v in s['values'] if v is not None] or [0];lo=min(values);hi=max(values)
         data={'headers':['',*[s['name'] for s in series]],'rows':[[cat,*[fmt_num(s['values'][j],lang) if s['values'][j] is not None else '' for s in series]] for j,cat in enumerate(cats)]}
-        frame=add_table(slide,Box('table',box.x,box.y,box.w,box.h,data=data),theme,lang)
+        frame=add_table(slide,Box('table',box.x,box.y,box.w,plot_height,data=data),theme,lang)
         start=hex_to_rgb('#EDF4F7');end=hex_to_rgb(theme['colors']['accent'])
         for i in range(len(cats)):
             for j,s in enumerate(series):
@@ -66,7 +78,7 @@ def add_chart(slide,box,theme,lang):
         return frame
     if kind=='funnel':
         pairs=[(cat,v) for cat,v in zip(cats,series[0]['values']) if v is not None]
-        maximum=max([v for _,v in pairs] or [1]);height=box.h/max(1,len(pairs))-10;shapes=[]
+        maximum=max([v for _,v in pairs] or [1]);height=plot_height/max(1,len(pairs))-10;shapes=[]
         for i,(cat,value) in enumerate(pairs):
             width=box.w*.62*value/(maximum or 1);left=box.x+(box.w*.62-width)/2;top=box.y+i*(height+10)
             shape=slide.shapes.add_shape(MSO_SHAPE.RECTANGLE,_emu(left),_emu(top),_emu(width),_emu(height))
@@ -113,7 +125,6 @@ def add_chart(slide,box,theme,lang):
                 running=nxt
             for name,values in zip(['Positive offset','Negative offset','Increase','Increase below zero','Decrease','Decrease below zero'],parts):data.add_series(name,values)
             ctype=XL_CHART_TYPE.COLUMN_STACKED
-    plot_height=max(100,box.h-(50 if any(b.get(k) for k in ('unit','x_label')) else 0))
     frame=slide.shapes.add_chart(ctype,_emu(box.x),_emu(box.y),_emu(box.w),_emu(plot_height),data)
     chart=frame.chart;ids=list(dict.fromkeys(x.get('val') for x in chart._chartSpace.iter(qn('c:axId'))));mapping={v:str(100+i) for i,v in enumerate(ids)}
     for el in chart._chartSpace.iter():
@@ -149,7 +160,7 @@ def add_chart(slide,box,theme,lang):
     for axis_name in ('category_axis','value_axis'):
         try:
             axis=getattr(chart,axis_name);axis.tick_labels.font.size=Pt(points);axis.tick_labels.font.color.rgb=_rgb(theme['colors']['text']);axis.tick_labels.font.name=theme['fonts']['body']
-            axis.tick_labels.number_format=number_format;axis.tick_labels.number_format_is_linked=False
+            axis.tick_labels.number_format='#,##0.###';axis.tick_labels.number_format_is_linked=False
             axis.major_tick_mark=XL_TICK_MARK.NONE;axis.minor_tick_mark=XL_TICK_MARK.NONE
             if axis.has_major_gridlines:
                 axis.major_gridlines.format.line.color.rgb=_rgb('#DFE6EB');axis.major_gridlines.format.line.width=Pt(.5)
@@ -210,13 +221,4 @@ def add_chart(slide,box,theme,lang):
         tf=axis.axis_title.text_frame;tf.text=unit
         for run in tf.paragraphs[0].runs:
             run.font.name=theme['fonts']['body'];run.font.size=Pt(points);run.font.color.rgb=_rgb(theme['colors']['text'])
-    if b.get('unit') and (kind in ('pie','donut','funnel') or b.get('y_label') and b['y_label']!=b['unit']):
-        _add_box(slide,Box('text',box.x,box.y+box.h-28,box.w,28,paras=[Para(b['unit'],18,color='muted',align='center')]),theme,lang,None,None)
-    if b.get('x_label'):
-        _add_box(slide,Box('text',box.x+box.w*.2,box.y+box.h-27,box.w*.6,27,paras=[Para(b['x_label'],18,color='muted',align='center')]),theme,lang,None,None)
-    # Explicit native captions preserve analytical context without guessing a plot's internal pixel coordinates.
-    context=[f"{cats[n['category']]}: {n['text']}" for n in b.get('annotations',[])]
-    context += [f"{r['label']}: {fmt_num(r['value'],lang)}" for r in b.get('references',[])]
-    if context:
-        _add_box(slide,Box('text',box.x,box.y+box.h-30,box.w-170,30,paras=[Para(' | '.join(context),17,color='muted')]),theme,lang,None,None)
     return frame
