@@ -205,7 +205,7 @@ def _add_chart(slide: Any, box: Box, theme: dict[str, Any], lang: str) -> None:
             plot.data_labels.number_format = number_format
             plot.data_labels.number_format_is_linked = False
         cat_axis, val_axis = chart.category_axis, chart.value_axis
-        val_axis.tick_labels.number_format = number_format
+        val_axis.tick_labels.number_format = '#,##0.###'
         val_axis.tick_labels.number_format_is_linked = False
         for axis in (cat_axis, val_axis):
             axis.tick_labels.font.size = Pt(chart_font)

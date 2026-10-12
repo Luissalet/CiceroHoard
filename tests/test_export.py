@@ -76,7 +76,7 @@ def test_pptx_native_charts():
     assert list(bar.plots[0].categories) == ["Hogar", "Moda", "Deporte"]
     assert [list(s.values) for s in bar.plots[0].series] == [[380, 310, 150], [475, 340, 160]]
     # thousands are grouped by the viewer's locale, not shown as a bare 250000
-    assert bar.value_axis.tick_labels.number_format == "#,##0" and not bar.value_axis.tick_labels.number_format_is_linked
+    assert bar.value_axis.tick_labels.number_format == "#,##0.###" and not bar.value_axis.tick_labels.number_format_is_linked
     assert bar.plots[0].data_labels.number_format == "#,##0"
 
 
