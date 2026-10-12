@@ -3,6 +3,8 @@ import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import * as echarts from 'echarts';
 
 const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const readSession=key=>{try{return sessionStorage.getItem(key);}catch{return null;}};
+const writeSession=(key,value)=>{try{sessionStorage.setItem(key,value);}catch{}};
 function scene(el){
   const b=JSON.parse(el.dataset.scene),world=new THREE.Scene();world.background=new THREE.Color(b.background||'#f4f6f8');
   const canvas=document.createElement('canvas');el.append(canvas);
@@ -44,7 +46,7 @@ function animatedChart(el){
   const b=JSON.parse(el.dataset.chart);if(!b.animation||b.animation==='none'||reduced)return;
   const palette=JSON.parse(el.dataset.palette),horizontal=b.chart==='bar_horizontal';
   if(!['bar','bar_horizontal','line','area','scatter','bubble'].includes(b.chart))return;
-  const key='cicero-chart:'+location.pathname+':'+el.dataset.chartId,previous=sessionStorage.getItem(key);
+  const key='cicero-chart:'+location.pathname+':'+el.dataset.chartId,previous=readSession(key);
   const section=el.closest('section'),isPresented=()=>!el.closest('.reveal')||section?.classList.contains('present');
   let chart=null,visible=false,activation=0;
   const option=data=>({animation:true,animationDuration:b.animation_ms||1000,animationDurationUpdate:b.animation_ms||1000,
@@ -71,21 +73,21 @@ function animatedChart(el){
       if(first){el.innerHTML='';chart=echarts.init(el,null,{renderer:'svg'});}else chart.clear();
       current=b;state=0;el.dataset.state='0';el.dataset.animationReady='false';
       if(first&&b.animation==='update'&&previous)try{chart.setOption({...option(JSON.parse(previous)),animation:false});}catch{}
-      requestAnimationFrame(()=>{if(!isPresented())return;chart.resize();chart.setOption(option(b),{replaceMerge:['series']});sessionStorage.setItem(key,JSON.stringify(b));el.dataset.animationReady='true';el.dataset.animationActivation=String(++activation);});
+      requestAnimationFrame(()=>{if(!isPresented())return;chart.resize();chart.setOption(option(b),{replaceMerge:['series']});writeSession(key,JSON.stringify(b));el.dataset.animationReady='true';el.dataset.animationActivation=String(++activation);});
     }
     visible=now;
   }
   if(section)new MutationObserver(activate).observe(section,{attributes:true,attributeFilter:['class']});
   activate();
   const states=b.states||[];
-  if(states.length)setInterval(()=>{if(chart&&isPresented()){current={...b,...states[state++%states.length]};chart.setOption(option(current),{replaceMerge:['series']});sessionStorage.setItem(key,JSON.stringify(current));el.dataset.state=String(state);}},Math.max(2000,(b.animation_ms||1000)*2));
+  if(states.length)setInterval(()=>{if(chart&&isPresented()){current={...b,...states[state++%states.length]};chart.setOption(option(current),{replaceMerge:['series']});writeSession(key,JSON.stringify(current));el.dataset.state=String(state);}},Math.max(2000,(b.animation_ms||1000)*2));
   new ResizeObserver(()=>chart?.resize()).observe(el);
-  addEventListener('beforeunload',()=>sessionStorage.setItem(key,JSON.stringify(current)));
+  addEventListener('beforeunload',()=>writeSession(key,JSON.stringify(current)));
 }
 
 async function poll(el){
   const b=JSON.parse(el.dataset.poll);if(!b.poll_url)return;
-  const url=b.poll_url;let participant=sessionStorage.getItem('cicero-participant');if(!participant){participant=crypto.randomUUID();sessionStorage.setItem('cicero-participant',participant);}
+  const url=b.poll_url;let participant=readSession('cicero-participant');if(!participant){participant=crypto.randomUUID();writeSession('cicero-participant',participant);}
   const status=el.querySelector('[role=status]');
   el.querySelectorAll('button').forEach((button,i)=>button.addEventListener('click',async()=>{try{
     const r=await fetch(url+'/vote',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({participant,choice:i})});
