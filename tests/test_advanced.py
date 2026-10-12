@@ -88,10 +88,14 @@ def test_invalid_collaborative_blocks_do_not_persist(services):
         assert a.collaboration(services,a.CollaborationArgs(**args))['snapshot']['blocks']==s['blocks']
 
 
-def test_real_scene_poster_and_native_poll_snapshot(services):
+@pytest.mark.parametrize('poster_kind',['missing','audio'])
+def test_real_scene_poster_and_native_poll_snapshot(services,monkeypatch,poster_kind):
     from PIL import Image,ImageStat
     import io
     d=new_deck(services)
+    lookup=services.assets_lookup()
+    if poster_kind=='audio':
+        monkeypatch.setattr(services,'assets_lookup',lambda:lambda aid:({'mime':'audio/wav','deck_id':d['id']} if aid=='missing-poster' else lookup(aid)))
     p=a.poll(services,a.PollArgs(deck_id=d['id'],action='create',question='Local poll',options=['A','B']))
     block=a.poll(services,a.PollArgs(deck_id=d['id'],poll_id=p['id'],action='block'))['block']
     s=decks.add_slide(services,d['id'],title='Scene',layout='freeform',blocks=[{'type':'scene3d','poster_id':'missing-poster','objects':[{'id':'one','shape':'sphere','color':'#D13E54'}],'frame':[0,0,.65,1]},block])

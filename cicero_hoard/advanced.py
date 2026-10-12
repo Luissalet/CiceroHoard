@@ -133,7 +133,7 @@ def static_deck(svc,deck):
             if block['type']=='scene3d':
                 poster=block.get('poster_id')
                 asset=svc.assets_lookup()(poster) if poster else None
-                if not asset or asset.get('deck_id')!=deck['id']:poster=None
+                if not asset or asset.get('deck_id')!=deck['id'] or asset.get('mime') not in ('image/png','image/jpeg','image/gif','image/webp'):poster=None
                 if not poster:
                     from . import visual_review as vr
                     from .render import render_document
