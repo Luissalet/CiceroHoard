@@ -104,7 +104,7 @@ def view(state,include_image=False):
     return _picture({'run_id':state['id'],'deck_id':state['deck_id'],'status':state['status'],'index':state['index'],
         'slides_total':len(state['slides']),'can_advance':state['index']<len(state['slides']) and state['status'] in ('ready','failed'),
         'slide_id':current['slide_id'],'source_revision':current['revision'],
-        'round':current['round'],'best':current.get('best'),'error':state.get('error'),
+        'round':current['round'],'rounds':state['options']['rounds'],'best':current.get('best'),'error':state.get('error'),
         'slides':[{'slide_id':s['slide_id'],'round':s['round'],'applied':s['applied'],'best':s.get('best'),
                    'candidates':s['candidates'],'reviews':s['reviews'],'model_calls':s['model_calls'],
                    'applied_render':s.get('applied_render')} for s in state['slides']],

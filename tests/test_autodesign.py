@@ -191,7 +191,7 @@ def test_failed_apply_after_complete_has_no_out_of_range_next(client,monkeypatch
     slides=[s]
     if count==2:slides.append(decks.add_slide(client.svc,d['id'],title='Second',blocks=s['blocks']))
     result=ok(agent_call(client,'deck_design',{'deck_id':d['id'],'rounds':1,'auto_apply':False},session='completed-recovery'))
-    assert result['index']==count and not result['can_advance']
+    assert result['index']==count and not result['can_advance'] and result['rounds']==1
     decks.patch_slide(client.svc,d['id'],slides[-1]['id'],{'notes':'Preserve this newer edit'})
     args={'deck_id':d['id'],'run_id':result['run_id']}
     failed=ok(agent_call(client,'deck_design',{**args,'action':'apply'},session='completed-recovery'))
