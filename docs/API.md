@@ -270,6 +270,17 @@ These routes share eight MCP tool implementations. [Full contract](LIVE_MEDIA.md
 
 ## PWA and client
 
+Advanced local routes share four native MCP tools (`deck_visual_lab`, `deck_poll`, `slide_collaborate`, `dataset_connect`):
+
+- `POST /api/decks/{id}/visual-lab`: variants, candidate, render, compare, critique, apply, benchmark, history.
+- `GET /api/decks/{id}/visual-lab/{variant}.html|png`: real composition preview/render evidence.
+- `POST /api/decks/{id}/polls`: authoring, state, vote, open/close, reset, rounds, restore, block.
+- `GET /api/decks/{id}/polls/{poll}` and `POST .../{poll}/vote`: audience state/voting.
+- `POST /api/decks/{id}/connectors`: local SQL or optional spreadsheet source.
+- `POST|WebSocket /api/decks/{id}/slides/{slide}/collaboration`: persistent Yjs state, updates and presence.
+
+See [advanced authoring](ADVANCED_AUTHORING.md) for format boundaries and comparative evaluation scope.
+
 The shared Faustus panel uses `GET /api/copilot/info` (stable app/data-space identity,
 panel and settings URLs), `GET /api/copilot/panel.js` (the bundle served by Faustus),
 and `POST /api/copilot/proxy` (native JSON or raw multipart envelope and streamed response).
