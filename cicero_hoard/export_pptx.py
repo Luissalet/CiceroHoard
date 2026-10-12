@@ -121,7 +121,7 @@ def _fill_text(tf: Any, box: Box, theme: dict[str, Any], lang: str) -> None:
 def _add_chart(slide: Any, box: Box, theme: dict[str, Any], lang: str) -> None:
     block = box.chart or {}
     kind = block.get("chart", "bar")
-    if kind not in ('bar','line','pie') or any(s.get('x_values') for s in block.get('series',[])) or any(key in block for key in ('unit','annotations','references','show_values','show_legend','zero_baseline','stacked')):
+    if kind not in ('bar','line','pie') or any(s.get('x_values') for s in block.get('series',[])) or any(key in block for key in ('unit','x_label','y_label','annotations','references','show_values','show_legend','zero_baseline','stacked')):
         from .rich_pptx import add_chart
         return add_chart(slide,box,theme,lang)
     cats = list(block.get("categories") or [])

@@ -37,6 +37,14 @@ def test_native_all_axis_captions_preserved_and_separated(kind):
     assert len(set(s.top for s in text))==len(text)
     if kind=='bar':assert next(s.chart for s in shapes if s.has_chart).value_axis.axis_title.text_frame.text=='Concentration'
 
+def test_native_pie_axis_labels_without_unit_reach_rich_renderer():
+    b={'type':'chart','chart':'pie','categories':['A','B'],'y_label':'Concentration','x_label':'Period',
+       'series':[{'name':'Observed','values':[12,20]}]}
+    raw=build_pptx({'title':'Captions','language':'en','theme':'claro','slides':[
+       {'id':'1','position':1,'title':'Values','layout':'evidence','blocks':[b]}]},assets=lambda _:None)
+    texts=[s.text for s in Presentation(io.BytesIO(raw)).slides[0].shapes if s.has_text_frame]
+    assert 'Concentration' in texts and 'Period' in texts
+
 @pytest.mark.skipif(not native_slides.available(),reason='Optional local native slide engine')
 def test_all_visual_types_open_together_with_native_labels(tmp_path):
     slides=[]
