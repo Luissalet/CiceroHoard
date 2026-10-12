@@ -29,6 +29,14 @@ Research sources describe inspiration; only verified Cicero behavior is counted 
 | End-to-end workflow evaluation | Implemented; empirical outcome is corpus-specific | Independent actual PPTX baselines, common native rasterizer, source checks, randomized A/B images and fixed rubric. All failed cases, ties and regressions retained |
 | Full parity or superiority over references | Not established | Requires a wider versioned inventory and comparative task evaluation |
 
+## Local Evaluation
+
+The 2026-10-12 pilot uses four synthetic briefs, three slides each, independently authored with the direct artifact-tool harness and Cicero public MCP. Both PPTX arms are rasterized by the same local native Office engine and checked for exact values, units, labels, citations and order. The configured global GLM model inspects randomized actual A/B PNGs with a fixed five-criterion rubric, without an arm mapping.
+
+Initial results: Cicero 7 preferences, direct harness 5. The review exposed native chart labels/units and direct-harness metric/donut defects. Both workflows were corrected; original files, ratings and intermediate unrated rendering remain preserved. Final results: Cicero 8, direct harness 4, no ties; all12 pairs passed source checks. This is an exploratory single-judge pilot, not a statistical or universal superiority claim. Runtime receipts measure execution/export only, not total LLM planning time.
+
+Final source verification: 468 passed, 8 optional external-tool tests skipped, independent cross-review and real MCP/browser/native exports. Real global image input was confirmed separately and in two-round design runs; registry modality labels are not proof of model capability. Native exports preserve editable charts, sparse value labels and explicit axis captions; HTML retains 3D, polls and chart motion, while PPTX/PDF use static scene posters, vote snapshots and base data.
+
 ## Primary Research
 
 - [Gamma chart and diagram workflow](https://help.gamma.app/en/articles/11029098-how-can-i-generate-charts-and-diagrams-in-gamma):
