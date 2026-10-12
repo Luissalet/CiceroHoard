@@ -33,7 +33,8 @@ def _lock(svc):
 def _save(svc,state):
     with _lock(svc):
         row=svc.db.one('SELECT state FROM design_runs WHERE id=?',(state['id'],))
-        if row and jload(row['state'],{}).get('cancel_requested'):state['cancel_requested']=True
+        if row and jload(row['state'],{}).get('cancel_requested'):
+            state['cancel_requested']=True;state['status']='cancelled'
         svc.db.execute('UPDATE design_runs SET state=?,updated_ts=? WHERE id=?',(jdump(state),svc.clock(),state['id']))
 
 def _get(svc,args):
@@ -47,7 +48,7 @@ def _start(svc,args):
     slides=[decks.get_slide(svc,args.deck_id,sid) for sid in dict.fromkeys(ids)]
     if not slides:raise CiceroError('Choose at least one slide')
     state={'id':new_ulid(),'deck_id':args.deck_id,'status':'ready','index':0,'options':args.model_dump(exclude={'run_id','feedback','png_sha256','variant_id'}),
-           'slides':[{'slide_id':s['id'],'revision':s['revision'],'source':s,'round':0,'candidates':[],'reviews':[],'model_calls':[],'applied':False} for s in slides],
+           'slides':[{'slide_id':s['id'],'revision':s['revision'],'source':s,'context_hash':lab.context_signature(svc,deck,s),'round':0,'candidates':[],'reviews':[],'model_calls':[],'applied':False} for s in slides],
            'created_ts':svc.clock(),'cancel_requested':False}
     svc.db.execute('INSERT INTO design_runs(id,deck_id,state,created_ts,updated_ts) VALUES(?,?,?,?,?)',
                    (state['id'],args.deck_id,jdump(state),svc.clock(),svc.clock()))
@@ -56,6 +57,11 @@ def _start(svc,args):
 def _rank(rows):
     # Equal measured fit is not equal visual quality: keep the latest correction.
     return sorted(reversed(rows),key=lambda r:(r['metrics']['errors']+r['metrics'].get('legibility_errors',0),r['metrics']['warnings'],r['metrics']['readability_penalty'],-r['metrics']['constraint_score']))
+
+def _check_context(svc,state,item,source=None):
+    if not item.get('context_hash'):raise CiceroError('Start a fresh design run: this older run has no pinned rendering context',code='design_evidence_unpinned')
+    if lab.context_signature(svc,decks.deck_view(svc,state['deck_id']),source or item['source'])!=item['context_hash']:
+        raise RevisionConflict('The rendering context changed after the image review')
 
 def _model_candidates(svc,state,item):
     source=item['source'];best=item.get('best');options=state['options']
@@ -115,9 +121,14 @@ def _apply(svc,state,item):
         if source['revision']==item['revision']+1 and actual==normalized:
             item['applied']=True;item['applied_revision']=source['revision'];return
         raise RevisionConflict('The slide changed during design; preserve the later edit and start from its revision')
-    updated=lab.run(svc,lab.LabArgs(deck_id=state['deck_id'],action='apply',variant_id=item['best']['id'],expected_revision=item['revision']))
-    item['applied']=True;item['applied_revision']=updated['revision']
-    state.setdefault('_call_mutations',[]).append({'slide_id':item['slide_id'],'etag':decks.slide_etag(updated)})
+    with _lock(svc):
+        if _get(svc,DesignArgs(deck_id=state['deck_id'],run_id=state['id'],action='status'))['cancel_requested']:
+            raise CiceroError('Design run cancelled before apply',code='design_cancelled')
+        _check_context(svc,state,item)
+        updated=lab.run(svc,lab.LabArgs(deck_id=state['deck_id'],action='apply',variant_id=item['best']['id'],expected_revision=item['revision']))
+        item['applied']=True;item['applied_revision']=updated['revision']
+        state.setdefault('_call_mutations',[]).append({'slide_id':item['slide_id'],'etag':decks.slide_etag(updated)})
+        _save(svc,state)
     # Compare the applied rendering to the selected evidence, on the fresh revision.
     fresh=lab.run(svc,lab.LabArgs(deck_id=state['deck_id'],slide_id=item['slide_id'],action='candidate',patch=patch))
     item['applied_render']=lab.render(svc,lab.LabArgs(deck_id=state['deck_id']),fresh['id'])
@@ -130,6 +141,7 @@ def _advance(svc,state):
         state['index']+=1;state['status']='complete' if state['index']==len(state['slides']) else 'ready';_save(svc,state);return
     source=decks.get_slide(svc,state['deck_id'],item['slide_id'])
     if source['revision']!=item['revision'] and not item['applied']:raise RevisionConflict('The source slide changed during the design run')
+    _check_context(svc,state,item,source)
     if not item['candidates']:
         styles=['original',*compositions.recommend(item['source'])]
         seeded=lab.run(svc,lab.LabArgs(deck_id=state['deck_id'],slide_id=item['slide_id'],styles=styles))['variants']
@@ -170,8 +182,23 @@ def _run(svc,args):
     if args.action in ('status','start'):return view(state,args.include_image)
     state['_call_mutations']=[]
     if args.action=='cancel':
-        state['cancel_requested']=True;state['status']='cancelled';_save(svc,state);return view(state)
-    if state['status'] in ('complete','cancelled'):return view(state,args.include_image)
+        with _lock(svc):
+            state=_get(svc,args);state['_call_mutations']=[];state['cancel_requested']=True;state['status']='cancelled';_save(svc,state)
+        return view(state)
+    if state['status']=='cancelled':return view(state,args.include_image)
+    if state['status']=='complete' and args.action!='apply':return view(state,args.include_image)
+    if args.action=='apply':
+        targets=([state['slides'][state['index']]] if state['index']<len(state['slides']) else state['slides'])
+        if args.slide_id:targets=[s for s in state['slides'] if s['slide_id']==args.slide_id]
+        if not targets:raise CiceroError('Choose a slide in this design run')
+        try:
+            for target in targets:
+                if not target['applied']:_apply(svc,state,target)
+            if state['index']<len(state['slides']):state['index']+=1
+            state['status']='complete' if state['index']==len(state['slides']) else 'ready';_save(svc,state)
+        except Exception as error:
+            state['status']='failed';state['error']={'message':str(error),'code':getattr(error,'code','design_failed')};_save(svc,state)
+        return view(state,args.include_image)
     item=state['slides'][state['index']]
     if args.action=='review':
         if state['options']['critic']!='external':raise CiceroError('Candidate image reviews require critic=external')
@@ -191,6 +218,7 @@ def _run(svc,args):
             raise RevisionConflict('The requested PNG changed after the image review')
         current=decks.get_slide(svc,args.deck_id,item['slide_id'])
         if current['revision']!=item['revision']:raise RevisionConflict('Feedback is stale: the source revision changed')
+        _check_context(svc,state,item,current)
         if args.feedback is None:raise CiceroError('Supply the image review feedback')
         selected=args.feedback.get('preferred_variant_id')
         if selected and selected!=requested['variant_id']:
@@ -202,8 +230,6 @@ def _run(svc,args):
             state['index']+=1;state['status']='complete' if state['index']==len(state['slides']) else 'ready'
         else:state['status']='ready'
         _save(svc,state);return view(state,args.include_image)
-    if args.action=='apply':
-        _apply(svc,state,item);state['index']+=1;state['status']='complete' if state['index']==len(state['slides']) else 'ready';_save(svc,state);return view(state,args.include_image)
     if state['status']=='awaiting_feedback':return view(state,args.include_image)
     try:
         state['status']='running';state.pop('error',None);_save(svc,state)
@@ -221,8 +247,10 @@ def _run(svc,args):
 def run(svc,args):
     if args.action in ('status','list','cancel'):return _run(svc,args)
     # Status and cancellation stay available while one worker calls the model.
-    key=args.run_id or 'new:'+args.deck_id
     with _lock(svc):
+        if args.action=='run' and not args.run_id:
+            started=_start(svc,args);args=args.model_copy(update={'run_id':started['id']})
+        key=args.run_id or 'start:'+args.deck_id
         active=getattr(svc,'design_active',set())
         svc.design_active=active
         if key in active:raise CiceroError('A worker is already advancing this design run',code='design_running')

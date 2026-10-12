@@ -12,9 +12,29 @@ from .util import jdump,jload
 from .layouts import build_plan
 from .themes import theme_of
 from .compositions import ARCHETYPES,CHART_STYLES,chart_semantics
+from .util import sha256_hex
 
 STYLES=('original','balanced','visual_left','visual_right','focus','comparison','editorial','stacked')
 VISUALS={'image','chart','diagram','metrics','table','timeline','scene3d','poll'}
+
+def context_signature(svc,deck,slide):
+    from .native_slides import renderer_fingerprint
+    ids=set()
+    def references(value):
+        if isinstance(value,dict):
+            for key,item in value.items():
+                if key in ('asset_id','poster_id') and item:ids.add(item)
+                else:references(item)
+        elif isinstance(value,list):
+            for item in value:references(item)
+    references(slide['blocks']);assets={}
+    for aid in sorted(ids):
+        info=svc.assets_lookup()(aid)
+        assets[aid]={key:sha256_hex(Path(info[key]).read_bytes()) if Path(info[key]).is_file() else 'missing'
+                     for key in ('path','fallback_path') if info and info.get(key)}
+    value={'title':deck['title'],'language':deck['language'],'theme':theme_of(deck),'template':deck.get('template'),
+           'assets':assets,'renderer':renderer_fingerprint()}
+    return sha256_hex(json.dumps(value,sort_keys=True,ensure_ascii=False,default=str))
 
 class LabArgs(BaseModel):
     deck_id:str
@@ -82,15 +102,18 @@ def _row(svc,args,variant_id):
 def _record(svc,deck,slide,style):
     candidate=composition(slide,style);vid=new_ulid()
     patch={'layout':candidate['layout'],'blocks':candidate['blocks']}
-    svc.db.execute('INSERT INTO visual_variants(id,deck_id,slide_id,revision,label,patch,created_ts) VALUES(?,?,?,?,?,?,?)',
-                   (vid,deck['id'],slide['id'],slide['revision'],style,jdump(patch),svc.clock()))
+    svc.db.execute('INSERT INTO visual_variants(id,deck_id,slide_id,revision,label,patch,metrics,created_ts) VALUES(?,?,?,?,?,?,?,?)',
+                   (vid,deck['id'],slide['id'],slide['revision'],style,jdump(patch),jdump({'render_context_hash':context_signature(svc,deck,slide)}),svc.clock()))
     return {'id':vid,'label':style,'slide_id':slide['id'],'expected_revision':slide['revision'],'patch':patch,
             'preview_url':svc.base_url()+f'/api/decks/{deck["id"]}/visual-lab/{vid}.html','content_changed':False}
 
-def variant_deck(svc,args,vid):
+def variant_deck(svc,args,vid,*,allow_context_change=False):
     row=_row(svc,args,vid);deck=decks.deck_view(svc,args.deck_id)
     source=decks.get_slide(svc,args.deck_id,row['slide_id'])
     if source['revision']!=row['revision']:raise RevisionConflict('The source changed; generate fresh variants before comparing or applying.')
+    recorded=jload(row['metrics'],{}).get('render_context_hash')
+    if recorded and not allow_context_change and recorded!=context_signature(svc,deck,source):
+        raise RevisionConflict('The theme, template, assets or renderer changed; render and review fresh evidence before applying')
     deck['slides']=[{**source,**jload(row['patch'],{})}]
     return deck,row
 
@@ -103,7 +126,8 @@ def document(svc,deck):
 
 def render(svc,args,vid):
     from . import visual_review as vr
-    deck,row=variant_deck(svc,args,vid)
+    deck,row=variant_deck(svc,args,vid,allow_context_change=True)
+    context=context_signature(svc,deck,deck['slides'][0])
     folder=svc.config.data_dir/'visual_lab'/vid
     scene=svc._review_scene(deck) if hasattr(svc,'_review_scene') else {}
     result=vr.review(deck,assets=svc.assets_lookup(),png_dir=folder,**scene)
@@ -118,11 +142,14 @@ def render(svc,args,vid):
              'min_font_px':round(min(text_sizes),1) if text_sizes else None,
              'readability_penalty':sum(p<18 for p in text_sizes),'legibility_errors':sum(p<14 for p in text_sizes),
              'overflow_estimate':len(plan.overflow_where),
-             'font_basis':'computed browser text, table and SVG labels' if rendered_fonts is not None else 'scene estimate'}
+             'font_basis':'computed browser text, table and SVG labels' if rendered_fonts is not None else 'scene estimate',
+             'render_context_hash':context}
     metrics['constraint_score']=max(0,100-30*(metrics['errors']+metrics['legibility_errors'])-8*metrics['warnings']-4*metrics['readability_penalty'])
     png=folder/'slide-01.png'
-    from .util import sha256_hex
     png_hash=sha256_hex(png.read_bytes())
+    current=decks.deck_view(svc,args.deck_id)
+    if context_signature(svc,current,decks.get_slide(svc,args.deck_id,row['slide_id']))!=context:
+        raise RevisionConflict('The rendering context changed while producing the PNG')
     metrics['png_sha256']=png_hash
     svc.db.execute('UPDATE visual_variants SET metrics=?,png=? WHERE id=?',(jdump(metrics),str(png),vid))
     output={'id':vid,'label':row['label'],'metrics':metrics,'findings':result['slides'][0]['findings'],
@@ -162,8 +189,8 @@ def run(svc,args):
         if any(candidate.get(k)!=source.get(k) for k in ('title','subtitle','notes','sources')) or content_signature(candidate)!=content_signature(source):
             raise CiceroError('A comparison candidate may change composition, not evidence or speaker notes')
         vid=new_ulid();patch={'layout':candidate['layout'],'blocks':candidate['blocks']}
-        svc.db.execute('INSERT INTO visual_variants(id,deck_id,slide_id,revision,label,patch,created_ts) VALUES(?,?,?,?,?,?,?)',
-                       (vid,args.deck_id,args.slide_id,source['revision'],'custom',jdump(patch),svc.clock()))
+        svc.db.execute('INSERT INTO visual_variants(id,deck_id,slide_id,revision,label,patch,metrics,created_ts) VALUES(?,?,?,?,?,?,?,?)',
+                       (vid,args.deck_id,args.slide_id,source['revision'],'custom',jdump(patch),jdump({'render_context_hash':context_signature(svc,deck,source)}),svc.clock()))
         return {'id':vid,'slide_id':args.slide_id,'expected_revision':source['revision'],'content_preserved':True}
     if args.action=='history':
         return {'variants':[{'id':r['id'],'slide_id':r['slide_id'],'label':r['label'],'revision':r['revision'],'metrics':jload(r['metrics'],{})}
@@ -196,9 +223,10 @@ def run(svc,args):
         return output
     if not args.variant_id:raise CiceroError('Supply variant_id')
     if args.action=='apply':
-        deck,row=variant_deck(svc,args,args.variant_id)
-        revision=args.expected_revision if args.expected_revision is not None else row['revision']
-        return decks.patch_slide(svc,args.deck_id,row['slide_id'],{**jload(row['patch'],{}),'expected_revision':revision},reason='visual variant selected')
+        with svc.db.transaction():
+            deck,row=variant_deck(svc,args,args.variant_id)
+            revision=args.expected_revision if args.expected_revision is not None else row['revision']
+            return decks.patch_slide(svc,args.deck_id,row['slide_id'],{**jload(row['patch'],{}),'expected_revision':revision},reason='visual variant selected')
     measured=render(svc,args,args.variant_id)
     if args.action=='critique':
         picture=measured.pop('_image',None)

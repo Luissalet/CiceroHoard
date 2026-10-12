@@ -119,3 +119,68 @@ def test_vision_uses_image_content_on_global_multimodal_route(services,monkeypat
     assert result['slides'][0]['model_calls'][0]['visual_input'] is True
     assert result['slides'][0]['reviews'][0]['route']=='global multimodal chat'
 
+def test_manual_apply_remains_available_after_design_completes(services,monkeypatch):
+    d,s=setup(services,monkeypatch)
+    result=design.run(services,design.DesignArgs(deck_id=d['id'],slide_id=s['id'],rounds=1,auto_apply=False))
+    assert result['status']=='complete' and not result['slides'][0]['applied']
+    assert decks.get_slide(services,d['id'],s['id'])['revision']==s['revision']
+    applied=design.run(services,design.DesignArgs(deck_id=d['id'],run_id=result['run_id'],action='apply'))
+    assert applied['status']=='complete' and applied['slides'][0]['applied'] and applied['changed_slides']==[s['id']]
+    assert decks.get_slide(services,d['id'],s['id'])['revision']==s['revision']+1
+
+def test_cancel_confirmed_immediately_before_apply_prevents_write(services,monkeypatch):
+    d,s=setup(services,monkeypatch);original=design._apply
+    def cancel_before(svc,state,item):
+        design.run(svc,design.DesignArgs(deck_id=d['id'],run_id=state['id'],action='cancel'))
+        return original(svc,state,item)
+    monkeypatch.setattr(design,'_apply',cancel_before)
+    result=design.run(services,design.DesignArgs(deck_id=d['id'],slide_id=s['id'],rounds=1))
+    assert result['status']=='cancelled' and not result['changed_slides']
+    assert decks.get_slide(services,d['id'],s['id'])['revision']==s['revision']
+
+def test_direct_run_claims_its_actual_id_before_calling_model(services,monkeypatch):
+    d,s=setup(services,monkeypatch);entered=threading.Event();release=threading.Event();original=services.link_sync.responder
+    def model(messages):entered.set();release.wait(10);return original(messages)
+    services.link_sync.responder=model;result=[]
+    worker=threading.Thread(target=lambda:result.append(design.run(services,design.DesignArgs(deck_id=d['id'],slide_id=s['id'],rounds=1))))
+    worker.start()
+    try:
+        assert entered.wait(10)
+        state=design.run(services,design.DesignArgs(deck_id=d['id'],action='list'))['runs'][0]
+        with pytest.raises(CiceroError,match='already advancing'):
+            design.run(services,design.DesignArgs(deck_id=d['id'],run_id=state['id'],action='step'))
+        assert len(services.link_sync.calls)==1
+    finally:release.set();worker.join(10)
+    assert result[0]['status']=='complete'
+
+def test_feedback_rejects_changed_png_bytes(services,monkeypatch):
+    d,s=setup(services,monkeypatch)
+    result=design.run(services,design.DesignArgs(deck_id=d['id'],slide_id=s['id'],critic='external'))
+    Path(result['best']['png_path']).write_bytes(png_bytes(color=(10,20,30)))
+    req=result['review_request']
+    with pytest.raises(RevisionConflict,match='PNG changed'):
+        design.run(services,design.DesignArgs(deck_id=d['id'],run_id=result['run_id'],action='feedback',variant_id=req['variant_id'],png_sha256=req['png_sha256'],feedback={'accept':True}))
+
+def test_theme_changes_invalidate_image_feedback_without_changing_slide_revision(services,monkeypatch):
+    from cicero_hoard.agent_tools import call_tool
+    d,s=setup(services,monkeypatch)
+    result=design.run(services,design.DesignArgs(deck_id=d['id'],slide_id=s['id'],critic='external'))
+    call_tool(services,'deck_theme',{'deck_id':d['id'],'theme':'oscuro'})
+    assert decks.get_slide(services,d['id'],s['id'])['revision']==s['revision']
+    req=result['review_request']
+    with pytest.raises(RevisionConflict,match='context changed'):
+        design.run(services,design.DesignArgs(deck_id=d['id'],run_id=result['run_id'],action='feedback',variant_id=req['variant_id'],png_sha256=req['png_sha256'],feedback={'accept':True}))
+    applied=design.run(services,design.DesignArgs(deck_id=d['id'],run_id=result['run_id'],action='apply'))
+    assert applied['status']=='failed' and not applied['changed_slides']
+    assert decks.get_slide(services,d['id'],s['id'])['revision']==s['revision']
+
+def test_design_undo_survives_real_agent_journal_serialization(client,monkeypatch):
+    from test_agent_accountability import agent_call,ok,undo
+    d,s=setup(client.svc,monkeypatch)
+    result=ok(agent_call(client,'deck_design',{'deck_id':d['id'],'slide_id':s['id'],'rounds':1},session='design-receipt'))
+    assert result['status']=='complete'
+    restored=ok(undo(client,'design-receipt',confirm=True))
+    assert restored['complete'] and not restored['conflicts']
+    assert lab.content_signature(decks.get_slide(client.svc,d['id'],s['id']))==lab.content_signature(s)
+    assert decks.get_slide(client.svc,d['id'],s['id'])['layout']==s['layout']
+

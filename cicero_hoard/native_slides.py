@@ -33,7 +33,7 @@ def available() -> bool:
 @lru_cache(maxsize=1)
 def renderer_fingerprint() -> str:
     root=Path(__file__).parent
-    paths=[root/name for name in ('native_slides.py','export_pptx.py','rich_pptx.py','template_pptx.py','layouts.py','visual_layout.py','visuals.py','themes.py','advanced.py','scene3d.py')]
+    paths=[root/name for name in ('native_slides.py','export_pptx.py','rich_pptx.py','template_pptx.py','template_live.py','render.py','layouts.py','visual_layout.py','visuals.py','themes.py','advanced.py','scene3d.py')]
     paths += [root/'static/visual-runtime/engine.mjs',root/'static/visual-runtime/advanced.js']
     digest=hashlib.sha256()
     for path in paths:

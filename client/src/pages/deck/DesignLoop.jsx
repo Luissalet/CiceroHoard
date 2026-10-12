@@ -26,7 +26,7 @@ export default function DesignLoop({slideId}){
    <div className="flex flex-wrap items-center gap-3 border-y py-3" style={{borderColor:'var(--line)'}}><strong className="text-sm" role="status">{t('design_status_'+state.status)}</strong><span className="text-sm">{t('design_round')} {state.round} / {rounds}</span>
     <button className="btn btn-sm" title={t('poll_refresh')} onClick={()=>act({action:'status',run_id:state.run_id})}><RefreshCw size={15}/></button>
     <button className="btn btn-sm" disabled={working||!['ready','failed'].includes(state.status)} onClick={()=>act({action:'step',run_id:state.run_id})}><ChevronRight size={15}/>{t('design_next')}</button>
-    <button className="btn btn-sm" disabled={!state.best||working||['complete','cancelled'].includes(state.status)} onClick={()=>act({action:'apply',run_id:state.run_id})}><Check size={15}/>{t('lab_apply')}</button>
+    <button className="btn btn-sm" disabled={!state.best||working||state.status==='cancelled'||state.slides.every(s=>s.applied)} onClick={()=>act({action:'apply',run_id:state.run_id})}><Check size={15}/>{t('lab_apply')}</button>
     <button className="btn btn-sm" disabled={['complete','cancelled'].includes(state.status)} onClick={()=>run(t('busy_saving'),()=>invoke({action:'cancel',run_id:state.run_id}))}><Square size={15}/>{t('design_cancel')}</button>
    </div>
    {state.error&&<p role="alert" className="text-sm" style={{color:'var(--danger)'}}>{state.error.message}</p>}
