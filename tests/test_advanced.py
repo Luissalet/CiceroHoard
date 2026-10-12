@@ -77,13 +77,24 @@ def test_scene_and_state_validation():
     with pytest.raises(ValidationError):ChartBlock(chart='bubble',categories=['A'],series=[{'name':'A','values':[1],'x_values':[2],'sizes':[3]}],states=[{'categories':['A'],'series':[{'name':'A','values':[1]}]}])
 
 
+def test_invalid_collaborative_blocks_do_not_persist(services):
+    d=new_deck(services);s=decks.add_slide(services,d['id'],title='Valid',blocks=[{'type':'text','text':'Keep'}])
+    args={'deck_id':d['id'],'slide_id':s['id']}
+    state=a.collaboration(services,a.CollaborationArgs(**args))
+    invalid=a.merge_document(state['state'],{},patches={'blocks':[{'type':'text','text':7}]})
+    for kwargs in ({'patches':{'blocks':[{'type':'text','text':7}]}},{'update':invalid['state']}):
+        with pytest.raises(ValidationError):a.collaboration(services,a.CollaborationArgs(**args,action='apply',**kwargs))
+        assert decks.get_slide(services,d['id'],s['id'])['blocks']==s['blocks']
+        assert a.collaboration(services,a.CollaborationArgs(**args))['snapshot']['blocks']==s['blocks']
+
+
 def test_real_scene_poster_and_native_poll_snapshot(services):
     from PIL import Image,ImageStat
     import io
     d=new_deck(services)
     p=a.poll(services,a.PollArgs(deck_id=d['id'],action='create',question='Local poll',options=['A','B']))
     block=a.poll(services,a.PollArgs(deck_id=d['id'],poll_id=p['id'],action='block'))['block']
-    s=decks.add_slide(services,d['id'],title='Scene',layout='freeform',blocks=[{'type':'scene3d','objects':[{'id':'one','shape':'sphere','color':'#D13E54'}],'frame':[0,0,.65,1]},block])
+    s=decks.add_slide(services,d['id'],title='Scene',layout='freeform',blocks=[{'type':'scene3d','poster_id':'missing-poster','objects':[{'id':'one','shape':'sphere','color':'#D13E54'}],'frame':[0,0,.65,1]},block])
     converted=a.static_deck(services,decks.deck_view(services,d['id']))
     image=converted['slides'][0]['blocks'][0]
     assert image['type']=='image' and converted['slides'][0]['blocks'][1]['type']=='table'

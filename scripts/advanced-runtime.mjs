@@ -55,7 +55,7 @@ function animatedChart(el){
     xAxis:{type:horizontal||['scatter','bubble'].includes(b.chart)?'value':'category',name:b.x_label||(horizontal?b.unit:'')||'',nameGap:25,nameTextStyle:{fontSize:18},data:horizontal?undefined:data.categories,axisLabel:{color:palette.text,fontSize:18}},
     yAxis:{type:horizontal?'category':'value',name:b.y_label||(!horizontal?b.unit:'')||'',nameTextStyle:{fontSize:18},data:horizontal?data.categories:undefined,inverse:horizontal,scale:b.zero_baseline===false,axisLabel:{color:palette.text,fontSize:18}},
     series:data.series.map((s,i)=>({id:s.name||String(i),name:s.name,type:['line','area'].includes(b.chart)?'line':b.chart==='scatter'||b.chart==='bubble'?'scatter':'bar',
-      stack:b.stacked?'total':undefined,symbolSize:(value,params)=>b.chart==='bubble'?Math.max(6,Math.sqrt(s.sizes[params.dataIndex]||0)*4):10,
+      stack:b.stacked?'total':undefined,itemStyle:s.color?{color:s.color}:undefined,symbolSize:(value,params)=>b.chart==='bubble'?Math.max(6,Math.sqrt(s.sizes[params.dataIndex]||0)*4):10,
       data:s.values.map((value,j)=>({id:data.categories[j]+':'+j,value:s.x_values?[s.x_values[j],value]:value,
         itemStyle:b.highlight?.length&&!b.highlight.includes(j)?{opacity:.45}:undefined})),
       areaStyle:b.chart==='area'?{opacity:.15}:undefined,label:{show:b.show_values!==false,position:horizontal?'right':'top',fontSize:18,color:palette.text,formatter:p=>`${Array.isArray(p.value)?p.value[1]:p.value}${b.unit?' '+b.unit:''}`},

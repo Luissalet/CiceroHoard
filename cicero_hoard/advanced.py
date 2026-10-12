@@ -8,6 +8,7 @@ from .errors import CiceroError
 from .hoard_link.ids import new_ulid
 from .hoard_link import proc
 from .util import jdump,jload
+from .models import SlidePatch
 
 class PollArgs(BaseModel):
     deck_id:str
@@ -94,7 +95,9 @@ def collaboration(svc,args):
             if args.patches and any(k not in fields for k in args.patches):raise CiceroError('Collaborative fields are title, subtitle, notes and blocks')
             merged=merge_document(base['state'],fields,update=args.update,patches=args.patches)
             changed={k:v for k,v in merged['snapshot'].items() if k in fields and v!=fields[k]}
-            if changed:decks.patch_slide(svc,args.deck_id,args.slide_id,{**changed,'expected_revision':slide['revision']},reason='collaborative edit')
+            if changed:
+                validated=SlidePatch(**changed).model_dump(exclude_unset=True,exclude_none=True)
+                decks.patch_slide(svc,args.deck_id,args.slide_id,{**validated,'expected_revision':slide['revision']},reason='collaborative edit')
             svc.db.execute('UPDATE collab_documents SET state=?,snapshot=?,version=version+1 WHERE slide_id=?',
                            (merged['state'],jdump(merged['snapshot']),args.slide_id))
             row=svc.db.one('SELECT * FROM collab_documents WHERE slide_id=?',(args.slide_id,))
@@ -129,6 +132,8 @@ def static_deck(svc,deck):
                     'rows':[[label,str(block['results'][i])] for i,label in enumerate(block['options'])]}
             if block['type']=='scene3d':
                 poster=block.get('poster_id')
+                asset=svc.assets_lookup()(poster) if poster else None
+                if not asset or asset.get('deck_id')!=deck['id']:poster=None
                 if not poster:
                     from . import visual_review as vr
                     from .render import render_document
