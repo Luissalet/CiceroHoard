@@ -184,3 +184,22 @@ def test_design_undo_survives_real_agent_journal_serialization(client,monkeypatc
     assert lab.content_signature(decks.get_slide(client.svc,d['id'],s['id']))==lab.content_signature(s)
     assert decks.get_slide(client.svc,d['id'],s['id'])['layout']==s['layout']
 
+@pytest.mark.parametrize('count',[1,2])
+def test_failed_apply_after_complete_has_no_out_of_range_next(client,monkeypatch,count):
+    from test_agent_accountability import agent_call,ok
+    d,s=setup(client.svc,monkeypatch)
+    slides=[s]
+    if count==2:slides.append(decks.add_slide(client.svc,d['id'],title='Second',blocks=s['blocks']))
+    result=ok(agent_call(client,'deck_design',{'deck_id':d['id'],'rounds':1,'auto_apply':False},session='completed-recovery'))
+    assert result['index']==count and not result['can_advance']
+    decks.patch_slide(client.svc,d['id'],slides[-1]['id'],{'notes':'Preserve this newer edit'})
+    args={'deck_id':d['id'],'run_id':result['run_id']}
+    failed=ok(agent_call(client,'deck_design',{**args,'action':'apply'},session='completed-recovery'))
+    assert failed['status']=='failed' and not failed['can_advance']
+    assert failed['changed_slides']==([s['id']] if count==2 else [])
+    for action in ('step','run','review','feedback'):
+        recovered=ok(agent_call(client,'deck_design',{**args,'action':action},session='completed-recovery'))
+        assert recovered['status']=='failed' and recovered['error']==failed['error']
+        assert recovered['index']==count and not recovered['changed_slides']
+    assert decks.get_slide(client.svc,d['id'],slides[-1]['id'])['notes']=='Preserve this newer edit'
+

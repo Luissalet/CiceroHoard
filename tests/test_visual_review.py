@@ -30,6 +30,13 @@ def test_review_classifies_and_adds_layout_checks():
     contrast = out["slides"][1]["findings"][0]
     assert contrast["severity"] == "error" and contrast["fix"] and contrast["auto_fix"] is False
 
+def test_compact_metrics_reserve_room_for_actual_font_ink(services):
+    d=new_deck(services)
+    decks.add_slide(services,d['id'],title='Latency',blocks=[{'type':'metrics','font_size':34,'frame':[.68,0,.32,.4],
+        'items':[{'label':'Metodo B','value':'41 ms'},{'label':'Metodo A','value':'28 ms'}]}])
+    result=services.visual_review(d['id'])
+    assert not [f for f in result['slides'][0]['findings'] if f['rule']=='text_overflow'],result
+
 
 def test_shrink_patch_only_touches_text_without_a_smaller_size():
     slide = {"blocks": [{"type": "text", "text": "x"}, {"type": "bullets", "items": ["a"], "font_size": 14},

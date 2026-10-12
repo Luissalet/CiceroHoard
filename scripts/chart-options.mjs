@@ -39,12 +39,15 @@ export function chartOptions(req){
   if(b.chart==='dot'){item.type='scatter';item.data=s.values.map((v,j)=>[v,j]).filter(v=>v[0]!=null);item.symbolSize=14;item.label={...label,formatter:a=>fmt(a.value[0]),position:'right'};}
   if(['pie','donut'].includes(b.chart)){
    option.xAxis=option.yAxis=undefined;option.grid=undefined;
+   delete item.itemStyle;item.colorBy='data';
    item.type='pie';item.radius=b.chart==='donut'?['48%','76%']:'75%';item.center=['43%','52%'];
-   item.data=s.values.map((v,j)=>({name:cats[j],value:v})).filter(v=>v.value!=null);item.label={show:true,fontSize:18,formatter:a=>`${a.name}: ${fmt(a.value)}`};
+   item.data=s.values.map((v,j)=>({name:cats[j],value:v,itemStyle:{color:b.highlight?.length&&!b.highlight.includes(j)?'#CFD9E0':colors[j%colors.length]}})).filter(v=>v.value!=null);
+   item.label={show:true,fontSize:18,color:p.text,overflow:'break',width:Math.max(70,w*.22),formatter:a=>`${a.name}: ${fmt(a.value)}`};
    option.series=[item];break;
   }
   if(b.chart==='funnel'){
    option.xAxis=option.yAxis=undefined;option.legend.show=false;item.type='funnel';
+   delete item.itemStyle;item.colorBy='data';
    item.data=s.values.map((v,j)=>({name:cats[j],value:v})).filter(v=>v.value!=null);item.sort='none';item.left='18%';item.right='18%';item.top=20;item.bottom=20;item.gap=10;
    item.label={show:true,fontSize:21,color:p.text,position:'right',formatter:a=>`${a.name}: ${fmt(a.value)}`};option.series=[item];break;
   }

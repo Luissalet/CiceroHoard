@@ -66,6 +66,8 @@ def _check_context(svc,state,item,source=None):
 def _model_candidates(svc,state,item):
     source=item['source'];best=item.get('best');options=state['options']
     instruction={'source_slide':source,'profile':compositions.profile(source),'archetypes':compositions.ARCHETYPES,
+                 'indexed_blocks':[{'block_index':i,'type':b['type'],'content':b} for i,b in enumerate(source['blocks'])],
+                 'index_contract':{'base':0,'valid_indexes':list(range(len(source['blocks']))),'each_block_once':True},
                  'current_best':{k:v for k,v in (best or {}).items() if k not in ('_image',)},'reviews':item['reviews'],
                  'requested_candidates':options['proposals'],'response_schema':{'candidates':[compositions.Proposal.model_json_schema()]}}
     messages=[{'role':'system','content':'Design presentation compositions, not content. Return JSON {candidates:[{label,rationale,placements:[{block_index,frame:[x,y,w,h],font_size,chart,direction,show_legend,show_values}]}]}. Frames are fractions inside the body, must fit0..1; do not overlap. Preserve ALL values, labels, notes, sources and actions; never shorten/remove evidence. Match narrative and visual form to data. Prefer readable 24-34px body type. Use the actual render findings and prior critique to correct. Chart may use a supported alternative representation with the SAME categories/series data. Do not claim to have seen pixels when only supplied measurements.'},
@@ -84,7 +86,9 @@ def _model_candidates(svc,state,item):
             return [(p,patch) for p,patch in zip(proposals,patches)]
         except Exception as error:
             if getattr(error,'code',None)=='design_cancelled':raise
-            if attempt==0:messages.append({'role':'user','content':'Repair the JSON/geometry without changing evidence: '+str(error)[:800]})
+            if attempt==0:
+                if 'reply' in locals():messages.append({'role':'assistant','content':reply.text})
+                messages.append({'role':'user','content':'Repair the JSON/geometry without changing evidence. Use EXACTLY the ZERO-BASED block_index values in indexed_blocks, each once: '+str(error)[:800]})
             else:raise CiceroError('The configured global model could not produce valid compositions: '+str(error)[:400],code='design_model_failed') from error
 
 def _picture(result,include):
@@ -98,7 +102,8 @@ def _picture(result,include):
 def view(state,include_image=False):
     current=state['slides'][min(state['index'],len(state['slides'])-1)]
     return _picture({'run_id':state['id'],'deck_id':state['deck_id'],'status':state['status'],'index':state['index'],
-        'slides_total':len(state['slides']),'slide_id':current['slide_id'],'source_revision':current['revision'],
+        'slides_total':len(state['slides']),'can_advance':state['index']<len(state['slides']) and state['status'] in ('ready','failed'),
+        'slide_id':current['slide_id'],'source_revision':current['revision'],
         'round':current['round'],'best':current.get('best'),'error':state.get('error'),
         'slides':[{'slide_id':s['slide_id'],'round':s['round'],'applied':s['applied'],'best':s.get('best'),
                    'candidates':s['candidates'],'reviews':s['reviews'],'model_calls':s['model_calls'],
@@ -195,10 +200,12 @@ def _run(svc,args):
             for target in targets:
                 if not target['applied']:_apply(svc,state,target)
             if state['index']<len(state['slides']):state['index']+=1
-            state['status']='complete' if state['index']==len(state['slides']) else 'ready';_save(svc,state)
+            state['status']='complete' if state['index']==len(state['slides']) else 'ready';state.pop('error',None);_save(svc,state)
         except Exception as error:
             state['status']='failed';state['error']={'message':str(error),'code':getattr(error,'code','design_failed')};_save(svc,state)
         return view(state,args.include_image)
+    # Completed rounds remain applicable, but a failed apply cannot create another round.
+    if state['index']>=len(state['slides']):return view(state,args.include_image)
     item=state['slides'][state['index']]
     if args.action=='review':
         if state['options']['critic']!='external':raise CiceroError('Candidate image reviews require critic=external')

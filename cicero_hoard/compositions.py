@@ -91,7 +91,8 @@ def compose(slide,style):
 def proposal_patch(source,proposal):
     blocks=deepcopy(source['blocks']);seen=set()
     for p in proposal.placements:
-        if p.block_index>=len(blocks) or p.block_index in seen:raise CiceroError('Proposal indexes must identify distinct existing blocks')
+        if p.block_index>=len(blocks) or p.block_index in seen:
+            raise CiceroError('Proposal indexes '+str([p.block_index for p in proposal.placements])+' must be distinct ZERO-BASED indexes in0..'+str(len(blocks)-1))
         seen.add(p.block_index);block=blocks[p.block_index];block['frame']=p.frame
         if p.font_size is not None:block['font_size']=p.font_size
         if p.direction is not None:

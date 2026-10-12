@@ -40,12 +40,12 @@ def layout_visual(block,x,y,w,h,ctx):
             left=x+(i%columns)*cellw;top=y+(i//columns)*cellh
             build=item.get('build',block.get('build'))
             color='accent' if item.get('emphasis') else 'text'
-            valueh=min(84,cellh*.42);labelh=min(64,cellh*.3);gap=min(12,cellh*.06)
-            vs,vo=fit_size(lambda n:[Para(item['value'],n,bold=True,font='heading',line=1.1)],cellw-28,valueh,block.get('font_size') or 60,20,ctx)
-            ls,lo=fit_size(lambda n:[Para(item['label'],n,bold=True,line=1.2)],cellw-28,labelh,26,18,ctx)
+            valueh=min(84,cellh*.48);labelh=min(64,cellh*.34);gap=min(12,cellh*.04)
+            vs,vo=fit_size(lambda n:[Para(item['value'],n,bold=True,font='heading',line=1.35)],cellw-28,valueh,block.get('font_size') or 60,20,ctx)
+            ls,lo=fit_size(lambda n:[Para(item['label'],n,bold=True,line=1.35)],cellw-28,labelh,26,18,ctx)
             if vo or lo:ctx.overflow_where.append('metric text: '+item['label'])
-            boxes.extend([Box('text',left,top,cellw-28,valueh,paras=[Para(item['value'],vs,bold=True,color=color,font='heading',line=1.1)],build=build),
-                Box('text',left,top+valueh+gap,cellw-28,labelh,paras=[Para(item['label'],ls,bold=True,line=1.2)],build=build)])
+            boxes.extend([Box('text',left,top,cellw-28,valueh,paras=[Para(item['value'],vs,bold=True,color=color,font='heading',line=1.35)],build=build),
+                Box('text',left,top+valueh+gap,cellw-28,labelh,paras=[Para(item['label'],ls,bold=True,line=1.35)],build=build)])
             if item.get('detail'):
                 detailh=max(1,cellh-valueh-labelh-2*gap)
                 ds,do=fit_size(lambda n:[Para(item['detail'],n)],cellw-28,detailh,19,14,ctx)

@@ -1,10 +1,22 @@
 import json,tempfile
+import subprocess
+from pathlib import Path
 from copy import deepcopy
 from playwright.sync_api import sync_playwright
 from cicero_hoard import decks,visual_review as vr
 from conftest import new_deck
 
 KINDS=['bar','bar_horizontal','line','area','pie','donut','scatter','bubble','dot','dumbbell','band','heatmap','waterfall','funnel']
+
+def test_category_charts_use_distinct_colors_and_untruncated_labels():
+    script="""import {chartOptions} from './scripts/chart-options.mjs';
+    for(const kind of ['pie','donut','funnel']){
+      const o=chartOptions({block:{chart:kind,categories:['Directo','Digital'],series:[{name:'Pedidos',values:[39,45]}]},width:560,height:260,palette:{accent:'#2244aa',accent2:'#aa4422',text:'#111111',background:'#ffffff'},font:'Segoe UI'});
+      console.log(JSON.stringify({kind,style:o.series[0].itemStyle,colorBy:o.series[0].colorBy,label:o.series[0].label,colors:o.series[0].data.map(p=>p.itemStyle?.color)}));
+    }"""
+    rows=[json.loads(s) for s in subprocess.check_output(['node','--input-type=module','-e',script],cwd=Path(__file__).resolve().parents[1],text=True).splitlines()]
+    assert all('style' not in r and r['colorBy']=='data' for r in rows)
+    assert all(r['label']['overflow']=='break' and len(set(r['colors']))==2 for r in rows[:2])
 
 def block(kind):
     series=[{'name':'Observed','values':[12,None,20]}]
