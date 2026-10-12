@@ -70,7 +70,8 @@ def pptx_ledger(data):
                 from posixpath import normpath,join
                 target=relationships.get(chart.get('{http://schemas.openxmlformats.org/officeDocument/2006/relationships}id'))
                 if not target:continue
-                cx=_xml(z.read(normpath(join('ppt/slides',target))))
+                from urllib.parse import unquote
+                cx=_xml(z.read(normpath(join('ppt/slides',unquote(target))).lstrip('/')))
                 text+=cx.xpath('//a:t/text()',namespaces=NS)
                 rows=[]
                 for s in cx.xpath('//c:ser',namespaces=NS):

@@ -60,3 +60,20 @@ def test_existing_cicero_export_is_not_independent(services,tmp_path):
     with pytest.raises(CiceroError,match='not an independent'):
         b.run(services,b.BenchmarkArgs(**args,action='case',case={'key':'not-independent','brief':'Same artifact','baseline_path':str(tmp_path/'fixture.pptx')}))
 
+def test_native_chart_relationships_accept_absolute_package_paths(services,tmp_path):
+    import io,zipfile,posixpath
+    from lxml import etree
+    d,s,args,case=setup(services,tmp_path)
+    raw=(tmp_path/'fixture.pptx').read_bytes();output=io.BytesIO()
+    with zipfile.ZipFile(io.BytesIO(raw)) as source,zipfile.ZipFile(output,'w') as target:
+        for name in source.namelist():
+            data=source.read(name)
+            if name.startswith('ppt/slides/_rels/') and name.endswith('.rels'):
+                xml=etree.fromstring(data)
+                for rel in xml:
+                    if rel.get('Type','').endswith('/chart'):
+                        rel.set('Target','/'+posixpath.normpath(posixpath.join('ppt/slides',rel.get('Target'))))
+                data=etree.tostring(xml)
+            target.writestr(name,data)
+    assert b.pptx_ledger(output.getvalue())==b.pptx_ledger(raw)
+
