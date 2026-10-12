@@ -45,7 +45,8 @@ function animatedChart(el){
   const palette=JSON.parse(el.dataset.palette),horizontal=b.chart==='bar_horizontal';
   if(!['bar','bar_horizontal','line','area','scatter','bubble'].includes(b.chart))return;
   const key='cicero-chart:'+location.pathname+':'+el.dataset.chartId,previous=sessionStorage.getItem(key);
-  el.innerHTML='';const chart=echarts.init(el,null,{renderer:'svg'});
+  const section=el.closest('section'),isPresented=()=>!el.closest('.reveal')||section?.classList.contains('present');
+  let chart=null,visible=false,activation=0;
   const option=data=>({animation:true,animationDuration:b.animation_ms||1000,animationDurationUpdate:b.animation_ms||1000,
     animationEasingUpdate:'cubicInOut',color:[palette.accent,palette.accent2,'#b36b44','#528d6a'],
     title:{text:data.title===b.title?'':data.title||'',textStyle:{fontSize:22,color:palette.text}},
@@ -62,12 +63,23 @@ function animatedChart(el){
       markLine:i===0?{symbol:'none',label:{fontSize:18,formatter:p=>p.name},data:(b.references||[]).map(r=>({name:r.label,[horizontal?'xAxis':'yAxis']:r.value}))}:undefined,
       markPoint:{symbol:'pin',symbolSize:20,label:{fontSize:18,position:'top',formatter:p=>p.name},data:(b.annotations||[]).filter(a=>a.series===i&&a.category<s.values.length).map(a=>({name:a.text,coord:s.x_values?[s.x_values[a.category],s.values[a.category]]:horizontal?[s.values[a.category],data.categories[a.category]]:[data.categories[a.category],s.values[a.category]]}))},
       animationDelay:b.animation==='series'?i*250:b.animation==='points'?j=>j*80:0,universalTransition:true}))});
-  if(previous)try{chart.setOption(option(JSON.parse(previous)));}catch{}
-  let current=b;
-  requestAnimationFrame(()=>{chart.setOption(option(b),{replaceMerge:['series']});sessionStorage.setItem(key,JSON.stringify(b));el.dataset.animationReady='true';});
-  const states=b.states||[];let state=0;
-  if(states.length)setInterval(()=>{const section=el.closest('section');if(!section?.classList.contains('past')&&!section?.classList.contains('future')){current={...b,...states[state++%states.length]};chart.setOption(option(current),{replaceMerge:['series']});sessionStorage.setItem(key,JSON.stringify(current));el.dataset.state=String(state);}},Math.max(2000,(b.animation_ms||1000)*2));
-  new ResizeObserver(()=>chart.resize()).observe(el);
+  let current=b,state=0;
+  function activate(){
+    const now=isPresented();
+    if(now&&!visible){
+      const first=!chart;
+      if(first){el.innerHTML='';chart=echarts.init(el,null,{renderer:'svg'});}else chart.clear();
+      current=b;state=0;el.dataset.state='0';el.dataset.animationReady='false';
+      if(first&&b.animation==='update'&&previous)try{chart.setOption({...option(JSON.parse(previous)),animation:false});}catch{}
+      requestAnimationFrame(()=>{if(!isPresented())return;chart.resize();chart.setOption(option(b),{replaceMerge:['series']});sessionStorage.setItem(key,JSON.stringify(b));el.dataset.animationReady='true';el.dataset.animationActivation=String(++activation);});
+    }
+    visible=now;
+  }
+  if(section)new MutationObserver(activate).observe(section,{attributes:true,attributeFilter:['class']});
+  activate();
+  const states=b.states||[];
+  if(states.length)setInterval(()=>{if(chart&&isPresented()){current={...b,...states[state++%states.length]};chart.setOption(option(current),{replaceMerge:['series']});sessionStorage.setItem(key,JSON.stringify(current));el.dataset.state=String(state);}},Math.max(2000,(b.animation_ms||1000)*2));
+  new ResizeObserver(()=>chart?.resize()).observe(el);
   addEventListener('beforeunload',()=>sessionStorage.setItem(key,JSON.stringify(current)));
 }
 

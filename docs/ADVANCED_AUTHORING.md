@@ -21,7 +21,7 @@ The 64-tool native catalog is shared by MCP and the bundled editor. No external 
 
 `scene3d` blocks use Three, editable box/sphere/cylinder/cone/torus objects, stable IDs, transforms, materials, optional grid and orbit interaction. Camera keyframes contain time, position and target; motion interpolates smoothly, can loop, pauses on hidden slides and respects reduced motion. Orbit interaction takes over from the authored path. Imported 3D mesh files are not supported in this version.
 
-Chart `animation` supports `none`, `series`, `points`, `update`, duration and explicit validated data `states`. ECharts animates bars, horizontal bars, lines, areas, scatter and bubbles. Other chart types keep their ordinary static rendering. Titles, legends, units, highlights, annotations and reference lines remain visible. State changes do not alter saved source data; automatic linked refresh preserves animation settings.
+Chart `animation` supports `none`, `series`, `points`, `update`, duration and explicit validated data `states`. ECharts animates bars, horizontal bars, lines, areas, scatter and bubbles. Entrances start when the slide becomes present and replay on re-entry; hidden slides retain their static evidence until activated. Other chart types keep their ordinary static rendering. Titles, legends, units, highlights, annotations and reference lines remain visible. State changes do not alter saved source data; automatic linked refresh preserves animation settings.
 
 ## Audience And Collaboration
 

@@ -93,6 +93,32 @@ def test_bundled_runtime_has_no_structural_closing_tags(services):
     assert audience.count('</body>')==1
 
 
+def test_chart_entrances_wait_for_activation_and_replay(services):
+    import tempfile
+    from playwright.sync_api import sync_playwright
+    from cicero_hoard import visual_review as vr
+    d=new_deck(services)
+    decks.add_slide(services,d['id'],title='Start',blocks=[{'type':'text','text':'Context'}])
+    decks.add_slide(services,d['id'],title='Animated evidence',blocks=[{'type':'chart','chart':'bar','animation':'series','categories':['A','B'],
+        'series':[{'name':'Value','values':[12,20]}]}])
+    with sync_playwright() as p,tempfile.TemporaryDirectory() as profile:
+        context=vr._launch(p,profile)
+        try:
+            page=context.new_page();page.set_content(services.preview_html(d['id'],mode='present'),wait_until='load')
+            page.wait_for_function("document.querySelector('[data-chart]').closest('section').classList.contains('future')")
+            chart=page.locator('[data-chart]')
+            assert chart.get_attribute('data-animation-activation') is None
+            assert chart.locator('svg').count()==1
+            page.evaluate('deck.slide(1)')
+            page.wait_for_function("document.querySelector('[data-chart]').dataset.animationActivation==='1'")
+            page.evaluate('deck.slide(0)')
+            page.wait_for_function("document.querySelector('[data-chart]').closest('section').classList.contains('future')")
+            page.evaluate('deck.slide(1)')
+            page.wait_for_function("document.querySelector('[data-chart]').dataset.animationActivation==='2'")
+            assert chart.get_attribute('data-animation-ready')=='true'
+        finally:context.close()
+
+
 def test_png_requires_render_and_websocket_errors_recover(client):
     d,s=example(client.svc)
     v=lab.run(client.svc,lab.LabArgs(deck_id=d['id'],slide_id=s['id']))['variants'][0]

@@ -19,7 +19,16 @@
     "theme-from-design-system",
     "image-studio",
     "native-vectorcraft-mcp",
-    "designcraft-handouts"
+    "designcraft-handouts",
+    "visual-composition-variants",
+    "native-mcp-render-images",
+    "measured-visual-correction-loop",
+    "paired-composition-evaluation",
+    "three-scenes-camera-paths",
+    "local-audience-polls",
+    "chart-series-point-data-animation",
+    "local-sql-linked-snapshots",
+    "local-yjs-text-collaboration"
   ],
   "placeholders": [
     "CICERO_DIR",
