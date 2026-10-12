@@ -72,6 +72,9 @@ def test_real_render_native_image_and_explicit_paired_baseline(services):
     assert next(p for p in result['paired'] if p['id']==ids[0])['score_delta']==0
     assert 'No universal' in result['scope']
     assert all('_image' not in v for v in result['ranked'])
+    reviewed=lab.run(services,lab.LabArgs(deck_id=d['id'],action='critique',variant_id=ids[0],include_image=True))
+    assert reviewed['_image']['mime']=='image/png'
+    assert '_image' not in reviewed['measured']
 
 
 def test_comparison_rejects_unpaired_slides(services):

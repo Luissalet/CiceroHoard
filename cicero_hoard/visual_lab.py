@@ -173,7 +173,12 @@ def run(svc,args):
         revision=args.expected_revision if args.expected_revision is not None else row['revision']
         return decks.patch_slide(svc,args.deck_id,row['slide_id'],{**jload(row['patch'],{}),'expected_revision':revision},reason='visual variant selected')
     measured=render(svc,args,args.variant_id)
-    return critique(svc,args,measured) if args.action=='critique' else measured
+    if args.action=='critique':
+        picture=measured.pop('_image',None)
+        result=critique(svc,args,measured)
+        if picture:result['_image']=picture
+        return result
+    return measured
 
 def capture(svc,args):
     if args.action!='apply':return {'noop':True}
