@@ -42,6 +42,10 @@ const deckBase = (id) => `/api/decks/${e(id)}`;
 const slideBase = (id, sid) => `${deckBase(id)}/slides/${e(sid)}`;
 
 export const api = {
+  visualLab: (id,body)=>request('POST',`/api/decks/${id}/visual-lab`,{body}),
+  poll: (id,body)=>request('POST',`/api/decks/${id}/polls`,{body}),
+  connector: (id,body)=>request('POST',`/api/decks/${id}/connectors`,{body}),
+  collaborate: (id,slide,body)=>request('POST',`/api/decks/${id}/slides/${slide}/collaboration`,{body}),
   health: () => request("GET", "/api/health"),
   transitions: id => request('GET',`${deckBase(id)}/transitions`),
   transitionsSet: (id,body) => request('PUT',`${deckBase(id)}/transitions`,{body}),

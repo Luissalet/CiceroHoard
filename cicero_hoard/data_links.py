@@ -81,7 +81,15 @@ def inspect(svc, args):
         bindings = [dict(r) for r in svc.db.query('SELECT id,slide_id,block_id,error,definition FROM data_bindings WHERE link_id=?', (row['id'],))]
         for b in bindings:
             b['definition'] = jload(b['definition'], {})
-        items.append({**dict(row), 'enabled': bool(row['enabled']), 'definition': jload(row['definition'], {}), 'bindings': bindings})
+        definition=jload(row['definition'], {})
+        if definition.get('adapter'):
+            adapter=definition['adapter']
+            adapter['credential_configured']=bool(adapter.get('api_key') or adapter.get('bearer_token_file'))
+            adapter.pop('api_key',None)
+            if adapter.get('database_url'):
+                from sqlalchemy.engine import make_url
+                adapter['database_url']=make_url(adapter['database_url']).render_as_string(hide_password=True)
+        items.append({**dict(row), 'enabled': bool(row['enabled']), 'definition': definition, 'bindings': bindings})
     return {'items': items}
 
 
@@ -102,6 +110,9 @@ def create(svc, args):
 
 
 def _read(svc, deck_id, definition):
+    if definition.get('adapter'):
+        from .connectors import read
+        return read(svc,deck_id,definition)
     args = datasets.ImportArgs.model_validate({**definition, 'deck_id': deck_id})
     if definition.get('path'):
         return datasets.import_data(svc, args)
@@ -192,7 +203,7 @@ def _apply(svc, deck_id, binding, result):
         old = blocks[index]
         previous = jload(binding['last_block'], {})
         # Layout and stage edits are preserved; manual changes to data are never overwritten.
-        style = ('frame', 'font_size', 'build', 'effect', 'duration_ms', 'action')
+        style = ('frame', 'font_size', 'build', 'effect', 'duration_ms', 'action','animation','animation_ms','states')
         if {k: v for k, v in old.items() if k not in style} != {k: v for k, v in previous.items() if k not in style}:
             raise RevisionConflict('The linked visual was edited manually; bind it again to resume data updates.')
         block = {**result['block'], **{k: old[k] for k in style if k in old}, 'id': binding['block_id']}

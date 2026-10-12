@@ -13,7 +13,7 @@ Use `media_import` and `media_get` for local or HTTP(S) audio/video, then add ty
 `deck_media_control` operates playback on the current live slide.
 `dataset_link`, `dataset_links`, `dataset_bind` and `dataset_link_control` provide durable automatic local/URL
 data refresh, immutable snapshots, typed visual recipes and last-good recovery. The editor exposes the same features.
-The public catalogue now contains 59 tools. See [live media](docs/LIVE_MEDIA.md) for contracts and format differences.
+The public catalogue now contains 64 tools. See [live media](docs/LIVE_MEDIA.md) and [advanced authoring](docs/ADVANCED_AUTHORING.md) for contracts and format differences.
 
 A local workspace that turns a brief and source documents into an editable presentation. You give it an objective,
 an audience and the material; it proposes an outline, writes the slides with speaker notes, lets you review and
@@ -204,6 +204,10 @@ turns that off; the slow tools publish how long the bridge waits for them). Regi
 | `deck_export` | export to `pptx`, `pdf`, `html` or `md`; returns the file path and the download URL |
 | `deck_animations` | native animations and transitions of the exported PPTX: get, set, reset, preview, list |
 | `deck_visual_review` | render every slide in the browser, keep a PNG of each and check hard rules before exporting; `fix` applies the minimum font size where text overflows |
+| `deck_visual_lab` | create content-preserving composition variants, render native MCP images, compare measured constraints, correct custom frames, apply and benchmark against an explicit baseline |
+| `deck_poll` | create, vote, open/close, reset and recover local audience poll rounds; obtain a slide block |
+| `slide_collaborate` | merge persistent Yjs text updates and atomic block replacements; publish local presence |
+| `dataset_connect` | connect a local SQL read query or optional spreadsheet adapter to the scheduled immutable snapshot worker |
 | `slide_image` | generate a picture for a slide with the image studio |
 | `asset_import` | copy an existing local PNG/JPEG/WEBP figure; use its returned asset ID in an image block; repeated imports reuse the image within this deck |
 | `slides_add` | atomic draft batches with a reusable batch key; retrying identical content returns the original IDs |

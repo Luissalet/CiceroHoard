@@ -221,6 +221,8 @@ def _bullet_paras(items: list[str], size: float, color: str = "text") -> list[Pa
 def layout_block(block: dict[str, Any], x: float, y: float, w: float, size: int, ctx: Ctx, *, region_h: float, n_blocks: int) -> tuple[list[Box], float]:
     """Lay one block out at font size ``size``; returns its boxes and its height."""
     kind = block.get("type")
+    if kind in ('scene3d','poll'):
+        return [Box(kind,x,y,w,region_h,data=block)],region_h
     if kind in ('diagram','table','metrics','timeline'):
         from .visual_layout import layout_visual
         return layout_visual(block,x,y,w,region_h,ctx)

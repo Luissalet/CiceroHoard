@@ -96,4 +96,5 @@ def document(svc,deck,*,slide_id=None,mode='stacked',inline=True):
     style=CSS+f'.furniture{{position:absolute;inset:0;width:100%;height:100%}}.stage{{width:{width}px;height:{height}px}}.slide{{aspect-ratio:{width}/{height}}}'
     script=SCRIPT.replace('/1280','/'+str(width))
     result=f'<!doctype html><html lang="{deck["language"]}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{esc(deck["title"])}</title><style>{style}</style></head><body class="mode-{mode}" data-mode="{mode}"{linked_attributes(deck,inline)}><main class="deck">'+''.join(sections)+f'</main><script>{script}{MEDIA_SCRIPT.removeprefix("\n<script>\n").removesuffix("</script>\n")}</script></body></html>'
-    return present_document(result,width,height) if mode=='present' else result
+    from .render import advanced_runtime
+    return present_document(result,width,height) if mode=='present' else result.replace('</body>',advanced_runtime(result)+'</body>')

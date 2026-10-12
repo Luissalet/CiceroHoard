@@ -141,6 +141,25 @@ MIGRATIONS: list[str] = [
       definition TEXT NOT NULL
     );
     """,
+    # 6: durable render evidence, polls and collaborative document state.
+    """
+    CREATE TABLE visual_variants(id TEXT PRIMARY KEY,deck_id TEXT NOT NULL REFERENCES decks(id) ON DELETE CASCADE,
+      slide_id TEXT NOT NULL REFERENCES slides(id) ON DELETE CASCADE,revision INTEGER NOT NULL,label TEXT NOT NULL,
+      patch TEXT NOT NULL,metrics TEXT NOT NULL DEFAULT '{}',png TEXT,created_ts REAL NOT NULL);
+    CREATE TABLE polls(id TEXT PRIMARY KEY,deck_id TEXT NOT NULL REFERENCES decks(id) ON DELETE CASCADE,
+      title TEXT NOT NULL,options TEXT NOT NULL,open INTEGER NOT NULL DEFAULT 1,created_ts REAL NOT NULL);
+    CREATE TABLE poll_votes(poll_id TEXT NOT NULL REFERENCES polls(id) ON DELETE CASCADE,participant TEXT NOT NULL,
+      choice INTEGER NOT NULL,created_ts REAL NOT NULL,PRIMARY KEY(poll_id,participant));
+    CREATE TABLE collab_documents(slide_id TEXT PRIMARY KEY REFERENCES slides(id) ON DELETE CASCADE,
+      state TEXT NOT NULL,snapshot TEXT NOT NULL,version INTEGER NOT NULL DEFAULT 1);
+    CREATE TABLE collab_presence(slide_id TEXT NOT NULL REFERENCES slides(id) ON DELETE CASCADE,actor TEXT NOT NULL,
+      label TEXT NOT NULL,color TEXT NOT NULL,updated_ts REAL NOT NULL,PRIMARY KEY(slide_id,actor));
+    """,
+    # 7: resetting a poll keeps a recoverable local round.
+    """
+    CREATE TABLE poll_rounds(id TEXT PRIMARY KEY,poll_id TEXT NOT NULL REFERENCES polls(id) ON DELETE CASCADE,
+      votes TEXT NOT NULL,created_ts REAL NOT NULL);
+    """,
 ]
 
 

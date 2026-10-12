@@ -215,6 +215,10 @@ herramientas de la aplicación en marcha y reenvía cada llamada. Si la aplicaci
 | `deck_export` | exportar a `pptx`, `pdf`, `html` o `md`; devuelve la ruta del archivo y la URL de descarga |
 | `deck_animations` | animaciones y transiciones nativas del PPTX exportado: leer, fijar, quitar, previsualizar, listar |
 | `deck_visual_review` | renderiza cada diapositiva en el navegador, guarda un PNG de cada una y aplica reglas duras antes de exportar; `fix` pone la letra mínima donde el texto desborda |
+| `deck_visual_lab` | crea composiciones sin cambiar evidencia, renderiza imágenes MCP, compara, corrige, aplica y evalúa contra una referencia explícita |
+| `deck_poll` | crea encuestas locales, vota, abre/cierra, reinicia y recupera rondas; devuelve un bloque de diapositiva |
+| `slide_collaborate` | combina texto con Yjs y reemplazos atómicos de bloques, con presencia local |
+| `dataset_connect` | conecta consultas SQL locales o un adaptador opcional de hojas al actualizador de datos |
 | `slide_image` | generar una imagen para una diapositiva con el estudio de imágenes |
 
 Los resultados que se envían a un asistente se recortan a unos 20 KB con una pista para acotar la petición. Aprobar

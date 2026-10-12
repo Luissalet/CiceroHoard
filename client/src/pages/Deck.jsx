@@ -10,8 +10,9 @@ import Slides from "./deck/Slides.jsx";
 import Review from "./deck/Review.jsx";
 import Theme from "./deck/Theme.jsx";
 import Export from "./deck/Export.jsx";
+import VisualLab from './deck/VisualLab.jsx';
 
-const TAB_COMPONENTS = { brief: Brief, outline: Outline, slides: Slides, review: Review, theme: Theme, export: Export };
+const TAB_COMPONENTS = { brief: Brief, outline: Outline, slides: Slides, review: Review, theme: Theme, export: Export,lab:VisualLab };
 const TAB_KEYS = Object.keys(TAB_COMPONENTS);
 
 export default function Deck({ deckId, tab, query }) {
@@ -106,6 +107,7 @@ export default function Deck({ deckId, tab, query }) {
     { key: "review", label: t("tab_review") },
     { key: "theme", label: t("tab_theme") },
     { key: "export", label: t("tab_export") },
+    { key: "lab", label: t("tab_lab") },
   ];
   const noModel = !deck.model_used && (deck.outline || []).length > 0;
 

@@ -65,6 +65,7 @@ _PROBE = r"""
       const isText = el.classList.contains('t'); const isImg = el.tagName === 'IMG';
       const isChart = !!el.querySelector(':scope > svg') && !el.classList.contains('diagram-node');
       const isTable = !!el.querySelector('table');
+      const isScene = el.classList.contains('scene3d'), isPoll = el.classList.contains('poll');
       const label = isText ? (el.innerText || '').trim().slice(0, 60) : isImg ? 'picture' : isChart ? 'chart' : isTable ? 'table' : 'shape';
       // a text box that starts inside the slide and only runs past the bottom grew with its text: that is overflow
       // (and the minimum-font fix applies), not an object placed off the slide
@@ -88,7 +89,8 @@ _PROBE = r"""
           detail: `needs ${Math.round(ink.height * sy)}px, has ${Math.round(box.height * sy)}px`, need: Math.round(ink.height * sy), have: Math.round(box.height * sy)});
       }
       if (isImg && (!el.complete || el.naturalWidth === 0)) found.push({rule: 'broken_image', where: el.getAttribute('alt') || 'picture', detail: 'did not load'});
-      if (isText || isImg || isChart || isTable) content.push({r, label, el});
+      if (isScene && (el.dataset.error || !el.querySelector('canvas'))) found.push({rule:'broken_image',where:'3D scene',detail:el.dataset.error || 'scene did not render'});
+      if (isText || isImg || isChart || isTable || isScene || isPoll) content.push({r, label, el});
       if (isText) {
         for (const node of el.querySelectorAll('h2,p,li')) {
           const txt = (node.innerText || '').trim(); if (!txt) continue;
@@ -154,8 +156,11 @@ def measure(deck: dict[str, Any], *, assets: AssetLookup, png_dir: Optional[Path
         context = _launch(p, profile, (width, height))
         try:
             page = context.new_page()
+            page.emulate_media(reduced_motion='reduce')
             page.set_content(document, wait_until="load")
             page.wait_for_timeout(150)
+            if page.locator('.scene3d').count():
+                page.wait_for_function("Array.from(document.querySelectorAll('.scene3d')).every(el=>el.dataset.ready==='true'||el.dataset.error)",timeout=15000)
             rows = page.evaluate(_PROBE)
             if png_dir is not None:
                 png_dir.mkdir(parents=True, exist_ok=True)

@@ -17,7 +17,7 @@ from cicero_hoard.hoard_link.bridge import CatalogBridge
 
 def main() -> int:
     CatalogBridge(app="cicero", service="cicero-hoard", package="cicero_hoard", default_port=5194,
-                  data_dir_env="CICERO_DATA_DIR", title="Cicero's Hoard", root=__file__).run_bridge()
+                  data_dir_env="CICERO_DATA_DIR", title="Cicero's Hoard", root=__file__,image_content=True).run_bridge()
     return 0
 
 

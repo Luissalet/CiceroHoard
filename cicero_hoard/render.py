@@ -185,6 +185,12 @@ def _para_style(p: Para, lang_fonts: dict[str, str]) -> str:
 
 def box_html(box: Box, theme: dict[str, Any], lang: str, assets: AssetLookup, src: Callable[[str], str]) -> str:
     geo = f"left:{_px(box.x)};top:{_px(box.y)};width:{_px(box.w)};height:{_px(box.h)}"
+    if box.kind=='scene3d':
+        return f'<div class="b scene3d" style="{geo}" data-scene="{esc(json.dumps(box.data))}" role="img" aria-label="{esc(box.data.get("caption") or "3D scene")}"></div>'
+    if box.kind=='poll':
+        b=box.data
+        choices=''.join(f'<button type="button" aria-pressed="false">{esc(label)} <span>{b.get("results",[])[i] if i<len(b.get("results",[])) else 0}</span></button>' for i,label in enumerate(b.get('options',[])))
+        return f'<div class="b poll" style="{geo}" data-poll="{esc(json.dumps(b))}"><h3>{esc(b.get("question", ""))}</h3><div class="poll-options" style="grid-template-columns:repeat({2 if len(b.get("options",[]))>6 else 1},minmax(0,1fr))">{choices}</div><p role="status"></p></div>'
     if box.kind == 'media':
         data = box.data
         kind = data['type']
@@ -226,7 +232,7 @@ def box_html(box: Box, theme: dict[str, Any], lang: str, assets: AssetLookup, sr
         return f'<img class="b" style="{geo};object-fit:{fit};object-position:{position[0]*100}% {position[1]*100}%" src="{esc(src(box.image["asset_id"]))}" alt="{esc(box.image.get("alt", ""))}">'
     if box.kind == "chart" and box.chart:
         svg = chart_svg(box.chart, box.w, box.h, theme, lang, css_font_stack(theme["fonts"]["body"]))
-        return f'<div class="b" style="{geo}">{svg}</div>'
+        return f'<div class="b" style="{geo}" data-chart="{esc(json.dumps(box.chart))}" data-chart-id="{esc(box.object_id or "chart")}" data-palette="{esc(json.dumps(theme["colors"]))}">{svg}</div>'
     if box.kind == "text":
         justify = {"top": "flex-start", "middle": "center", "bottom": "flex-end"}.get(box.anchor, "flex-start")
         inner: list[str] = []
@@ -289,6 +295,11 @@ body{font-family:"Segoe UI",Arial,sans-serif;background:#1c1f26;min-height:100vh
 .slide{position:relative;width:min(100%,1280px);aspect-ratio:16/9;margin:0 auto 28px;overflow:hidden;background:#000;box-shadow:0 6px 28px rgba(0,0,0,.45)}
 .stage{position:absolute;left:0;top:0;width:1280px;height:720px;transform-origin:0 0;transform:scale(var(--s,1));background:var(--background);color:var(--text);overflow:hidden}
 .b{position:absolute}
+.scene3d canvas{width:100%;height:100%;display:block;touch-action:none}
+.poll{display:flex;flex-direction:column;gap:12px;font-family:var(--f-b);font-size:24px}
+.poll h3{font-size:28px}.poll-options{display:grid;gap:8px;flex:1;min-height:0}
+.poll button{display:flex;align-items:center;justify-content:space-between;padding:8px 16px;background:var(--surface);color:var(--text);font:inherit;border:1px solid var(--muted);border-radius:4px;cursor:pointer;text-align:left}
+.poll button:hover,.poll button[aria-pressed=true]{outline:3px solid var(--accent)}.poll [role=status]{font-size:18px;min-height:24px}
 .slide-action{display:block;color:inherit;text-decoration:none}
 .slide-action>.b{left:0!important;top:0!important;width:100%!important;height:100%!important;cursor:pointer}
 .slide-action:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
@@ -418,7 +429,7 @@ def render_document(deck: dict[str, Any], *, assets: AssetLookup, inline: bool =
            f'<title>{esc(deck["title"])}</title><style>{CSS}</style></head>'
            f'<body class="mode-{mode}" data-mode="{mode}"{linked_attributes(deck,inline)}><main class="deck">{"".join(sections)}</main>{hud}'
            f'<script>{SCRIPT}{MEDIA_SCRIPT.removeprefix("\n<script>\n").removesuffix("</script>\n")}</script></body></html>')
-    return doc, plans
+    return doc.replace('</body>',advanced_runtime(doc)+'</body>'), plans
 
 
 def present_document(document: str,width=1280,height=720) -> str:
@@ -485,7 +496,14 @@ def present_document(document: str,width=1280,height=720) -> str:
     setInterval(()=>{{const s=Math.floor((Date.now()-started)/1000);timer.textContent=String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0')}},1000);
     </script>'''
     document=document.replace('</head>',f'<style>{css}\n{overrides}\nbody.blackout::after{{content:"";position:fixed;inset:0;background:#000;z-index:100}}</style></head>')
-    return document.replace('</body>',start+MEDIA_SCRIPT+'</body>')
+    return document.replace('</body>',start+MEDIA_SCRIPT+advanced_runtime(document)+'</body>')
+
+def advanced_runtime(document):
+    if not ('data-scene=' in document or 'data-poll=' in document or re.search(r'&quot;animation&quot;:\s*&quot;(series|points|update)',document)):
+        return ''
+    file=Path(__file__).resolve().parent/'static/visual-runtime/advanced.js'
+    if not file.exists():return ''
+    return '<script>'+file.read_text(encoding='utf-8').replace('</script','<\\/script')+'</script>'
 
 
 def linked_attributes(deck, inline):

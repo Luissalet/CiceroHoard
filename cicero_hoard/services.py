@@ -181,6 +181,8 @@ class Services:
 
     def preview_html(self, deck_id: str, slide_id: Optional[str] = None, mode: str = 'stacked',layout: Optional[str] = None) -> str:
         deck = store.deck_view(self, deck_id)
+        from .advanced import hydrate
+        deck=hydrate(self,deck)
         if slide_id is not None:
             store.get_slide(self, deck_id, slide_id)  # NotFound when it is not in this deck
         if layout:
@@ -233,6 +235,14 @@ class Services:
         deck = store.deck_view(self, deck_id)
         if not deck["slides"]:
             raise CiceroError("The presentation has no slides to export.", code="no_slides")
+        from .advanced import hydrate,static_deck
+        if fmt in ('pptx','pdf'):
+            kinds={b['type'] for s in deck['slides'] for b in s['blocks']}
+            if 'scene3d' in kinds:warnings.append('3D scenes and camera paths are interactive in HTML; this file uses rendered scene posters.')
+            if 'poll' in kinds:warnings.append('Live audience voting is available on the local web audience; this file contains vote snapshots.')
+            if any(b.get('animation','none')!='none' for s in deck['slides'] for b in s['blocks'] if b['type']=='chart'):
+                warnings.append('Series, point and data-state animations run in HTML; this file retains the base chart data.')
+        deck=static_deck(self,deck) if fmt in ('pptx','pdf') else hydrate(self,deck)
         assets = self.assets_lookup()
         if deck.get('template') and fmt=='html':
             from .template_live import document

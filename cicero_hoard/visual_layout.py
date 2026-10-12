@@ -39,15 +39,17 @@ def layout_visual(block,x,y,w,h,ctx):
             left=x+(i%columns)*cellw;top=y+(i//columns)*cellh
             build=item.get('build',block.get('build'))
             color='accent' if item.get('emphasis') else 'text'
-            vs,vo=fit_size(lambda n:[Para(item['value'],n,line=1.1)],cellw-28,84,64,26,ctx)
-            ls,lo=fit_size(lambda n:[Para(item['label'],n,line=1.2)],cellw-28,64,26,18,ctx)
+            valueh=min(84,cellh*.42);labelh=min(64,cellh*.3);gap=min(12,cellh*.06)
+            vs,vo=fit_size(lambda n:[Para(item['value'],n,bold=True,font='heading',line=1.1)],cellw-28,valueh,block.get('font_size') or 60,20,ctx)
+            ls,lo=fit_size(lambda n:[Para(item['label'],n,bold=True,line=1.2)],cellw-28,labelh,26,18,ctx)
             if vo or lo:ctx.overflow_where.append('metric text: '+item['label'])
-            boxes.extend([Box('text',left,top,cellw-28,84,paras=[Para(item['value'],vs,bold=True,color=color,font='heading',line=1.1)],build=build),
-                Box('text',left,top+98,cellw-28,64,paras=[Para(item['label'],ls,bold=True,line=1.2)],build=build)])
+            boxes.extend([Box('text',left,top,cellw-28,valueh,paras=[Para(item['value'],vs,bold=True,color=color,font='heading',line=1.1)],build=build),
+                Box('text',left,top+valueh+gap,cellw-28,labelh,paras=[Para(item['label'],ls,bold=True,line=1.2)],build=build)])
             if item.get('detail'):
-                ds,do=fit_size(lambda n:[Para(item['detail'],n)],cellw-28,50,19,14,ctx)
+                detailh=max(1,cellh-valueh-labelh-2*gap)
+                ds,do=fit_size(lambda n:[Para(item['detail'],n)],cellw-28,detailh,19,14,ctx)
                 if do:ctx.overflow_where.append('metric detail: '+item['label'])
-                boxes.append(Box('text',left,top+164,cellw-28,50,paras=[Para(item['detail'],ds,color='muted')],build=build))
+                boxes.append(Box('text',left,top+valueh+labelh+2*gap,cellw-28,detailh,paras=[Para(item['detail'],ds,color='muted')],build=build))
         return boxes,cellh*rows
     layout=graph_layout(block,w,h);boxes=[];scale=layout['scale']
     nodes={node['id']:node for node in layout['nodes']}

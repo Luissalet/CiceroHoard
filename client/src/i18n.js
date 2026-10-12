@@ -1,6 +1,15 @@
 // UI strings. Spanish is the default; English is used only when the browser language is English.
 const DICT = {
   es: {
+    tab_lab:'Laboratorio visual',lab_variants:'Composiciones',lab_polls:'Encuestas',lab_collaboration:'Colaboracion',lab_connections:'Conexiones',
+    lab_slide:'Diapositiva',lab_generate:'Generar variantes',lab_compare:'Renderizar y comparar',lab_apply:'Aplicar',lab_critique:'Critica visual',
+    lab_generating:'Generando variantes',lab_rendering:'Renderizando variantes',lab_preview:'Composicion seleccionada',lab_errors:'Errores',lab_warnings:'Avisos',lab_font:'Letra minima',
+    lab_style_original:'Original',lab_style_balanced:'Equilibrada',lab_style_visual_left:'Visual a la izquierda',lab_style_visual_right:'Visual a la derecha',lab_style_focus:'Evidencia dominante',lab_style_comparison:'Comparacion',lab_style_editorial:'Columna editorial',lab_style_stacked:'Secuencia vertical',lab_style_custom:'Composicion del agente',
+    poll_question:'Pregunta',poll_options:'Opciones',poll_create:'Crear encuesta',poll_insert:'Insertar en diapositiva',poll_close:'Cerrar',poll_open:'Abrir',poll_refresh:'Actualizar',
+    connector_kind:'Fuente',connector_sheet:'Hoja en la nube',connector_title:'Nombre',connector_database_url:'Conexion SQL',connector_query:'Consulta SELECT',connector_spreadsheet_id:'ID de hoja',connector_range:'Rango',connector_create:'Conectar',
+    collab_connecting:'Conectando',collab_connected:'Conectado',collab_closed:'Conexion cerrada',collab_error:'Error de conexion',speaker_notes:'Notas del orador',
+    block_scene3d:'Escena 3D',block_poll:'Encuesta',scene_background:'Fondo',scene_orbit:'Camara interactiva',scene_loop:'Repetir recorrido',scene_grid:'Cuadricula',scene_shape:'Geometria',scene_name:'Nombre',scene_color:'Color',scene_position:'Posicion',scene_rotation:'Rotacion',scene_scale:'Escala',scene_camera:'Recorrido de camara',scene_target:'Punto de mira',scene_time:'Tiempo (s)',scene_add:'Anadir objeto',scene_camera_add:'Anadir punto de camara',scene_remove:'Eliminar',scene_box:'Bloque',scene_sphere:'Esfera',scene_cylinder:'Cilindro',scene_cone:'Cono',scene_torus:'Toro',
+    chart_animation:'Animacion de datos',chart_animation_none:'Sin animacion',chart_animation_series:'Por series',chart_animation_points:'Por puntos',chart_animation_update:'Cambios de datos',chart_state:'Estado',chart_state_add:'Anadir estado',
     nav_action: 'Accion al pulsar', nav_none: 'Sin enlace', nav_slide: 'Otra diapositiva', nav_url: 'Enlace externo',
     nav_next: 'Siguiente paso', nav_previous: 'Paso anterior', nav_return: 'Volver al origen',
     nav_destination: 'Destino', nav_missing: 'Destino no disponible', nav_label: 'Nombre del enlace',
@@ -364,6 +373,15 @@ const DICT = {
     "vr_skipped": "Las diapositivas {list} cambiaron mientras se medían: no se tocaron y se revisan tal como están ahora.",
   },
   en: {
+    tab_lab:'Visual lab',lab_variants:'Compositions',lab_polls:'Polls',lab_collaboration:'Collaboration',lab_connections:'Connections',
+    lab_slide:'Slide',lab_generate:'Generate variants',lab_compare:'Render and compare',lab_apply:'Apply',lab_critique:'Visual critique',
+    lab_generating:'Generating variants',lab_rendering:'Rendering variants',lab_preview:'Selected composition',lab_errors:'Errors',lab_warnings:'Warnings',lab_font:'Minimum type',
+    lab_style_original:'Original',lab_style_balanced:'Balanced',lab_style_visual_left:'Visual left',lab_style_visual_right:'Visual right',lab_style_focus:'Evidence focus',lab_style_comparison:'Comparison',lab_style_editorial:'Editorial column',lab_style_stacked:'Vertical sequence',lab_style_custom:'Agent composition',
+    poll_question:'Question',poll_options:'Options',poll_create:'Create poll',poll_insert:'Insert on slide',poll_close:'Close',poll_open:'Open',poll_refresh:'Refresh',
+    connector_kind:'Source',connector_sheet:'Cloud sheet',connector_title:'Name',connector_database_url:'SQL connection',connector_query:'SELECT query',connector_spreadsheet_id:'Spreadsheet ID',connector_range:'Range',connector_create:'Connect',
+    collab_connecting:'Connecting',collab_connected:'Connected',collab_closed:'Connection closed',collab_error:'Connection error',speaker_notes:'Speaker notes',
+    block_scene3d:'3D scene',block_poll:'Poll',scene_background:'Background',scene_orbit:'Interactive camera',scene_loop:'Repeat path',scene_grid:'Grid',scene_shape:'Geometry',scene_name:'Name',scene_color:'Color',scene_position:'Position',scene_rotation:'Rotation',scene_scale:'Scale',scene_camera:'Camera path',scene_target:'Target',scene_time:'Time (s)',scene_add:'Add object',scene_camera_add:'Add camera keyframe',scene_remove:'Remove',scene_box:'Box',scene_sphere:'Sphere',scene_cylinder:'Cylinder',scene_cone:'Cone',scene_torus:'Torus',
+    chart_animation:'Data animation',chart_animation_none:'No animation',chart_animation_series:'By series',chart_animation_points:'By points',chart_animation_update:'Data changes',chart_state:'State',chart_state_add:'Add state',
     nav_action: 'Click action', nav_none: 'No link', nav_slide: 'Another slide', nav_url: 'External link',
     nav_next: 'Next step', nav_previous: 'Previous step', nav_return: 'Return to origin',
     nav_destination: 'Destination', nav_missing: 'Destination unavailable', nav_label: 'Link name',

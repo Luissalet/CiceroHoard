@@ -749,6 +749,19 @@ TOOLS = [_accountable(t) for t in TOOLS]
 
 from .agent_workbench import TOOLS as workbench_tools
 TOOLS.extend(workbench_tools)
+from . import visual_lab,advanced,connectors
+agent_undo.HOOKS['deck_visual_lab']={'capture':visual_lab.capture,'track':visual_lab.track,'undo':agent_undo.undo_slide}
+AGENT_INSTRUCTIONS += """\nVisual design loop: deck_visual_lab variants -> render(include_image=true) -> compare -> candidate to correct frames/type size -> render -> apply.
+Inspect the native PNG image before choosing. Preserve evidence, notes and citations. benchmark requires an independently authored baseline_id;
+report errors, legibility, visual preference and ties separately. 3D scenes use editable Three primitives/camera paths; poll tools create live local audience votes.
+Animated chart series/points/update and states run in HTML; native files preserve static evidence. Local database and file snapshots use the scheduled dataset worker.
+"""
+TOOLS.extend([
+    _accountable(Tool('deck_visual_lab','Generate content-preserving layouts, render real PNG evidence, compare, critique and apply variants.\ninclude_image returns a native MCP image. benchmark uses baseline_id; scores measure constraints, not universal aesthetic superiority.',visual_lab.LabArgs,_ann(False,False,False),visual_lab.run,capped=False,timeout_s=600)),
+    Tool('deck_poll','Create audience polls, vote, inspect counts, open/close, reset or obtain a poll block.\nVotes persist; a participant may replace their choice. Web is interactive; exported files use snapshots.',advanced.PollArgs,_ann(False,False,False),advanced.poll,capped=False),
+    Tool('slide_collaborate','Join or merge a persistent Yjs collaborative slide document and publish presence.\nText updates converge; patches use title/subtitle/notes/blocks. No private account is required.',advanced.CollaborationArgs,_ann(False,False,False),advanced.collaboration,capped=False),
+    Tool('dataset_connect','Connect a cloud spreadsheet or SQL query to the immutable scheduled data worker.\nPublic sheets or configured credentials; SQLAlchemy databases use read queries. Returns link_id for dataset_bind.',connectors.ConnectorArgs,_ann(False,False,False),connectors.create,capped=False,timeout_s=120),
+])
 
 TOOLS_BY_NAME = {t.name: t for t in TOOLS}
 

@@ -2,6 +2,10 @@
 // and converts to the API shape on save.
 export function blockToDraft(block) {
   const b = { ...block };
+  if(b.type==='scene3d'){
+    b.camera_path=b.camera_path||[{time:0,position:[6,5,8],target:[0,0,0]}];
+    b.orbit=b.orbit!==false;b.loop=b.loop!==false;
+  }
   if (b.type === "bullets") b.items = [...(b.items || [])];
   if (b.type === "columns") { b.left = [...(b.left || [])]; b.right = [...(b.right || [])]; }
   if (b.type === "chart") {
@@ -13,6 +17,8 @@ export function blockToDraft(block) {
 
 export function newBlock(type, t) {
   switch (type) {
+    case 'scene3d':return {type,objects:[{id:'object',shape:'box',color:'#278C8C',position:[0,0,0],rotation:[0,0,0],scale:[1,1,1]}],camera_path:[{time:0,position:[6,5,8],target:[0,0,0]}],orbit:true,loop:true,grid:false,background:'#F4F6F8',caption:''};
+    case 'poll':return {type,poll_id:'',question:'',options:[],results:[]};
     case "bullets": return { type, items: [""] };
     case "text": return { type, text: "" };
     case "quote": return { type, text: "", attribution: "" };

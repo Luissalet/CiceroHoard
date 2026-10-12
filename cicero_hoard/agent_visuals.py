@@ -2,14 +2,14 @@
 from copy import deepcopy
 from typing import Optional,Literal
 from pydantic import BaseModel,Field
-from .models import Block,ChartBlock,DiagramBlock,MetricsBlock,TableBlock,TimelineBlock,MediaBlock,LAYOUTS
+from .models import Block,ChartBlock,DiagramBlock,MetricsBlock,TableBlock,TimelineBlock,MediaBlock,Scene3DBlock,PollBlock,LAYOUTS
 from .errors import CiceroError,RevisionConflict
 from . import decks as store
 from .layouts import build_plan
 from .themes import theme_of
 
 class CatalogArgs(BaseModel):
-    kind: Literal['summary','charts','diagrams','metrics','tables','timelines','media'] = 'summary'
+    kind: Literal['summary','charts','diagrams','metrics','tables','timelines','media','scenes3d','polls'] = 'summary'
 
 class SceneArgs(BaseModel):
     deck_id: str = Field(...,max_length=40)
@@ -26,12 +26,15 @@ class VisualUpdateArgs(BaseModel):
 def catalog(svc,args):
     types=['bar','bar_horizontal','line','area','pie','donut','scatter','bubble','dot','dumbbell','band','heatmap','waterfall','funnel']
     if args.kind!='summary':
-        cls={'charts':ChartBlock,'diagrams':DiagramBlock,'metrics':MetricsBlock,'tables':TableBlock,'timelines':TimelineBlock,'media':MediaBlock}[args.kind]
+        cls={'charts':ChartBlock,'diagrams':DiagramBlock,'metrics':MetricsBlock,'tables':TableBlock,'timelines':TimelineBlock,'media':MediaBlock,'scenes3d':Scene3DBlock,'polls':PollBlock}[args.kind]
         return {'schema_version':'cicero.visuals.v1','kind':args.kind,'schema':cls.model_json_schema(),
             'notes':['Coordinates are computed by Cicero. Values must come from cited sources.',
                 'Numeric x_values preserve irregular spacing. Null values represent gaps.',
                 'Use build and effect for click-triggered stages. Tables and diagrams export as editable objects.']}
-    return {'schema_version':'cicero.visuals.v1','charts':types,'blocks':['diagram','metrics','table','timeline','video','audio'],'layouts':list(LAYOUTS),
+    return {'schema_version':'cicero.visuals.v2','charts':types,'blocks':['diagram','metrics','table','timeline','video','audio','scene3d','poll'],'layouts':list(LAYOUTS),
+        'visual_lab':{'tool':'deck_visual_lab','cycle':['variants','candidate','render','compare','critique','apply','benchmark'],'evidence':'Native MCP image content when include_image=true; real PNG/geometry, not a claimed aesthetic grade'},
+        'advanced':{'tools':['deck_poll','slide_collaborate','dataset_connect'],'scene3d':'Three runtime, camera keyframes and orbit; native/PDF snapshot',
+                    'collaboration':'Yjs text CRDT; block arrays are atomic map values','data_animation':['series','points','update','states']},
         'composition':{'canvas':'normalized block.frame [x,y,width,height] inside the content area','font_size':[14,96],
                        'image_fit':['contain','cover'],'image_position':'normalized horizontal and vertical crop focus'},
         'motion':{'effects':['none','fade','wipe','draw','stages'],'trigger':'click','duration_ms':[100,2000],

@@ -131,6 +131,9 @@ def unsourced(text: str, reference: set[float]) -> list[str]:
 
 def chart_values_unsourced(block: dict[str, Any], reference: set[float]) -> list[str]:
     bad: list[str] = []
+    for state in block.get('states') or []:
+        for value in chart_values_unsourced({**block,**state,'states':None},reference):
+            if value not in bad:bad.append(value)
     for s in block.get("series", []):
         for v in [*s.get("values", []),*(s.get('x_values') or []),*(s.get('lower') or []),*(s.get('upper') or []),*(s.get('sizes') or [])]:
             if v is None:continue
@@ -171,8 +174,9 @@ def slide_text_parts(slide: dict[str, Any]) -> list[str]:
             parts += [b.get('title','')]+[text for item in b['items'] for text in [item['label'],item.get('date',''),item.get('detail','')]]
         elif t=='table':
             parts += [b.get('title','')]+b['headers']+[cell for row in b['rows'] for cell in row]
-        elif t in ("image", "audio", "video"):
+        elif t in ("image", "audio", "video", "scene3d"):
             parts.append(b.get("caption") or "")
+        elif t=='poll':parts += [b.get('question','')]+b.get('options',[])
     return [p for p in parts if p]
 
 
@@ -210,7 +214,7 @@ def _is_empty(slide: dict[str, Any]) -> bool:
             return False
         if t == "chart" and b.get("series"):
             return False
-        if t in ("image", "audio", "video"):
+        if t in ("image", "audio", "video", "scene3d", "poll"):
             return False
         if t in ('diagram','metrics','table','timeline'):
             return False

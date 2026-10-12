@@ -8,6 +8,7 @@ import {DiagramEditor,MetricsEditor,TableEditor,TimelineEditor,FrameEditor,Motio
 import {AdvancedChartSettings} from './ChartSettings.jsx';
 import MediaEditor from './MediaEditor.jsx';
 import ActionEditor from './ActionEditor.jsx';
+import AdvancedEditor from './AdvancedEditor.jsx';
 
 const MAX_IMAGE = 15 * 1024 * 1024;
 
@@ -108,6 +109,7 @@ export default function BlockEditor({ block, index, count, onChange, onMove, onR
   let body;
   switch (block.type) {
     case 'video':case 'audio':body=<MediaEditor block={block} onChange={onChange} disabled={disabled}/>;break;
+    case 'scene3d':case 'poll':body=<AdvancedEditor block={block} onChange={onChange} disabled={disabled}/>;break;
     case "bullets":
       body = <ListEditor t={t} items={block.items} label={t("block_item")} addLabel={t("add_item")} disabled={disabled} onChange={(items) => onChange({ ...block, items })} />;
       break;
@@ -136,7 +138,7 @@ export default function BlockEditor({ block, index, count, onChange, onMove, onR
       );
       break;
     case "chart":
-      body = <ChartEditor block={block} onChange={onChange} disabled={disabled} />;
+      body = <><ChartEditor block={block} onChange={onChange} disabled={disabled}/><AdvancedEditor block={block} onChange={onChange} disabled={disabled}/></>;
       break;
     case 'diagram':body=<DiagramEditor block={block} onChange={onChange} disabled={disabled}/>;break;
     case 'metrics':body=<MetricsEditor block={block} onChange={onChange} disabled={disabled}/>;break;

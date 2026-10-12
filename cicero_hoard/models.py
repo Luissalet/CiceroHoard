@@ -179,6 +179,20 @@ class ChartReference(_Block):
 
 class ChartBlock(_Block):
     type: Literal["chart"] = "chart"
+    animation: Optional[Literal['none','series','points','update']]=None
+    animation_ms: Optional[int] = Field(None,ge=100,le=10000)
+    states: Optional[list[dict[str,Any]]] = Field(None,max_length=20)
+    @field_validator('states')
+    @classmethod
+    def _states(cls,values):
+        if values:
+            for state in values:
+                if set(state)-{'categories','series','title'}:raise ValueError('Chart states use categories, series and title')
+                categories=state.get('categories')
+                if not categories:raise ValueError('Each chart state needs categories')
+                series=[ChartSeries.model_validate(s) for s in state.get('series',[])]
+                if not series or any(len(s.values)!=len(categories) for s in series):raise ValueError('State series must match categories')
+        return values
     chart: Literal["bar", "bar_horizontal", "line", "area", "pie", "donut", "scatter", "bubble",
                    "dot", "dumbbell", "band", "heatmap", "waterfall", "funnel"] = "bar"
     title: Optional[str] = Field(None, max_length=200)
@@ -202,6 +216,8 @@ class ChartBlock(_Block):
 
     @model_validator(mode='after')
     def _specialized(self):
+        for state in self.states or []:
+            ChartBlock.model_validate({**self.model_dump(exclude={'states'}),**state,'states':None})
         if self.chart=='dumbbell' and self.series and len(self.series)!=2:
             raise ValueError('A dumbbell comparison needs exactly two series')
         if self.chart in ('scatter','bubble','band'):
@@ -310,9 +326,60 @@ class ColumnsBlock(_Block):
         return _strip_list(value, MAX_ITEMS, MAX_ITEM_CHARS)
 
 
+class SceneObject(BaseModel):
+    id:str=Field(...,min_length=1,max_length=60,pattern=r'^[a-zA-Z0-9_-]+$')
+    shape:Literal['box','sphere','cylinder','cone','torus']='box'
+    position:list[float]=Field(default_factory=lambda:[0,0,0],min_length=3,max_length=3)
+    rotation:list[float]=Field(default_factory=lambda:[0,0,0],min_length=3,max_length=3)
+    scale:list[float]=Field(default_factory=lambda:[1,1,1],min_length=3,max_length=3)
+    color:str=Field('#278C8C',pattern=r'^#[0-9a-fA-F]{6}$')
+    label:str=Field('',max_length=100)
+    roughness:float=Field(.65,ge=0,le=1,allow_inf_nan=False)
+    metalness:float=Field(.1,ge=0,le=1,allow_inf_nan=False)
+    @field_validator('position','rotation','scale')
+    @classmethod
+    def _finite(cls,v):
+        if any(not math.isfinite(x) for x in v):raise ValueError('Scene coordinates must be finite')
+        return v
+
+class CameraPose(BaseModel):
+    time:float=Field(0,ge=0,le=600,allow_inf_nan=False)
+    position:list[float]=Field(...,min_length=3,max_length=3)
+    target:list[float]=Field(default_factory=lambda:[0,0,0],min_length=3,max_length=3)
+    @field_validator('position','target')
+    @classmethod
+    def _finite(cls,v):
+        if any(not math.isfinite(x) for x in v):raise ValueError('Camera coordinates must be finite')
+        return v
+
+class Scene3DBlock(_Block):
+    type:Literal['scene3d']='scene3d'
+    objects:list[SceneObject]=Field(...,min_length=1,max_length=200)
+    camera_path:list[CameraPose]=Field(default_factory=lambda:[CameraPose(position=[6,5,8])],min_length=1,max_length=30)
+    background:str=Field('#F4F6F8',pattern=r'^#[0-9a-fA-F]{6}$')
+    orbit:bool=True
+    loop:bool=True
+    grid:bool=False
+    caption:str=Field('',max_length=300)
+    poster_id:Optional[str]=Field(None,max_length=64)
+    @model_validator(mode='after')
+    def _ids_times(self):
+        if len({o.id for o in self.objects})!=len(self.objects):raise ValueError('Scene object IDs must be unique')
+        times=[p.time for p in self.camera_path]
+        if times!=sorted(set(times)):raise ValueError('Camera keyframe times must increase')
+        return self
+
+class PollBlock(_Block):
+    type:Literal['poll']='poll'
+    poll_id:str=Field(...,min_length=1,max_length=40)
+    question:str=Field('',max_length=300)
+    options:list[str]=Field(default_factory=list,max_length=12)
+    results:list[int]=Field(default_factory=list,max_length=12)
+    poll_url:str=Field('',max_length=2000)
+
 Block = Annotated[
     Union[BulletsBlock, TextBlock, ImageBlock, QuoteBlock, ChartBlock, ColumnsBlock,
-          DiagramBlock, MetricsBlock, TableBlock, TimelineBlock, MediaBlock],
+            DiagramBlock, MetricsBlock, TableBlock, TimelineBlock, MediaBlock,Scene3DBlock,PollBlock],
     Field(discriminator="type"),
 ]
 
