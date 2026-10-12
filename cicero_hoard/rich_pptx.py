@@ -120,7 +120,8 @@ def add_chart(slide,box,theme,lang):
         if el.tag in (qn('c:axId'),qn('c:crossAx')):el.set('val',mapping[el.get('val')])
     points=b['font_size']*.75 if b.get('font_size') else theme.get('chart_font_points',18);chart.font.size=Pt(points);chart.font.name=theme['fonts']['body']
     chart.font.color.rgb=_rgb(theme['colors']['text']);chart.has_title=False
-    chart.has_legend=(b.get('show_legend',len(series)>1)) and kind not in ('dumbbell','dot','funnel','waterfall')
+    show_legend=b.get('show_legend')
+    chart.has_legend=(len(series)>1 if show_legend is None else show_legend) and kind not in ('dumbbell','dot','funnel','waterfall')
     if chart.has_legend:
         chart.legend.font.size=Pt(points);chart.legend.position=XL_LEGEND_POSITION.TOP;chart.legend.include_in_layout=False
     for i,s in enumerate(chart.series):
@@ -143,10 +144,12 @@ def add_chart(slide,box,theme,lang):
         if kind=='bar_horizontal' and b.get('highlight'):
             for j,point in enumerate(s.points):
                 point.format.fill.solid();point.format.fill.fore_color.rgb=_rgb(color if j in b['highlight'] else '#CFD9E0')
+    observed=[v for s in series for v in s['values'] if v is not None]
+    number_format='#,##0' if all(float(v).is_integer() for v in observed) else '#,##0.###'
     for axis_name in ('category_axis','value_axis'):
         try:
             axis=getattr(chart,axis_name);axis.tick_labels.font.size=Pt(points);axis.tick_labels.font.color.rgb=_rgb(theme['colors']['text']);axis.tick_labels.font.name=theme['fonts']['body']
-            axis.tick_labels.number_format='#,##0.0#'
+            axis.tick_labels.number_format=number_format;axis.tick_labels.number_format_is_linked=False
             axis.major_tick_mark=XL_TICK_MARK.NONE;axis.minor_tick_mark=XL_TICK_MARK.NONE
             if axis.has_major_gridlines:
                 axis.major_gridlines.format.line.color.rgb=_rgb('#DFE6EB');axis.major_gridlines.format.line.width=Pt(.5)
@@ -162,10 +165,11 @@ def add_chart(slide,box,theme,lang):
         chart.plots[0].vary_by_categories=True
         for j,point in enumerate(chart.series[0].points):
             point.format.fill.solid();point.format.fill.fore_color.rgb=_rgb(palette[j%len(palette)])
-    if b.get('show_values',kind=='bar_horizontal') and not xy and kind not in ('waterfall','area'):
+    show_values=b.get('show_values')
+    if (len(cats)*len(series)<=14 if show_values is None else show_values) and not xy and kind not in ('waterfall','area'):
         from pptx.enum.chart import XL_DATA_LABEL_POSITION
         chart.plots[0].has_data_labels=True
-        labels=chart.plots[0].data_labels;labels.number_format='0.00';labels.font.size=Pt(points);labels.font.color.rgb=_rgb(theme['colors']['text'])
+        labels=chart.plots[0].data_labels;labels.number_format=number_format;labels.number_format_is_linked=False;labels.font.size=Pt(points);labels.font.color.rgb=_rgb(theme['colors']['text'])
         labels.show_value=True;labels.show_category_name=kind in ('pie','donut')
         labels.position=(XL_DATA_LABEL_POSITION.CENTER if b.get('stacked') and kind in ('bar','bar_horizontal') else XL_DATA_LABEL_POSITION.OUTSIDE_END if kind in ('bar','bar_horizontal') else
             XL_DATA_LABEL_POSITION.ABOVE if kind=='line' else XL_DATA_LABEL_POSITION.BEST_FIT if kind=='pie' else None)
@@ -200,12 +204,16 @@ def add_chart(slide,box,theme,lang):
                         point.data_label.position=XL_DATA_LABEL_POSITION.ABOVE if i==0 else XL_DATA_LABEL_POSITION.BELOW
                         label=point.data_label._get_or_add_dLbl()
                         label.find(qn('c:showVal')).set('val','0');label.find(qn('c:showCatName')).set('val','1')
-    if b.get('unit'):
-        _add_box(slide,Box('text',box.x+box.w-80,box.y+box.h-28,80,28,paras=[Para(b['unit'],18,color='muted')]),theme,lang,None,None)
+    unit=b.get('y_label') or b.get('unit')
+    if unit and kind not in ('pie','donut','funnel'):
+        axis=chart.value_axis;axis.has_title=True
+        tf=axis.axis_title.text_frame;tf.text=unit
+        for run in tf.paragraphs[0].runs:
+            run.font.name=theme['fonts']['body'];run.font.size=Pt(points);run.font.color.rgb=_rgb(theme['colors']['text'])
+    if b.get('unit') and (kind in ('pie','donut','funnel') or b.get('y_label') and b['y_label']!=b['unit']):
+        _add_box(slide,Box('text',box.x,box.y+box.h-28,box.w,28,paras=[Para(b['unit'],18,color='muted',align='center')]),theme,lang,None,None)
     if b.get('x_label'):
         _add_box(slide,Box('text',box.x+box.w*.2,box.y+box.h-27,box.w*.6,27,paras=[Para(b['x_label'],18,color='muted',align='center')]),theme,lang,None,None)
-    if b.get('y_label'):
-        _add_box(slide,Box('text',box.x,box.y,box.w*.5,27,paras=[Para(b['y_label'],18,color='muted')]),theme,lang,None,None)
     # Explicit native captions preserve analytical context without guessing a plot's internal pixel coordinates.
     context=[f"{cats[n['category']]}: {n['text']}" for n in b.get('annotations',[])]
     context += [f"{r['label']}: {fmt_num(r['value'],lang)}" for r in b.get('references',[])]
