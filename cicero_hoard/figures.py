@@ -8,7 +8,7 @@ from typing import Literal
 from urllib.parse import urlsplit
 
 from PIL import Image
-from pydantic import BaseModel, Field, ValidationError, field_validator
+from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
 
 from . import decks
 from .errors import CiceroError, NotFound
@@ -24,10 +24,25 @@ class Figure(BaseModel):
     document_id: str = Field(pattern=r"^[0-9a-f]{12}$")
     revision: int = Field(ge=1)
     page_id: str | None = None
+    state_id: str | None = Field(None, min_length=1, max_length=60)
     title: str = ""
     content: dict
     origin: dict[str, str] = Field(default_factory=dict)
     preview: Preview
+
+    @model_validator(mode="after")
+    def selected_state(self):
+        if self.state_id is None:
+            return self
+        if self.page_id is not None:
+            raise ValueError("A figure selects either an infographic page or an isometric state.")
+        mechanism = self.content.get("mechanism")
+        states = mechanism.get("states") if isinstance(mechanism, dict) else None
+        if self.content["diagram"].get("type") != "isometric" or not isinstance(states, list) or not any(
+            isinstance(state, dict) and state.get("id") == self.state_id for state in states
+        ):
+            raise ValueError("The captured state must exist in the retained isometric source.")
+        return self
 
     @field_validator("content")
     @classmethod
@@ -59,7 +74,7 @@ def import_bytes(svc, deck_id, data, filename="figure.vfigure"):
             probe.verify()
     except (ValidationError, ValueError, OSError, SyntaxError, Image.DecompressionBombError) as error:
         raise CiceroError(f"Invalid figure file: {error}") from error
-    snapshot = figure.model_dump(exclude={"preview"})
+    snapshot = figure.model_dump(exclude={"preview"} | ({"state_id"} if figure.state_id is None else set()))
     result = decks.add_asset(svc, deck_id, png, filename, metadata={"kind": "vitruvius.figure", "figure": snapshot})
     return {**result, "figure": snapshot}
 
