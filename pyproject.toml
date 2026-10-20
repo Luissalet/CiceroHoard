@@ -38,7 +38,7 @@ cicero-hoard = "cicero_hoard.__main__:main"
 include = ["cicero_hoard*"]
 
 [tool.setuptools.package-data]
-cicero_hoard = ["static/**/*", "vendor/**/*"]
+cicero_hoard = ["static/**/*", "vendor/ppt_master/*.json", "vendor/ppt_master/LICENSE"]
 "cicero_hoard.hoard_link" = ["ui/*", "_data/*", "LICENSE", "VENDORED.txt"]
 
 [tool.pytest.ini_options]
