@@ -19,7 +19,8 @@
         "Incumbent Cicero implementation",
         "docs/design/figures.md"
       ],
-      "scope": "Surface only; PRODUCT.md and DESIGN.md absent. No new root design system or automatic discovery guarantee."
+      "scope": "Surface only; PRODUCT.md and DESIGN.md absent. No new root design system or automatic discovery guarantee.",
+      "currentStatus": "Independently approved through CAS4, integrated in Main, final package installed; default app not launched."
     },
     "layout": {
       "order": [
@@ -168,6 +169,138 @@
         "No LLM-quality evaluation.",
         "No Main, installed activation or whole-WIP capability claim."
       ]
+    },
+    "final1021": {
+      "recordedAt": "2026-10-20T15:02:41.691207Z",
+      "status": "Independently approved through CAS4, integrated in Main, final package installed; default app not launched.",
+      "mainCommit": "be7769bfe0750b17eba5ab2e692bb1804e3276c1",
+      "historicalCheckpoints": "Earlier figures/combined1021 records and their isolated/pending states are preserved as history; this final closure supersedes their release status only.",
+      "visualStatus": "Existing source/UI matches earlier captures and scoped SHIP finish; no visual changes or new polish round.",
+      "authority": "Incumbent implementation and surface briefs; PRODUCT.md and DESIGN.md absent.",
+      "independentReviews": [
+        {
+          "submissionRevision": 2,
+          "verdict": "APPROVE",
+          "head": "3d62b578792c690d754f07b35432b2f6cabc4192",
+          "path": "D:/LocalAI/research-inbox/expansiones-fusiones-20261020/review-r1021/REPORT-R2.txt",
+          "scope": "Combined source; 105 area tests, independent native/API/MCP/UI/exports and real synthetic data-directory move recovering template snapshot."
+        },
+        {
+          "submissionRevision": 3,
+          "verdict": "APPROVE",
+          "head": "881fd9ee00e8440c64d2f4ff74baa4bf57c61695",
+          "path": "D:/LocalAI/research-inbox/expansiones-fusiones-20261020/review-r1021/REPORT-R3.txt",
+          "scope": "Package-only delta; independently built/installed wheel and functional installed checks; four bytecode extras disclosed."
+        },
+        {
+          "submissionRevision": 4,
+          "verdict": "APPROVE",
+          "head": "be7769bfe0750b17eba5ab2e692bb1804e3276c1",
+          "path": "D:/LocalAI/research-inbox/expansiones-fusiones-20261020/review-r1021/REPORT-R4.txt",
+          "scope": "One-line package-data delta; independent fresh build/install, 189 tracked paths exact after text EOL normalization, no cache/bytecode or untracked package extras. CAS2 matrix not rerun."
+        }
+      ],
+      "preservation": {
+        "path": "D:/LocalAI/research-inbox/expansiones-fusiones-20261020/cicero1021-combined-integration.json",
+        "originalWipPaths": 36,
+        "stash": "ebd688ae7d966d4f8691b672041f34ab4996321f",
+        "stashRetained": true
+      },
+      "definitiveWheel": {
+        "directory": "D:/LocalAI/research-inbox/expansiones-fusiones-20261020/cicero1021-combined-wheels-r5/",
+        "sha256": "2543583a91574fbd03522f37485fbdbc6785216f34aceabd561cafb3b97549ef",
+        "preflight": "D:/LocalAI/research-inbox/expansiones-fusiones-20261020/cicero1021-wheel-preflight-r5.json",
+        "trackedPathsComplete": 189,
+        "generatedBytecodeAbsent": true
+      },
+      "installedExact": {
+        "path": "D:/LocalAI/research-inbox/expansiones-fusiones-20261020/cicero1021-installed-final-exact.json",
+        "rawMembersEqualWheel": 189,
+        "pythonSourcesEqualGitAfterLFNormalization": 162,
+        "allDistributionVersionsUnchanged": true,
+        "allDependencyVersionsUnchanged": true,
+        "pipCheck": "No broken requirements found."
+      },
+      "installedAuthorQa": {
+        "owner": "author; separate from independent CAS2/CAS3/CAS4 reviews",
+        "nativeReceipt": "D:/LocalAI/research-inbox/expansiones-fusiones-20261020/qa1021-installed-final/native-results.json",
+        "browserReceipt": "D:/LocalAI/research-inbox/expansiones-fusiones-20261020/qa1021-installed-final/browser-results.json",
+        "nativeLog": "D:/LocalAI/research-inbox/expansiones-fusiones-20261020/cicero1021-installed-final-native.log",
+        "browserLog": "D:/LocalAI/research-inbox/expansiones-fusiones-20261020/cicero1021-installed-final-browser.log",
+        "execution": "Root reports installed package with isolated -I interpreters; PASS.",
+        "tools": 69,
+        "results": [
+          "Exact figure PNG/source, immutable source and deduplication",
+          "Selective undo preserves manual content",
+          "Chrome and appendix numbering/progress",
+          "PPTX/HTML/PDF exports",
+          "Template snapshot retained after move",
+          "Rehearsal reserve 90 seconds",
+          "UI 1440px/390px save/reopen/download without overflow or JS/HTTP errors"
+        ],
+        "exportBytes": {
+          "pptx": 44136,
+          "html": 198592,
+          "pdf": 32526
+        },
+        "loadedFonts": [],
+        "modelCalls": 0,
+        "warning": "Pydantic incomplete forward-reference warning retained in native log; functional PASS is not LLM-quality evidence."
+      },
+      "failedHistory": [
+        {
+          "stage": "R2 wheel",
+          "result": "FAIL",
+          "reason": "family-services.json omitted."
+        },
+        {
+          "stage": "First distribution-inventory comparison",
+          "result": "FAIL",
+          "reason": "Only cicero-hoard 0.1.0 registration was added; existing dependencies and versions unchanged.",
+          "path": "D:/LocalAI/research-inbox/expansiones-fusiones-20261020/cicero1021-installed-first-check.txt"
+        },
+        {
+          "stage": "R3 build",
+          "result": "REJECTED",
+          "reason": "Historical build/cache content exposed 42-tool catalogue."
+        },
+        {
+          "stage": "R4 raw member comparison",
+          "result": "FAIL",
+          "reason": "Wheel included four .pyc caches which pip recompiles."
+        }
+      ],
+      "finalResolution": "R5 fresh build plus narrowed vendor resource glob removed caches; unchanged strict comparison passed. Historical failures are not relabelled PASS.",
+      "runtimeClosure": {
+        "attribution": "root",
+        "privatePortsStopped": [
+          54566,
+          54567,
+          54576,
+          54578,
+          54579
+        ],
+        "defaultPort": 5194,
+        "defaultListener": false,
+        "defaultAppStarted": false
+      },
+      "manual": {
+        "path": "D:/LocalAI/research-inbox/expansiones-fusiones-20261020/manual-cicero1021-proof.json",
+        "changedFunctionalParagraphs": [
+          87,
+          99
+        ],
+        "otherParagraphsExact": 188,
+        "toolCountBefore": 67,
+        "toolCountAfter": 69
+      },
+      "limits": [
+        "No loaded-webfont proof.",
+        "No LLM-quality evaluation; zero model calls.",
+        "No measured oral rehearsal.",
+        "No certification of all unseen UI states."
+      ],
+      "documenterActivity": "Read final reports/receipts and updated only these four surface records. No context loader, detector, browser, applications, functional tests, commits or new visual round."
     }
   },
   "components": [
@@ -234,6 +367,7 @@
       "Don't count appendix slides in the main total or progress.",
       "Don't treat imported source as live synchronization with its origin.",
       "Don't turn author receipts into independent functional, font-loading, installed or LLM-quality certification."
-    ]
+    ],
+    "currentStatus": "Final status, 20 October 2026: independently approved through CAS4, integrated in Main at be7769bfe0750b17eba5ab2e692bb1804e3276c1 and final package installed. Earlier isolated/pending statements below are preserved historical checkpoints, superseded by the final closure at the end of this record."
   }
 }
