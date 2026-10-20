@@ -85,7 +85,7 @@ export default function SlideEditor({ slide, onDeleted }) {
   const hasImage = draft.layout === "image_text" || draft.blocks.some((b) => b.type === "image");
   const set = (key) => (event) => setDraft({ ...draft, [key]: event.target.value });
 
-  const setBlock = (i, block) => setDraft({ ...draft, blocks: draft.blocks.map((b, n) => (n === i ? block : b)) });
+  const setBlock = (i, block) => setDraft(current => ({ ...current, blocks: current.blocks.map((b, n) => (n === i ? block : b)) }));
   const moveBlock = (i, d) => {
     const j = i + d;
     const blocks = draft.blocks.slice();

@@ -78,11 +78,25 @@ function ChartEditor({ block, onChange, disabled }) {
 function ImageBlock({ block, onChange, disabled }) {
   const { t } = useApp();
   const { deckId, run } = useDeck();
+  const latest = React.useRef({ block, onChange }), sequence = React.useRef(0);
+  latest.current = { block, onChange };
+  React.useEffect(() => () => { sequence.current++; }, []);
+  const [source, setSource] = React.useState(null);
+  const [sourceError, setSourceError] = React.useState('');
+  React.useEffect(() => {
+    let active = true;
+    setSource(null); setSourceError('');
+    if (block.asset_id) api.figureSource(block.asset_id).then(result => { if (active) setSource(result.figure); })
+      .catch(error => { if (active) setSourceError(error.message); });
+    return () => { active = false; };
+  }, [block.asset_id]);
   const upload = async (file) => {
     if (!file) return;
     if (file.size > MAX_IMAGE) { await run(t("busy_uploading"), async () => { throw new Error(t("file_too_big", { name: file.name, max: formatBytes(MAX_IMAGE) })); }); return; }
+    const request = ++sequence.current, previousAsset = block.asset_id;
     const res = await run(t("busy_uploading"), () => api.assetUpload(deckId, file));
-    if (res?.asset_id) onChange({ ...block, asset_id: res.asset_id });
+    if (res?.asset_id && request === sequence.current && latest.current.block.asset_id === previousAsset)
+      latest.current.onChange({ ...latest.current.block, asset_id: res.asset_id });
   };
   return (
     <div className="space-y-2">
@@ -93,9 +107,18 @@ function ImageBlock({ block, onChange, disabled }) {
       )}
       <label className={`btn btn-sm ${disabled ? "" : "cursor-pointer"}`} aria-disabled={disabled ? "true" : undefined}>
         {block.asset_id ? t("image_replace") : t("image_upload")}
-        <input type="file" accept="image/png,image/jpeg,image/webp" className="sr-only-live" disabled={disabled} onChange={(e) => { upload(e.target.files?.[0]); e.target.value = ""; }} />
+        <input type="file" accept="image/png,image/jpeg,image/webp,.vfigure,.json" className="sr-only-live" disabled={disabled} onChange={(e) => { upload(e.target.files?.[0]); e.target.value = ""; }} />
       </label>
       <span className="help ml-2">{t("image_formats")}</span>
+      {source && <div className="space-y-1 text-sm break-words" aria-label={t('figure_source')}>
+        <p>{source.title || source.document_id} · {t('figure_revision', { n: source.revision })}</p>
+        <p className="help">{t('figure_document')}: {source.document_id}{source.page_id ? ` · ${source.page_id}` : ''}</p>
+        <div className="flex flex-wrap gap-2">
+          {source.origin?.editor_url && <a className="btn btn-sm" href={source.origin.editor_url} target="_blank" rel="noreferrer">{t('figure_edit')}</a>}
+          <a className="btn btn-sm" href={api.figureDownload(block.asset_id)} download>{t('figure_download')}</a>
+        </div>
+      </div>}
+      {sourceError && <p className="help" role="status">{sourceError}</p>}
       <Field label={t("image_caption")}><input className="field" value={block.caption || ""} disabled={disabled} onChange={(e) => onChange({ ...block, caption: e.target.value })} /></Field>
       <Field label={t('image_fit')}><select className="field" disabled={disabled} value={block.fit||'contain'} onChange={e=>onChange({...block,fit:e.target.value})}><option value="contain">{t('image_contain')}</option><option value="cover">{t('image_cover')}</option></select></Field>
       {block.fit==='cover'&&<div className="grid gap-2 sm:grid-cols-2">{[0,1].map(i=><Field key={i} label={t(i===0?'image_focus_x':'image_focus_y')}><input className="w-full" type="range" min="0" max="1" step="0.01" disabled={disabled} value={block.position?.[i]??.5} onChange={e=>{const position=[...(block.position||[.5,.5])];position[i]=Number(e.target.value);onChange({...block,position})}}/></Field>)}</div>}

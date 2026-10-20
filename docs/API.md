@@ -295,3 +295,9 @@ The relay uses the configured Faustus service; it stores no conversations and ex
 `GET /manifest.webmanifest` and `GET /sw.js` serve the installable app. Any other path that is not under `/api/` is
 served from `cicero_hoard/static` (the built client), falling back to `index.html`; when the client is not built the
 answer is 503 `{"error": ...}`.
+
+## Portable figure source
+
+`POST /api/decks/{id}/assets` accepts an uploaded `.vfigure` or JSON file in the native `vitruvius.figure/1` format, besides the existing raster formats. `POST /api/decks/{id}/assets/import` accepts a local figure path through `asset_import`. The same preview with different source revisions produces different immutable asset IDs.
+
+`GET /api/assets/{id}/source` returns `{asset_id, figure}` with captured document ID, revision, page ID, native content and origin links. Ordinary images return `figure: null`. Add `?download=true` to download the complete portable figure including its PNG; unavailable figure sources return 404. MCP `figure_get(asset_id, include_preview=false)` reads the same stored snapshot without contacting its origin.

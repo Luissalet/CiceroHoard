@@ -70,4 +70,6 @@ def test_rest_image_edit_preserves_omitted_caption_and_reports_conflict(client, 
     assert same['blocks'][0]['caption'] == 'Keep caption' and same['notes'] == 'Notes'
     conflict = client.put(url, json={'asset_id': asset['asset_id'], 'expected_revision': 1})
     assert conflict.status_code == 409 and conflict.json()['code'] == 'conflict'
-    assert client.put(url, json={'asset_id': asset['asset_id'], 'caption': None}).json()['blocks'] == [{'type': 'image', 'asset_id': asset['asset_id']}]
+    cleared = client.put(url, json={'asset_id': asset['asset_id'], 'caption': None}).json()['blocks']
+    assert cleared == [{'id':first['blocks'][0]['id'], 'type':'image', 'asset_id':asset['asset_id']}]
+    assert cleared[0]['id']  # replacement and undo share a stable image identity

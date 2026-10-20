@@ -170,6 +170,8 @@ def run_slide_set_image(svc: Services, a: SlideSetImageArgs) -> dict:
                 image['caption'] = a.caption
         if position < len(blocks) and image == blocks[position]:
             return {**slide, 'changed': False, 'block_index': position}
+        if not image.get('id'):
+            image['id'] = store.new_id()
         if position == len(blocks):
             blocks.append(image)
         else:
@@ -306,7 +308,7 @@ class SlideImageArgs(SlideRefArgs):
 
 class AssetImportArgs(BaseModel):
     deck_id: str = DeckId
-    path: str = Field(..., min_length=1, max_length=1000, description='Existing local PNG, JPEG or WEBP file to copy into the presentation.')
+    path: str = Field(..., min_length=1, max_length=1000, description='Existing local PNG, JPEG, WEBP or vitruvius.figure/1 (.vfigure/.json) file to copy into the presentation.')
 
 
 def run_asset_import(svc: Services, a: AssetImportArgs) -> dict:
@@ -676,7 +678,7 @@ TOOLS: list[Tool] = [
          "font size where text overflows and reviews again. Sinónimos: revisar diseño, comprobar antes de exportar, capturas.",
          VisualReviewArgs, _ann(False, False, False), run_deck_visual_review),
     Tool("asset_import", "Import an existing local figure or photo; returns an asset_id usable in image blocks.\n"
-         "Repeated imports of the same image into this deck reuse its stored asset. Importar imagen local.",
+         "Figure files retain their immutable source revision. Reuse requires matching pixels AND source. Importar figura o imagen local.",
          AssetImportArgs, _ann(False, False, True, False), run_asset_import),
     Tool("craft_discover", "Discover full VectorCraft or DesignCraft MCP tool, prompt, and resource schemas.",
          CraftDiscoverArgs, _ann(True, False, True), run_craft_discover, capped=False),
@@ -695,10 +697,11 @@ TOOLS: list[Tool] = [
 # the MCP bridge waits this long for a tool (seconds): a local model writing a whole deck, a PDF render or a picture
 # takes far longer than the bridge's default
 _WAIT_S = {"outline_generate": 300.0, "slides_generate": 900.0, "slide_regenerate": 300.0, "deck_export": 240.0, "slide_image": 660.0}
-from . import datasets
+from . import datasets, figures
 from . import presentation
 from . import navigation
 TOOLS.extend([
+    Tool('figure_get', 'Read the retained source and revision of an imported figure. Leer fuente de figura.\nNo origin server is contacted.', figures.GetArgs, _ann(True), figures.get, capped=False),
     Tool('deck_navigation','Inspect, set or clear interactive object links. Stable slide IDs survive reorder.\nTargets: slide, URL, next, previous, return. Live branch/return restores the origin stage.',navigation.NavigationArgs,_ann(False,False,True),navigation.run,capped=False),
     Tool('deck_live_start','Start or reuse a local session with separate audience and presenter URLs.\nTimer starts paused; restart=true adopts slide edits and resets state. Abrir consola de defensa.',presentation.StartArgs,_ann(False,False,True),presentation.start),
     Tool('deck_live_state','Read audience-safe navigation, stages, blackout and timer state. No speaker notes. Estado de la presentacion.',presentation.StateArgs,_ann(True),presentation.state),

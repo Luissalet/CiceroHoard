@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Request
 from fastapi.concurrency import run_in_threadpool
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 
 from .. import decks as store
 from ..errors import NotFound
@@ -29,7 +29,23 @@ def assets_import(request: Request, deck_id: str, body: ImportRequest):
 async def assets_upload(request: Request, deck_id: str):
     svc = services(request)
     data, filename, _fields = await read_upload(request, svc.config.max_image_bytes)
-    return await run_in_threadpool(store.add_asset, svc, deck_id, data, filename)
+    from ..figures import upload
+    return await run_in_threadpool(upload, svc, deck_id, data, filename)
+
+
+@router.get("/assets/{asset_id}/source")
+def figure_source(request: Request, asset_id: str, download: bool = False):
+    from ..figures import GetArgs, get
+    if not download:
+        info = store.asset_info(services(request), asset_id)
+        if info is None:
+            raise NotFound("Image not found.")
+        if info.get("metadata", {}).get("kind") != "vitruvius.figure":
+            return {"asset_id": asset_id, "figure": None}
+    result = get(services(request), GetArgs(asset_id=asset_id, include_preview=download))
+    if download:
+        return JSONResponse(result["figure"], headers={"Content-Disposition": f'attachment; filename="{asset_id}.vfigure"'})
+    return result
 
 
 @router.get("/assets/{asset_id}")

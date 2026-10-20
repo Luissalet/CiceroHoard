@@ -576,7 +576,7 @@ def delete_batch_receipt(svc: Any, deck_id: str, batch_key: str) -> None:
 
 # ---------------- assets ----------------
 
-def add_asset(svc: Any, deck_id: str, data: bytes, filename: str = "") -> dict[str, Any]:
+def add_asset(svc: Any, deck_id: str, data: bytes, filename: str = "", *, metadata: dict | None = None) -> dict[str, Any]:
     from PIL import Image, ImageOps, UnidentifiedImageError
 
     _deck_row(svc, deck_id)
@@ -605,15 +605,18 @@ def add_asset(svc: Any, deck_id: str, data: bytes, filename: str = "") -> dict[s
         data, img = buf.getvalue(), fixed
     digest = sha256_hex(data)
     with svc.db.transaction():
-        existing = svc.db.one('SELECT * FROM assets WHERE deck_id=? AND sha256=? ORDER BY created_ts,id LIMIT 1', (deck_id, digest))
-        if existing is not None and asset_info(svc, existing['id']) is not None:
-            return {'asset_id':existing['id'], 'width':existing['width'], 'height':existing['height'],
-                    'mime':existing['mime'], 'bytes':existing['bytes'], 'reused':True}
+        for existing in svc.db.query('SELECT * FROM assets WHERE deck_id=? AND sha256=? ORDER BY created_ts,id', (deck_id, digest)):
+            info = asset_info(svc, existing['id'])
+            if info is not None and info.get('metadata') == metadata:
+                return {'asset_id':existing['id'], 'width':existing['width'], 'height':existing['height'],
+                        'mime':existing['mime'], 'bytes':existing['bytes'], 'reused':True}
         asset_id = new_id()
         svc.config.assets_dir.mkdir(parents=True, exist_ok=True)
         write_bytes_atomic(svc.config.assets_dir / f"{asset_id}.{ext}", data, fsync=False)
         svc.db.execute("INSERT INTO assets(id, deck_id, filename, mime, ext, width, height, bytes, sha256, created_ts) VALUES (?,?,?,?,?,?,?,?,?,?)",
                        (asset_id, deck_id, clip(filename, 200), mime, ext, img.width, img.height, len(data), digest, svc.clock()))
+        if metadata is not None:
+            svc.db.execute('INSERT INTO media_metadata(asset_id,definition) VALUES (?,?)', (asset_id, jdump(metadata)))
     return {"asset_id": asset_id, "width": img.width, "height": img.height, "mime": mime, "bytes": len(data)}
 
 

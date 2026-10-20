@@ -112,6 +112,8 @@ export const api = {
     return request("POST", `${deckBase(id)}/assets`, { form });
   },
   assetUrl: (assetId) => `/api/assets/${e(assetId)}`,
+  figureSource: assetId => request('GET', `/api/assets/${e(assetId)}/source`),
+  figureDownload: assetId => `/api/assets/${e(assetId)}/source?download=true`,
 
   themes: () => request("GET", "/api/themes"),
   templateUpload: (id, file) => {

@@ -292,6 +292,60 @@ def undo_slide(svc: Any, record: dict, dry_run: bool = False) -> dict:
     return {"restored_slide": before["slide_id"], "revision": restored["revision"]}
 
 
+def capture_image(svc: Any, args: Any) -> dict:
+    before = capture_slide(svc, args)
+    before['image_index'] = args.image_index
+    before['fields'] = ['asset_id'] + (['caption'] if 'caption' in args.model_fields_set else [])
+    return before
+
+
+def track_image(svc: Any, args: Any, result: dict) -> dict:
+    if result.get('changed') is False:
+        return {'objects': [], 'etag': 'noop'}
+    block = result['blocks'][result['block_index']]
+    fields = ['asset_id'] + (['caption'] if 'caption' in args.model_fields_set else [])
+    return {'objects': [_deck_path(args.deck_id, 'slides', args.slide_id, 'blocks', block['id'], 'image')],
+            'ids': [f'block_id={block["id"]}', f'image_etag={_digest(block)}'],
+            'etag': _digest({key: block.get(key) for key in fields})}
+
+
+def undo_image(svc: Any, record: dict, dry_run: bool = False) -> dict:
+    before = _before(record)
+    # Older journal entries retain their original whole-slide undo contract.
+    if 'image_index' not in before:
+        return undo_slide(svc, record, dry_run)
+    if record.get('etag') == 'noop':
+        return {'unchanged': True}
+    with svc.db.transaction():
+        current = store.get_slide(svc, before['deck_id'], before['slide_id'])
+        block_id = _id_of(record, 'block_id')
+        block = next((b for b in current['blocks'] if b.get('id') == block_id), None)
+        fields = before['fields']
+        if block is None or _digest({key: block.get(key) for key in fields}) != record.get('etag'):
+            raise _conflict('The replaced image was edited or removed after this write.')
+        originals = [b for b in before['state']['blocks'] if b.get('type') == 'image']
+        original = originals[before['image_index']] if before['image_index'] < len(originals) else None
+        if original is None and _digest(block) != _id_of(record, 'image_etag'):
+            raise _conflict('The added image was edited after this write.')
+        if dry_run:
+            return {'would_restore_image': block_id}
+        if original is None:
+            current['blocks'].remove(block)
+        else:
+            for key in fields:
+                if key in original:
+                    block[key] = original[key]
+                else:
+                    block.pop(key, None)
+            # Restore a legacy block byte-for-byte when no independent field
+            # changed, so earlier whole-slide journal entries remain undoable.
+            if not original.get('id') and {k:v for k,v in block.items() if k != 'id'} == original:
+                block.pop('id', None)
+        restored = store.patch_slide(svc, before['deck_id'], before['slide_id'], {'blocks': current['blocks']},
+                                     reason='undo of an image replacement')
+        return {'restored_image': block_id, 'revision': restored['revision']}
+
+
 # ------------------------------------------------------------------------------------------------ adding and removing slides
 
 def track_slide_add(svc: Any, args: Any, result: dict) -> dict:
@@ -452,7 +506,7 @@ HOOKS: dict[str, dict[str, Callable[..., Any]]] = {
     "source_remove": {"capture": capture_source_remove, "track": track_source_remove, "undo": undo_source_remove},
     "slide_update": {"capture": capture_slide, "track": track_slide, "undo": undo_slide},
     "slide_edit_text": {"capture": capture_slide, "track": track_slide, "undo": undo_slide},
-    "slide_set_image": {"capture": capture_slide, "track": track_slide, "undo": undo_slide},
+    "slide_set_image": {"capture": capture_image, "track": track_image, "undo": undo_image},
     "slide_regenerate": {"capture": capture_slide, "track": track_slide, "undo": undo_slide},
     "slide_approve": {"capture": capture_slide, "track": track_slide, "undo": undo_slide},
     "slide_revert": {"capture": capture_slide_revert, "track": track_slide_revert, "undo": undo_slide},

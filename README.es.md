@@ -130,6 +130,12 @@ del contenido. El HTML sin conexion no depende de ellas.
 Detalles en [flujo de datos y presentacion](docs/DATA_PRESENTATION.md) y
 [matriz de capacidades](docs/CAPABILITY_MATRIX.md).
 
+### Figuras con fuente editable
+
+Exporta **Figura con fuente** desde Vitruvius, seleccionando la página de infografía cuando corresponda. Sube el `.vfigure` con el selector de imagen habitual, o usa `asset_import` y `slide_set_image`. El archivo portable `vitruvius.figure/1` incluye PNG, fuente nativa completa, ID de documento y revisión capturada. Cicero conserva una instantánea inmutable; solo reutiliza píxeles idénticos cuando también coincide la fuente. `figure_get` lee la fuente y admite `include_preview`. El editor de imagen muestra la revisión y permite abrir el origen o descargar figura y fuente. Abrir una presentación no actualiza figuras ni arranca el servidor de origen.
+
+Para actualizar, sustituye la imagen por un `.vfigure` posterior. Se conservan pie, encuadre, notas y otros bloques. El deshacer de sesión de `slide_set_image` revierte sus campos de imagen/pie y conserva notas manuales posteriores, geometría y otros bloques; si un campo que se va a revertir cambió después, informa del conflicto. Una imagen añadida solo se retira si su contenido no ha cambiado. `slide_revert` mantiene su restauración de diapositiva completa. PDF/PPTX/HTML usan el PNG capturado; la fuente editable queda en Cicero y en el archivo de figura descargable. Los enlaces declaran procedencia, no autentican al servidor. Este recorrido enlaza actualmente Vitruvius con Cicero; los demás consumidores Hoard aún no están implementados.
+
 ## Uso responsable
 
 - **Cifras.** Una presentación generada es un borrador. La comprobación de cifras detecta las que no están en las
@@ -210,6 +216,7 @@ herramientas de la aplicación en marcha y reenvía cada llamada. Si la aplicaci
 | `deck_check` | revisión: desbordes, cifras que no están en las fuentes, notas ausentes, diapositivas sin aprobar |
 | `deck_theme` | listar los temas (los de serie y los hechos desde sistemas de diseño) o aplicar uno |
 | `asset_import` | copiar una figura local PNG/JPEG/WEBP; usar su ID en un bloque de imagen; repetir la importación reutiliza la imagen de esta presentación |
+| `figure_get` | leer la fuente editable retenida, el documento, su revisión y el PNG opcional de una figura de Vitruvius |
 | `slides_add` | añadir lotes de borradores de forma atómica; repetir la misma clave y contenido devuelve los IDs originales |
 | `slide_edit_text` | editar un título, subtítulo, nota o viñeta conservando los demás bloques |
 | `slide_set_image` | añadir o reemplazar una figura importada o su pie; conserva los demás bloques y notas; los reintentos idénticos mantienen la revisión |
@@ -360,4 +367,4 @@ El original vectorial se edita en VectorCraft. El PPTX contiene el SVG como imag
 
 ## Asistente compartido de Faustus
 
-El botón Faustus monta el panel común servido por Faustus. Conversaciones, modelo, streaming, recuperación y memoria del proyecto viven allí. Cicero aporta su espacio de datos, presentación, diapositiva y revisión, selección y borrador sin guardar. Mantiene sus 67 herramientas de dominio y las revisiones para deshacer. Se conservan presentaciones, notas, fuentes y cambios manuales sin guardar. La conexión utiliza CICERO_FAUSTUS_URL o backend.json. Requiere Faustus disponible con el contrato común; no crea otro chat ni otro modelo privado.
+El botón Faustus monta el panel común servido por Faustus. Conversaciones, modelo, streaming, recuperación y memoria del proyecto viven allí. Cicero aporta su espacio de datos, presentación, diapositiva y revisión, selección y borrador sin guardar. Mantiene sus 68 herramientas de dominio y las revisiones para deshacer. Se conservan presentaciones, notas, fuentes y cambios manuales sin guardar. La conexión utiliza CICERO_FAUSTUS_URL o backend.json. Requiere Faustus disponible con el contrato común; no crea otro chat ni otro modelo privado.

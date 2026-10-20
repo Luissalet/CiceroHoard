@@ -1,0 +1,194 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-20T12:27:07.273793Z",
+  "title": "Cicero image-block figures — surface record",
+  "extensions": {
+    "surface": {
+      "mode": "Operate",
+      "primaryTarget": "client/src/pages/deck/BlockEditor.jsx",
+      "relatedTargets": [
+        "client/src/api.js",
+        "client/src/i18n.js",
+        "client/src/index.css",
+        "client/src/hoard-theme.css",
+        "cicero_hoard/figures.py",
+        "cicero_hoard/api/assets.py"
+      ],
+      "briefPath": "docs/design/figures.md",
+      "authorities": [
+        "Incumbent Cicero component and styles"
+      ],
+      "scope": "Surface-only record. PRODUCT.md and DESIGN.md absent; existing product implementation remains visual authority. No root design files or discovery guarantee created."
+    },
+    "typographyMeta": {
+      "body": {
+        "purpose": "Image-block copy and figure title/revision. Hoard unlayered body overrides layered Segoe UI base; actual face loading unproven."
+      },
+      "small-control": {
+        "purpose": "Upload, origin and retained-source download actions."
+      }
+    },
+    "shadows": [],
+    "motion": [
+      {
+        "name": "incumbent-button-state",
+        "value": "background 0.16s, border-color 0.16s",
+        "purpose": "Existing button transition; no figure-specific motion."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "slide-two-column",
+        "value": "1024px"
+      },
+      {
+        "name": "slide-three-column",
+        "value": "1440px"
+      }
+    ],
+    "layout": {
+      "imageBlock": "Existing sequential preview, upload/format guidance, source group, caption and fit/focus fields.",
+      "sourceGroup": "Word wrapping; title/revision then muted document/page; flex-wrapped origin/download actions with 8px gap.",
+      "desktop": "At 1440px, thumbnail/preview/editor grid with 400px editor column.",
+      "mobile": "At 390px, ordinary vertical editing flow; no overlay."
+    },
+    "figures": {
+      "mode": "Operate",
+      "status": "Implemented in isolated worktrees; not integrated or installed at this checkpoint.",
+      "visualAuthority": "Incumbent workbench extension; no formal THESIS/OWN-WORLD/STORY/FIRST VIEWPORT/FORM, QUALITY BAR or approved comp supplied; no replacement identity inferred.",
+      "browserReceipt": "D:/LocalAI/research-inbox/expansiones-fusiones-20261020/qa1021/browser-results.json",
+      "browserResult": "Author: desktop/mobile no overflow, JS or HTTP errors; save/reopen, source-retaining download, caption/notes/crop/other-block retention on replacement and dirty export saving.",
+      "nativeReceipt": "D:/LocalAI/research-inbox/expansiones-fusiones-20261020/qa1021/native-results.json",
+      "nativeResult": "Author: Vitruvius 118/Cicero 68 native tools; exact API/MCP source, retained revisions 1/2, identical preview with distinct source, targeted replacement, selective undo preserving manual edits. Real PPTX 39205 bytes, PDF 33681 bytes, HTML 204816 bytes.",
+      "finish": {
+        "path": "D:/LocalAI/research-inbox/expansiones-fusiones-20261020/qa1021/FINISH.txt",
+        "disposition": "ship",
+        "scope": "Added export/import/provenance controls only; five sections persistence, fidelity, ceiling, material_fixes and keep; no remaining material fixes in scope; not whole-surface/installed/unseen-state/font certification."
+      },
+      "typography": {
+        "observedBodyStack": "Source Sans 3, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Noto Sans, Liberation Sans, Arial, sans-serif",
+        "documentFonts": [],
+        "scope": "Body CSS stack in both apps; no proof Source Sans 3 or Cinzel was loaded."
+      },
+      "detector": {
+        "cicero": "D:/LocalAI/research-inbox/expansiones-fusiones-20261020/qa1021/cicero-detector.json",
+        "ciceroFindings": 0,
+        "vitruvius": "D:/LocalAI/research-inbox/expansiones-fusiones-20261020/qa1021/vitruvius-detector.json",
+        "vitruviusFindings": "Three advisories for pre-existing document-local shape/connector colors; no new shell tokens.",
+        "rerun": false
+      },
+      "excludedCapture": "cicero-mobile-figure-controls.png (R1, header obstructed)",
+      "documenterActivity": "Source/receipt inspection and eleven supplied R2/detail captures opened; no new context/detector, browser, server, model, GPU or functional execution.",
+      "notCanonized": [
+        "Native synthetic QA diagram/PNG is content, not stock imagery or a new AI/decorative illustration.",
+        "No real profiles, LLM inference or figure-generation quality tested.",
+        "Authored document palette/geometry does not establish shell tokens.",
+        "Loaded webfonts, unseen-state accessibility and installed activation are not certified."
+      ],
+      "upload": "Existing image control accepts PNG/JPEG/WebP/.vfigure/.json, existing 15MB client limit, busy/disabled operation flow.",
+      "metadata": [
+        "title or document_id",
+        "revision",
+        "document_id",
+        "optional page_id",
+        "origin.editor_url"
+      ],
+      "originAction": "Open in Vitruvius when editor_url present; separate tab; no automatic synchronization.",
+      "download": "GET /api/assets/{asset_id}/source?download=true returns imported revision/full native content plus retained PNG independently of origin.",
+      "read": "GET /api/assets/{asset_id}/source; ordinary image omits source group; lookup error uses help text role=status.",
+      "replacement": "Uses sequence and previous-asset checks and latest block; changes asset_id only, retaining current caption, crop/position/frame, identity and remaining block fields.",
+      "package": "vitruvius.figure/1: immutable imported document ID/revision/title/page, full native content, origin and PNG. Selected page bounds preview, not retained source.",
+      "captures": [
+        {
+          "path": "D:/LocalAI/research-inbox/expansiones-fusiones-20261020/qa1021/cicero-desktop-full-r2.png",
+          "width": 1440,
+          "height": 3669
+        },
+        {
+          "path": "D:/LocalAI/research-inbox/expansiones-fusiones-20261020/qa1021/cicero-desktop-viewport-r2.png",
+          "width": 1440,
+          "height": 1000
+        },
+        {
+          "path": "D:/LocalAI/research-inbox/expansiones-fusiones-20261020/qa1021/cicero-desktop-source-r2.png",
+          "width": 348,
+          "height": 74
+        },
+        {
+          "path": "D:/LocalAI/research-inbox/expansiones-fusiones-20261020/qa1021/cicero-mobile-full-r2.png",
+          "width": 390,
+          "height": 5086
+        },
+        {
+          "path": "D:/LocalAI/research-inbox/expansiones-fusiones-20261020/qa1021/cicero-mobile-viewport-r2.png",
+          "width": 390,
+          "height": 844
+        },
+        {
+          "path": "D:/LocalAI/research-inbox/expansiones-fusiones-20261020/qa1021/cicero-mobile-source-r2.png",
+          "width": 306,
+          "height": 94
+        }
+      ]
+    }
+  },
+  "components": [
+    {
+      "name": "Figure source group",
+      "kind": "custom",
+      "description": "Illustrative synthetic source identity and two incumbent small actions; links need runtime targets.",
+      "html": "<section class=\"ds-source\" aria-label=\"Fuente de la figura\"><p>Proceso de revisión — muestra sintética · Revisión 1</p><p class=\"ds-help\">Documento de Vitruvius: 4e284db87d96 · cover</p><div class=\"ds-actions\"><a class=\"ds-button\" href=\"#origin\" target=\"_blank\" rel=\"noreferrer\">Abrir en Vitruvius</a><a class=\"ds-button\" href=\"#source\" download>Descargar figura y fuente</a></div></section>",
+      "css": ".ds-button{font-family:var(--hoard-font-sans,Source Sans 3,Segoe UI,sans-serif);display:inline-flex;align-items:center;gap:8px;min-height:28px;padding:2px 9px;border-radius:7px;border:1px solid var(--hoard-border,#423736);background:var(--hoard-elevated,#2f2625);color:var(--hoard-text,#ece3e1);font-size:12px;font-weight:600;line-height:18px;cursor:pointer;white-space:nowrap;transition:background .16s,border-color .16s;text-decoration:none}.ds-button:hover{border-color:var(--hoard-accent,#d98f86)}.ds-button:focus-visible{outline:2px solid var(--hoard-accent,#d98f86);outline-offset:2px}.ds-button:disabled,.ds-button[aria-disabled=true]{opacity:.5;cursor:not-allowed}.ds-source{font:14px/1.5 var(--hoard-font-sans,Source Sans 3,Segoe UI,sans-serif);color:var(--hoard-text,#ece3e1);overflow-wrap:break-word}.ds-source p{margin:0 0 4px}.ds-help{font-size:12px;color:var(--hoard-text-muted,#beb5b4)}.ds-actions{display:flex;flex-wrap:wrap;gap:8px}"
+    },
+    {
+      "name": "Image caption field",
+      "kind": "input",
+      "refersTo": "field",
+      "description": "Existing caption remains independent of the uploaded asset.",
+      "html": "<label class=\"ds-label\">Pie de imagen<input class=\"ds-field\" value=\"Pie conservado\"></label>",
+      "css": ".ds-label{display:block;font:600 12px/1.5 var(--hoard-font-sans,Source Sans 3,Segoe UI,sans-serif);color:var(--hoard-text-muted,#beb5b4)}.ds-field{display:block;width:100%;min-width:0;margin-top:3px;padding:6px 9px;border-radius:6px;border:1px solid var(--hoard-border,#423736);background:var(--hoard-sunken,#161110);color:var(--hoard-text,#ece3e1);font:13px/1.5 var(--hoard-font-sans,Source Sans 3,Segoe UI,sans-serif)}.ds-field:focus-visible{outline:2px solid var(--hoard-accent,#d98f86);outline-offset:2px}"
+    },
+    {
+      "name": "Small secondary action",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Existing small secondary button used by origin and source-download actions.",
+      "html": "<button class=\"ds-button\">Descargar figura y fuente</button>",
+      "css": ".ds-button{font-family:var(--hoard-font-sans,Source Sans 3,Segoe UI,sans-serif);display:inline-flex;align-items:center;gap:8px;min-height:28px;padding:2px 9px;border-radius:7px;border:1px solid var(--hoard-border,#423736);background:var(--hoard-elevated,#2f2625);color:var(--hoard-text,#ece3e1);font-size:12px;font-weight:600;line-height:18px;cursor:pointer;white-space:nowrap;transition:background .16s,border-color .16s;text-decoration:none}.ds-button:hover{border-color:var(--hoard-accent,#d98f86)}.ds-button:focus-visible{outline:2px solid var(--hoard-accent,#d98f86);outline-offset:2px}.ds-button:disabled,.ds-button[aria-disabled=true]{opacity:.5;cursor:not-allowed}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Existing Cicero slide workbench",
+    "overview": "This Operate extension imports a portable Vitruvius figure through the existing image upload control and keeps its native source beside the image asset. The slide, caption, crop and other editing controls remain part of the incumbent slide editor. Warm dark surfaces, muted coral actions, serif headings and sans controls are observed implementation facts; no replacement identity is introduced.\n\nThis brief covers `client/src/pages/deck/BlockEditor.jsx`, its API/i18n support and native figure storage. The companion `.impeccable/surfaces/figures.json` is surface-scoped. Root PRODUCT.md and DESIGN.md are absent at this checkpoint, but Cicero is an existing product with an established implementation. This record neither creates a root design system nor asserts automatic discovery by the context loader. The figures extension remains in an isolated worktree, unintegrated and uninstalled.",
+    "keyCharacteristics": [
+      "The existing image selector accepts PNG, JPEG, WebP and portable `.vfigure` files.",
+      "Title, revision, document ID and optional page ID form one source group below the selector.",
+      "Origin and source-download actions sit together using existing small buttons.",
+      "Replacement changes the image asset while retaining the current block's caption, crop, position and other properties.",
+      "Imported source is a frozen revision; opening the origin does not synchronize it automatically."
+    ],
+    "rules": [
+      {
+        "name": "The Content Ground Rule",
+        "body": "Preserve the figure's authored preview independently of the surrounding Cicero theme.",
+        "section": "colors"
+      },
+      {
+        "name": "The Frozen Source Rule",
+        "body": "Download the imported revision and native source attached to that asset; an origin link does not imply live synchronization.",
+        "section": "components"
+      }
+    ],
+    "dos": [
+      "Do extend the ordinary image selector and retain caption and crop controls in their existing flow.",
+      "Do keep source identity, revision and the two related actions grouped and readable on narrow screens.",
+      "Do preserve the full imported native source independently of its preview pixels.",
+      "Do retain current block properties when an uploaded figure replaces its asset."
+    ],
+    "donts": [
+      "Don't treat opening the origin as live synchronization or rewriting the imported revision.",
+      "Don't promote authored figure colors or synthetic QA geometry into shell tokens.",
+      "Don't infer loaded webfonts, unseen-state certification or installed activation from this scoped review."
+    ]
+  }
+}

@@ -13,7 +13,7 @@ Use `media_import` and `media_get` for local or HTTP(S) audio/video, then add ty
 `deck_media_control` operates playback on the current live slide.
 `dataset_link`, `dataset_links`, `dataset_bind` and `dataset_link_control` provide durable automatic local/URL
 data refresh, immutable snapshots, typed visual recipes and last-good recovery. The editor exposes the same features.
-The public catalogue now contains 67 tools. See [live media](docs/LIVE_MEDIA.md) and [advanced authoring](docs/ADVANCED_AUTHORING.md) for contracts and format differences.
+The public catalogue now contains 68 tools. See [live media](docs/LIVE_MEDIA.md) and [advanced authoring](docs/ADVANCED_AUTHORING.md) for contracts and format differences.
 
 `deck_design` runs a model-driven create/render/correct loop using the configured global model, with real image content in vision mode. External image feedback is bound to a source revision, variant and PNG hash; runs support resumption, cancellation and selective undo.
 `scene_model_import` packages local GLB/glTF/ZIP resources offline, retaining textures, materials, lights and clips.
@@ -127,6 +127,12 @@ restart a session after deck edits. Offline HTML remains independent of live ses
 See [data and presentation workflow](docs/DATA_PRESENTATION.md) and
 [capability comparison](docs/CAPABILITY_MATRIX.md) for tested behavior and remaining gaps.
 
+### Figures with editable source
+
+Export **Figure with source** from Vitruvius, choosing the current infographic page when needed. Upload the `.vfigure` file with the existing image picker, or use `asset_import` then `slide_set_image`. The portable `vitruvius.figure/1` file contains a PNG, complete native source, document ID and captured revision. Cicero retains an immutable snapshot; matching pixels reuse an asset only when the source also matches. `figure_get` reads the source, with optional `include_preview`. The image editor displays the revision and offers origin editing and source download. Opening a deck never refreshes the figure or starts its origin server.
+
+Replace the image with a later `.vfigure` to update it. Existing caption, crop, notes and other blocks are retained. Agent-session undo of `slide_set_image` reverses its image/caption fields while preserving later manual notes, geometry and unrelated blocks; a later edit to a field being reversed is reported as a conflict. Appended images are removed only if their content is unchanged. Whole-slide `slide_revert` retains its existing semantics. PDF/PPTX/HTML exports use the captured PNG; the editable source remains in Cicero and in the downloadable figure file. Origin links are supplied provenance, not server authentication. This is currently a Vitruvius-to-Cicero path; other Hoard consumers are not yet implemented.
+
 ## Responsible use
 
 - **Figures.** A generated deck is a draft. The number check finds figures that are not in the sources; it cannot
@@ -214,6 +220,7 @@ turns that off; the slow tools publish how long the bridge waits for them). Regi
 | `dataset_connect` | connect a local SQL read query or optional spreadsheet adapter to the scheduled immutable snapshot worker |
 | `slide_image` | generate a picture for a slide with the image studio |
 | `asset_import` | copy an existing local PNG/JPEG/WEBP figure; use its returned asset ID in an image block; repeated imports reuse the image within this deck |
+| `figure_get` | read the retained editable source, document ID, revision and optional PNG of an imported Vitruvius figure |
 | `slides_add` | atomic draft batches with a reusable batch key; retrying identical content returns the original IDs |
 | `slide_edit_text` | edit one title, subtitle, note or bullet while preserving the other blocks |
 | `slide_set_image` | add or replace one imported figure or its caption; preserve all other blocks and notes; identical retries keep the revision |
@@ -345,4 +352,4 @@ The vector source is editable in VectorCraft. PPTX embeds the SVG as a picture w
 
 ## Shared Faustus assistant
 
-The Faustus button mounts the common panel served by the configured Faustus service. Conversation storage, model choice, streaming, recovery and project memory live in Faustus. Cicero supplies its data-space identity, deck, selected slide/revision, editor selection and unsaved slide draft. Its 67 native domain tools and slide revisions remain available. Existing decks, notes, sources and manual unsaved edits are preserved. Configure CICERO_FAUSTUS_URL or the existing backend.json Faustus connection. This requires a reachable Faustus service with the shared copilot contract; no private chat/model fallback is created.
+The Faustus button mounts the common panel served by the configured Faustus service. Conversation storage, model choice, streaming, recovery and project memory live in Faustus. Cicero supplies its data-space identity, deck, selected slide/revision, editor selection and unsaved slide draft. Its 68 native domain tools and slide revisions remain available. Existing decks, notes, sources and manual unsaved edits are preserved. Configure CICERO_FAUSTUS_URL or the existing backend.json Faustus connection. This requires a reachable Faustus service with the shared copilot contract; no private chat/model fallback is created.
