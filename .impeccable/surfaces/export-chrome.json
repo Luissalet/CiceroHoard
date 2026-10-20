@@ -1,0 +1,239 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-20T14:23:21.781143Z",
+  "title": "Cicero numbering and progress in Export — surface record",
+  "extensions": {
+    "surface": {
+      "mode": "Operate",
+      "primaryTarget": "client/src/pages/deck/ChromeEditor.jsx",
+      "relatedTargets": [
+        "client/src/pages/deck/Export.jsx",
+        "cicero_hoard/chrome.py",
+        "client/src/pages/deck/BlockEditor.jsx",
+        "client/src/index.css",
+        "client/src/hoard-theme.css",
+        "client/src/i18n.js"
+      ],
+      "briefPath": "docs/design/export-chrome.md",
+      "authorities": [
+        "Incumbent Cicero implementation",
+        "docs/design/figures.md"
+      ],
+      "scope": "Surface only; PRODUCT.md and DESIGN.md absent. No new root design system or automatic discovery guarantee."
+    },
+    "layout": {
+      "order": [
+        "TransitionEditor",
+        "ChromeEditor",
+        "Export actions",
+        "Motion",
+        "Previous exports"
+      ],
+      "fields": "Two desktop columns, one mobile column; 8px grid gap. Position/thickness appear only for progress modes.",
+      "actions": "Appendix help followed immediately by Save and icon-only Reset."
+    },
+    "shadows": [],
+    "motion": [
+      {
+        "name": "incumbent-button-state",
+        "value": "background 0.16s, border-color 0.16s",
+        "purpose": "Existing secondary-button state transition; no panel-specific motion."
+      }
+    ],
+    "chrome": {
+      "defaults": {
+        "number": "auto",
+        "progress": "none",
+        "position": "bottom",
+        "thickness": 6,
+        "main_slides": null,
+        "show_title": true,
+        "on_cover": false
+      },
+      "number": [
+        "auto",
+        "n_total",
+        "n",
+        "none"
+      ],
+      "progress": [
+        "none",
+        "bar",
+        "segments"
+      ],
+      "position": [
+        "bottom",
+        "top"
+      ],
+      "thickness": "2–20 slide pixels at 1280px reference width.",
+      "main_slides": "Empty includes all; following appendix slides have no main-total denominator or progress. Cannot exceed deck slide count.",
+      "show_title": "Deck title in built-in footer.",
+      "on_cover": "Also number title, section and closing layouts.",
+      "save": "api.chromeSet persists draft, updates resolved state and reloads deck.",
+      "reset": "api.chromeReset clears custom settings, resolves defaults and reloads deck.",
+      "busy": "Controls use existing busy/disabled flow.",
+      "error": "Read-settings failure uses role=alert.",
+      "figureCoexistence": "Frozen source beside image, grouped origin/download, ordinary-image/caption/crop flow preserved; no automatic source synchronization."
+    },
+    "combined1021": {
+      "recordedAt": "2026-10-20T14:23:21.781143Z",
+      "mode": "Operate",
+      "status": "Isolated combination retaining pre-existing WIP authorised by Luis; formal combined review, integration and installation pending.",
+      "authority": "Incumbent implementation and docs/design/figures.md; PRODUCT.md and DESIGN.md absent. No replacement world or root design files created.",
+      "sourceFiles": [
+        "client/src/pages/deck/BlockEditor.jsx",
+        "client/src/pages/deck/ChromeEditor.jsx",
+        "client/src/pages/deck/Export.jsx",
+        "cicero_hoard/chrome.py"
+      ],
+      "finish": {
+        "path": "D:/LocalAI/research-inbox/expansiones-fusiones-20261020/qa1021-combined/FINISH.txt",
+        "disposition": "ship",
+        "sections": [
+          "persistence",
+          "fidelity",
+          "ceiling",
+          "material_fixes",
+          "keep"
+        ],
+        "scope": "Visible finish/coherence of combined figure-source and ChromeEditor controls only; no material visual fixes. Formal combined review remains pending."
+      },
+      "captures": [
+        "D:/LocalAI/research-inbox/expansiones-fusiones-20261020/qa1021-combined/figures-desktop.png",
+        "D:/LocalAI/research-inbox/expansiones-fusiones-20261020/qa1021-combined/figures-desktop-controls.png",
+        "D:/LocalAI/research-inbox/expansiones-fusiones-20261020/qa1021-combined/figures-mobile.png",
+        "D:/LocalAI/research-inbox/expansiones-fusiones-20261020/qa1021-combined/figures-mobile-controls.png",
+        "D:/LocalAI/research-inbox/expansiones-fusiones-20261020/qa1021-combined/chrome-desktop.png",
+        "D:/LocalAI/research-inbox/expansiones-fusiones-20261020/qa1021-combined/chrome-desktop-controls.png",
+        "D:/LocalAI/research-inbox/expansiones-fusiones-20261020/qa1021-combined/chrome-mobile.png",
+        "D:/LocalAI/research-inbox/expansiones-fusiones-20261020/qa1021-combined/chrome-mobile-controls.png"
+      ],
+      "captureTreatment": "Full captures preserve real UI sequence. Detail captures hide sticky/Faustus overlays only while capturing controls; no product overlay removal.",
+      "browser": {
+        "path": "D:/LocalAI/research-inbox/expansiones-fusiones-20261020/qa1021-combined/browser-results.json",
+        "owner": "author",
+        "result": "Figures/chrome reopen; exact source download; manual notes/crop/text preserved; no overflow in four views and no JS/HTTP errors.",
+        "desktopWidth": 1440,
+        "mobileWidth": 390,
+        "loadedFonts": []
+      },
+      "native": {
+        "path": "D:/LocalAI/research-inbox/expansiones-fusiones-20261020/qa1021-combined/native-results.json",
+        "owner": "author",
+        "tools": 69,
+        "results": [
+          "Immutable source/deduplication",
+          "Selective undo preserves manual edits",
+          "Numbering/appendix exports",
+          "Template snapshot after moving template",
+          "Rehearsal reserve 90 seconds"
+        ],
+        "exports": {
+          "pptx": {
+            "path": "D:/LocalAI/research-inbox/expansiones-fusiones-20261020/qa1021-combined/combined.pptx",
+            "bytes": 44136
+          },
+          "html": {
+            "path": "D:/LocalAI/research-inbox/expansiones-fusiones-20261020/qa1021-combined/combined.html",
+            "bytes": 198592
+          },
+          "pdf": {
+            "path": "D:/LocalAI/research-inbox/expansiones-fusiones-20261020/qa1021-combined/combined.pdf",
+            "bytes": 32526
+          }
+        },
+        "modelCalls": 0
+      },
+      "suite": {
+        "path": "D:/LocalAI/research-inbox/expansiones-fusiones-20261020/cicero1021-combined-suite-r1.log",
+        "owner": "author",
+        "passed": 493,
+        "skipped": 8
+      },
+      "build": {
+        "path": "D:/LocalAI/research-inbox/expansiones-fusiones-20261020/cicero1021-combined-build-r1.log",
+        "owner": "author",
+        "result": "success"
+      },
+      "detector": {
+        "path": "D:/LocalAI/research-inbox/expansiones-fusiones-20261020/cicero1021-combined-detector.json",
+        "findings": [],
+        "rerun": false
+      },
+      "documenterActivity": "Read incumbent source, briefs, supplied finish and author receipts. No context loader, detector, browser/server, functional tests, model calls or new polish round.",
+      "limits": [
+        "Author functional receipts are not independent review.",
+        "No loaded-webfont proof: all loaded arrays empty.",
+        "No certification of unseen focus/hover/loading/error/empty states or all translations.",
+        "No LLM-quality evaluation.",
+        "No Main, installed activation or whole-WIP capability claim."
+      ]
+    }
+  },
+  "components": [
+    {
+      "name": "Number mode select",
+      "kind": "input",
+      "description": "Existing native select with the four stored numbering modes.",
+      "html": "<label class=\"ds-label\">Número de diapositiva<select class=\"ds-field\"><option>Automático (tema o plantilla)</option><option>Número / total</option><option>Solo el número</option><option>Sin número</option></select></label>",
+      "css": ".ds-label{display:block;color:var(--hoard-text-muted,#beb5b4);font:600 12px/1.5 var(--hoard-font-sans,Source Sans 3,Segoe UI,sans-serif)}.ds-field{display:block;width:100%;min-width:0;margin-top:3px;padding:6px 9px;border:1px solid var(--hoard-border,#423736);border-radius:var(--hoard-radius,8px);background:var(--hoard-surface,#241d1c);color:var(--hoard-text,#ece3e1);font:400 13px/1.5 var(--hoard-font-sans,Source Sans 3,Segoe UI,sans-serif)}.ds-field:focus{border-color:var(--hoard-accent,#d98f86);outline:none}.ds-field:disabled{cursor:default}.ds-field{appearance:auto}"
+    },
+    {
+      "name": "Main-slide count",
+      "kind": "input",
+      "description": "Optional main-slide count with the existing appendix explanation; illustrative value is QA content.",
+      "html": "<label class=\"ds-label\">Diapositivas principales<input class=\"ds-field\" type=\"number\" min=\"1\" max=\"3\" value=\"2\"></label><p class=\"ds-help\">Las siguientes son anexo: no cuentan en el total ni en el progreso. Vacío: todas.</p>",
+      "css": ".ds-label{display:block;color:var(--hoard-text-muted,#beb5b4);font:600 12px/1.5 var(--hoard-font-sans,Source Sans 3,Segoe UI,sans-serif)}.ds-field{display:block;width:100%;min-width:0;margin-top:3px;padding:6px 9px;border:1px solid var(--hoard-border,#423736);border-radius:var(--hoard-radius,8px);background:var(--hoard-surface,#241d1c);color:var(--hoard-text,#ece3e1);font:400 13px/1.5 var(--hoard-font-sans,Source Sans 3,Segoe UI,sans-serif)}.ds-field:focus{border-color:var(--hoard-accent,#d98f86);outline:none}.ds-field:disabled{cursor:default}.ds-help{font:400 12px/1.5 var(--hoard-font-sans,Source Sans 3,Segoe UI,sans-serif);color:var(--hoard-text-muted,#beb5b4)}"
+    },
+    {
+      "name": "Save settings",
+      "kind": "button",
+      "description": "Existing secondary Save action; static specimen does not invoke the API.",
+      "html": "<button type=\"button\" class=\"ds-button\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h12l4 4v12a2 2 0 0 1-2 2Z\"/><path d=\"M17 21v-8H7v8M7 3v5h8\"/></svg>Guardar</button>",
+      "css": ".ds-button{display:inline-flex;align-items:center;gap:8px;min-height:34px;padding:6px 13px;border:1px solid var(--hoard-border,#423736);border-radius:var(--hoard-radius,8px);background:transparent;color:var(--hoard-text,#ece3e1);font:600 13px/18px var(--hoard-font-sans,Source Sans 3,Segoe UI,sans-serif);cursor:pointer;white-space:nowrap;transition:background .16s,border-color .16s}.ds-button:hover{background:var(--hoard-elevated,#2f2625);border-color:var(--hoard-border-hover,#695a59)}.ds-button:focus-visible{outline:2px solid var(--hoard-accent,#d98f86);outline-offset:2px}.ds-button:disabled{opacity:.5;cursor:not-allowed}"
+    },
+    {
+      "name": "Reset settings",
+      "kind": "button",
+      "description": "Existing compact icon action with translated accessible name; static specimen does not reset data.",
+      "html": "<button type=\"button\" class=\"ds-button ds-icon\" title=\"Restablecer numeración\" aria-label=\"Restablecer numeración\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\"/><path d=\"M3 3v5h5\"/></svg></button>",
+      "css": ".ds-button{display:inline-flex;align-items:center;gap:8px;min-height:34px;padding:6px 13px;border:1px solid var(--hoard-border,#423736);border-radius:var(--hoard-radius,8px);background:transparent;color:var(--hoard-text,#ece3e1);font:600 13px/18px var(--hoard-font-sans,Source Sans 3,Segoe UI,sans-serif);cursor:pointer;white-space:nowrap;transition:background .16s,border-color .16s}.ds-button:hover{background:var(--hoard-elevated,#2f2625);border-color:var(--hoard-border-hover,#695a59)}.ds-button:focus-visible{outline:2px solid var(--hoard-accent,#d98f86);outline-offset:2px}.ds-button:disabled{opacity:.5;cursor:not-allowed}.ds-icon{min-height:28px;min-width:28px;padding:0;justify-content:center}"
+    },
+    {
+      "name": "Numbering/progress panel",
+      "kind": "card",
+      "description": "Existing bordered panel signature; no new container or shadow.",
+      "html": "<section class=\"ds-panel\"><h3>Numeración y progreso</h3><p>Diapositivas principales</p></section>",
+      "css": ".ds-panel{border:1px solid var(--hoard-border,#423736);border-radius:var(--hoard-radius-lg,10px);padding:14px;background:var(--hoard-surface,#241d1c);color:var(--hoard-text,#ece3e1);font:400 14px/1.5 var(--hoard-font-sans,Source Sans 3,Segoe UI,sans-serif)}.ds-panel h3{margin:0 0 8px;font-size:14px;font-weight:600}.ds-panel p{margin:0;color:var(--hoard-text-muted,#beb5b4);font-size:12px}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Existing Cicero slide workbench",
+    "overview": "This surface record applies Impeccable document to the incumbent Operate panel in `client/src/pages/deck/ChromeEditor.jsx`, its placement in `client/src/pages/deck/Export.jsx` and the shared settings in `cicero_hoard/chrome.py`. It captures existing behaviour and visual relationships within the isolated combination; it establishes no replacement world. The direction contract above is retained as local history. Its reference to a DESIGN.md deliverable does not establish an existing root file or require creating one for this scoped record.\n\nThe combination preserves the earlier WIP that Luis authorised keeping alongside figures. Formal combined review, integration and installation remain pending; the evidence below does not establish every retained WIP feature as newly verified. The companion `.impeccable/surfaces/export-chrome.json` is surface-scoped. No root PRODUCT.md, DESIGN.md or design sidecar is created.",
+    "keyCharacteristics": [
+      "Numbering, progress and appendix settings share one compact panel.",
+      "The panel stays between transitions and export actions.",
+      "Two desktop field columns become one on mobile; appendix guidance and Save/Reset follow the fields.",
+      "Settings use the existing bilingual labels, native selects, number inputs, checkboxes and secondary buttons.",
+      "Figure import/source controls remain in the image editor with their ordinary caption and crop controls."
+    ],
+    "rules": [
+      {
+        "name": "The Appendix Count Rule",
+        "body": "Keep the main total and progress bounded by the main-slide count while appendix slides remain available.",
+        "section": "components"
+      }
+    ],
+    "dos": [
+      "Do retain the panel between transitions and export actions.",
+      "Do keep appendix guidance and Save/Reset directly after the settings.",
+      "Do preserve the two-column desktop and one-column mobile field flow.",
+      "Do keep figure source and image controls together in their existing editor flow."
+    ],
+    "donts": [
+      "Don't count appendix slides in the main total or progress.",
+      "Don't treat imported source as live synchronization with its origin.",
+      "Don't turn author receipts into independent functional, font-loading, installed or LLM-quality certification."
+    ]
+  }
+}

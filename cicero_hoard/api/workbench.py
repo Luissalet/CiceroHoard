@@ -31,6 +31,18 @@ async def transitions_set(request: Request, deck_id: str):
 def transitions_reset(request: Request, deck_id: str):
     return tool(request, 'deck_transitions', deck_id=deck_id, action='reset')
 
+@router.get('/decks/{deck_id}/chrome')
+def chrome_get(request: Request, deck_id: str):
+    return tool(request, 'deck_chrome', deck_id=deck_id)
+
+@router.put('/decks/{deck_id}/chrome')
+async def chrome_set(request: Request, deck_id: str):
+    return tool(request, 'deck_chrome', deck_id=deck_id, action='set', settings=await request.json())
+
+@router.delete('/decks/{deck_id}/chrome')
+def chrome_reset(request: Request, deck_id: str):
+    return tool(request, 'deck_chrome', deck_id=deck_id, action='reset')
+
 @router.post('/decks/{deck_id}/media', status_code=201)
 async def media_add(request: Request, deck_id: str):
     svc = services(request)

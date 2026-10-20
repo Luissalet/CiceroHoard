@@ -96,9 +96,18 @@ def deck_view(svc: Any, deck_id: str) -> dict[str, Any]:
     if custom:  # a theme made from a design system: the renderers read the definition from here
         view["theme_def"] = custom
     if row['template']:
-        view['template'] = jload(row['template'], {})
+        template = jload(row['template'], {})
+        # Snapshots are content-addressed: after the data folder moves, the same file is still found by digest.
+        digest = str(template.get('sha256') or '')
+        moved = svc.config.templates_dir / (digest + '.pptx') if digest.isalnum() else None
+        if moved is not None and not Path(str(template.get('path') or '')).is_file() and moved.is_file():
+            template['path'] = str(moved)
+        view['template'] = template
     transitions = svc.db.get_setting('transitions:' + deck_id, {}) or {}
     view['transitions'] = transitions
+    chrome = svc.db.get_setting('chrome:' + deck_id, {}) or {}
+    if chrome:  # numbering and progress; absent means the historical footer
+        view['chrome'] = chrome
     view['linked_data'] = bool(svc.db.one('SELECT 1 FROM data_links WHERE deck_id=? AND enabled=1', (deck_id,)))
     view['content_version'] = sha256_hex(jdump([(s['id'],s['revision']) for s in slides]))[:16]
     for slide in slides:

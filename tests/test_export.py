@@ -75,8 +75,8 @@ def test_pptx_native_charts():
     bar = next(sh.chart for sh in prs.slides[5].shapes if sh.has_chart)
     assert list(bar.plots[0].categories) == ["Hogar", "Moda", "Deporte"]
     assert [list(s.values) for s in bar.plots[0].series] == [[380, 310, 150], [475, 340, 160]]
-    # thousands are grouped by the viewer's locale, not shown as a bare 250000
-    assert bar.value_axis.tick_labels.number_format == "#,##0.###" and not bar.value_axis.tick_labels.number_format_is_linked
+    # an axis under a thousand uses General: whole ticks never print a bare separator ("5.")
+    assert bar.value_axis.tick_labels.number_format == "General" and not bar.value_axis.tick_labels.number_format_is_linked
     assert bar.plots[0].data_labels.number_format == "#,##0"
 
 
@@ -275,3 +275,47 @@ def test_a_missing_browser_is_reported_by_the_shared_error(monkeypatch):
     with pytest.raises(PdfUnavailable) as info:
         export_pdf.build_pdf(sample_deck(), assets=NO_ASSETS)
     assert info.value.code == "pdf_unavailable" and "chrome: not found" in str(info.value) and "playwright install chromium" in str(info.value)
+
+
+def test_axis_number_format_never_leaves_a_bare_separator():
+    from cicero_hoard.export_pptx import axis_number_format
+    # '#,##0.###' renders whole ticks as "5." in the office suite; General keeps 0.5 steps and plain integers
+    assert axis_number_format([3.49, 4.26, 6.03]) == "General"
+    assert axis_number_format([0.61, 0.785]) == "General"
+    assert axis_number_format([-0.82, 7.83]) == "General"
+    # wide axes keep thousands grouped by the viewer's locale
+    assert axis_number_format([380, 250000]) == "#,##0"
+    # dumbbells and dot plots do not start at zero: the span decides
+    assert axis_number_format([1200, 1203], from_zero=False) == "General"
+    assert axis_number_format([None, "x"]) == "General"
+
+
+def test_negative_values_keep_axis_labels_at_the_edge():
+    # a bias curve crossing zero must not print the time labels through the plot
+    b={'type':'chart','chart':'line','categories':['2','5','90'],'unit':'kPa',
+       'series':[{'name':'Bias','values':[0.7,-0.52,3.64],'x_values':[2,5,90]}]}
+    raw=build_pptx({'title':'Bias','language':'en','theme':'claro','slides':[
+        {'id':'1','position':1,'title':'Bias','layout':'evidence','blocks':[b]}]},assets=NO_ASSETS)
+    chart=next(s.chart for s in open_pptx(raw).slides[0].shapes if s.has_chart)
+    from pptx.enum.chart import XL_TICK_LABEL_POSITION
+    from lxml import etree
+    positions=[e.get('val') for e in chart._chartSpace.iter('{http://schemas.openxmlformats.org/drawingml/2006/chart}tickLblPos')]
+    assert positions==['low','low']
+    positive=dict(b,series=[{'name':'RMSE','values':[3.49,4.26,6.03],'x_values':[2,5,90]}])
+    raw=build_pptx({'title':'RMSE','language':'en','theme':'claro','slides':[
+        {'id':'1','position':1,'title':'RMSE','layout':'evidence','blocks':[positive]}]},assets=NO_ASSETS)
+    chart=next(s.chart for s in open_pptx(raw).slides[0].shapes if s.has_chart)
+    assert chart.category_axis.tick_label_position!=XL_TICK_LABEL_POSITION.LOW
+
+
+def test_dumbbell_labels_are_explicit_text_in_the_deck_language():
+    # 'category name' labels print the series name in some readers; each point now carries its value as text
+    b={'type':'chart','chart':'dumbbell','categories':['W/C','VMA'],'unit':'kPa',
+       'series':[{'name':'ST MIN','values':[3.89,2.81]},{'name':'NN MIN','values':[5.25,None]}]}
+    raw=build_pptx({'title':'Familias','language':'es','theme':'claro','slides':[
+        {'id':'1','position':1,'title':'Familias','layout':'evidence','blocks':[b]}]},assets=NO_ASSETS)
+    chart=next(s.chart for s in open_pptx(raw).slides[0].shapes if s.has_chart)
+    texts=[[p.data_label.text_frame.text for p in s.points] for s in chart.series]
+    assert texts==[['3,89','5,25'],['2,81']]
+    ns='{http://schemas.openxmlformats.org/drawingml/2006/chart}'
+    assert all(e.get('val')=='0' for e in chart._chartSpace.iter(ns+'showCatName'))

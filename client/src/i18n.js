@@ -838,6 +838,16 @@ Object.assign(DICT.en,{
  linked_data:'Linked data',data_location_kind:'Source',data_local_file:'Local file',data_location:'Path or URL',data_interval:'Interval (s)',data_link_create:'Link data',data_link_error:'Error',data_link_active:'Automatic',data_link_paused:'Paused',data_link_refresh:'Refresh now',data_link_pause:'Pause refresh',data_link_resume:'Resume refresh',data_link_unlink:'Unlink',linked_target:'Target block',linked_bind:'Bind visual',media_play:'Play media',media_pause:'Pause media',media_seek:'Position (s)',media_index:'Asset',
  export_pptx_help:'Editable text, charts and tables; native animations, transitions and embedded media.'
 });
+Object.assign(DICT.es,{
+ chrome_title:'Numeración y progreso',chrome_number:'Número de diapositiva',chrome_number_auto:'Automático (tema o plantilla)',chrome_number_n:'Solo el número',chrome_number_n_total:'Número / total',chrome_number_none:'Sin número',
+ chrome_progress:'Indicador de progreso',chrome_progress_none:'Ninguno',chrome_progress_bar:'Barra continua',chrome_progress_segments:'Un segmento por diapositiva',chrome_position:'Posición',chrome_position_bottom:'Abajo',chrome_position_top:'Arriba',
+ chrome_thickness:'Grosor (px)',chrome_main:'Diapositivas principales',chrome_main_help:'Las siguientes son anexo: no cuentan en el total ni en el progreso. Vacío: todas.',chrome_show_title:'Título de la presentación en el pie',chrome_on_cover:'También en portada, secciones y cierre',chrome_reset:'Restablecer numeración'
+});
+Object.assign(DICT.en,{
+ chrome_title:'Numbering and progress',chrome_number:'Slide number',chrome_number_auto:'Automatic (theme or template)',chrome_number_n:'Number only',chrome_number_n_total:'Number / total',chrome_number_none:'No number',
+ chrome_progress:'Progress indicator',chrome_progress_none:'None',chrome_progress_bar:'Continuous bar',chrome_progress_segments:'One segment per slide',chrome_position:'Position',chrome_position_bottom:'Bottom',chrome_position_top:'Top',
+ chrome_thickness:'Thickness (px)',chrome_main:'Main slides',chrome_main_help:'Later slides are an appendix: excluded from the total and the progress. Empty: all.',chrome_show_title:'Presentation title in the footer',chrome_on_cover:'Also on cover, section and closing slides',chrome_reset:'Reset numbering'
+});
 
 export function makeT(lang) {
   const dict = DICT[lang] || DICT.es;

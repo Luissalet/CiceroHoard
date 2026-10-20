@@ -26,6 +26,7 @@ MSG = {
         "no_slides": "La presentación aún no tiene diapositivas.",
         "overflow": "El texto no cabe en «{where}» ni con la letra más pequeña.",
         "overflow_risk": "Mucho texto para este diseño ({chars} caracteres, presupuesto {budget}): puede no caber.",
+        "sparse_slide": "El contenido ocupa solo el {pct} % de la altura útil: amplía el visual, añade un dato o cambia de diseño.",
         "too_many_bullets": "Más de {max} viñetas en un bloque ({n}).",
         "long_bullet": "Una viñeta tiene {n} caracteres (máximo recomendado {max}).",
         "unsourced_numbers": "Cifras que no aparecen en ninguna fuente: {numbers}.",
@@ -45,6 +46,7 @@ MSG = {
         "no_slides": "The presentation has no slides yet.",
         "overflow": "The text does not fit in \"{where}\" even at the smallest font size.",
         "overflow_risk": "A lot of text for this layout ({chars} characters, budget {budget}): it may not fit.",
+        "sparse_slide": "Content fills only {pct}% of the usable height: enlarge the visual, add evidence or change the layout.",
         "too_many_bullets": "More than {max} bullets in one block ({n}).",
         "long_bullet": "A bullet has {n} characters (recommended maximum {max}).",
         "unsourced_numbers": "Figures that appear in no source: {numbers}.",
@@ -221,6 +223,26 @@ def _is_empty(slide: dict[str, Any]) -> bool:
     return True
 
 
+def content_coverage(plan: Any, bottom: float = 652.0) -> Optional[float]:
+    """Share of the body height (below the title, above the footer) that content actually occupies."""
+    titles = [b for b in plan.boxes if b.role == "title"]
+    top = max((b.y + b.h for b in titles), default=110.0)
+    spans = sorted((max(top, b.y), min(bottom, b.y + b.h)) for b in plan.boxes
+                   if b.role not in ("title", "footer", "progress") and b.kind not in ("rect", "rule", "connector"))
+    spans = [(a, z) for a, z in spans if z > a]
+    if not spans or bottom <= top:
+        return None
+    covered, start, end = 0.0, *spans[0]
+    for a, z in spans[1:]:
+        if a > end:
+            covered += end - start; start, end = a, z
+        else:
+            end = max(end, z)
+    covered += end - start
+    return covered / (bottom - top)
+
+
+SPARSE_BELOW = 0.45
 EXPECTED_BLOCK = {"quote": "quote", "chart": "chart", "two_column": "columns", "image_text": "image"}
 
 
@@ -250,7 +272,13 @@ def check_deck(deck: dict[str, Any], sources: list[dict[str, Any]], assets: Asse
                            if cited else reference)
         if _is_empty(slide):
             add(slide, "empty_slide", "warning", "empty_slide")
-        plan = build_plan(slide, deck_title=deck.get("title", ""), theme=theme, number=slide["position"], total=len(slides), lang=lang, assets=assets)
+        plan = build_plan(slide, deck_title=deck.get("title", ""), theme=theme, number=slide["position"], total=len(slides), lang=lang, assets=assets, chrome=deck.get("chrome"))
+        # Visuals that leave the body empty: short text-only slides are a legitimate choice and are not reported.
+        visual = any(b.get("type") in ("chart", "diagram", "metrics", "table", "timeline", "image") for b in slide.get("blocks", []))
+        if visual and slide.get("layout") not in ("title", "section", "closing", "quote", "image_full"):
+            coverage = content_coverage(plan)
+            if coverage is not None and coverage < SPARSE_BELOW:
+                add(slide, "sparse_slide", "info", "sparse_slide", pct=round(coverage * 100))
         if plan.overflow:
             add(slide, "overflow", "warning", "overflow", where=", ".join(dict.fromkeys(plan.overflow_where)))
         else:

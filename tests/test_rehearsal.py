@@ -11,17 +11,17 @@ def _deck(notes):
 
 def test_support_excluded_exact_clock_and_repeat_is_read_only():
     d=_deck(['hello '*60,'hola '*60,'backup '*2000]);before=copy.deepcopy(d)
-    p=rehearsal_plan(d,duration_minutes=2,words_per_minute=120,pause_seconds=5,main_slides=2)
+    p=rehearsal_plan(d,duration_minutes=2,words_per_minute=120,pause_seconds=5,main_slides=2,reserve_ratio=0)
     assert p['estimated_seconds']==70 and p['remaining_seconds_estimate']==50
     assert p['timeline'][0]['start']=='00:00' and p['timeline'][-1]['end']=='02:00'
     assert p['support_slides']==1 and sum(s['slot_seconds'] for s in p['timeline'])==120
     assert p['actual_elapsed_seconds'] is None
-    assert rehearsal_plan(d,duration_minutes=2,words_per_minute=120,pause_seconds=5,main_slides=2)==p
+    assert rehearsal_plan(d,duration_minutes=2,words_per_minute=120,pause_seconds=5,main_slides=2,reserve_ratio=0)==p
     assert d==before
 
 
 def test_schedule_does_not_hide_overlong_speech():
-    p=rehearsal_plan(_deck(['word '*300]),duration_minutes=1,words_per_minute=100,pause_seconds=0)
+    p=rehearsal_plan(_deck(['word '*300]),duration_minutes=1,words_per_minute=100,pause_seconds=0,reserve_ratio=0)
     assert p['estimated_seconds']==180 and p['planned_seconds']==60
     assert p['fits_estimate'] is False and p['remaining_seconds_estimate']==-120
 
@@ -50,3 +50,29 @@ def test_real_tool_never_changes_notes_revisions_or_approvals(services,deck):
     result=agent_tools.call_tool(services,'deck_rehearsal',{'deck_id':deck['id'],'main_slides':1,'duration_minutes':1})
     assert result['timeline'][0]['slide_id']==before['slides'][0]['id']
     assert decks.deck_view(services,deck['id'])==before
+
+
+def test_schedule_keeps_a_reserve_and_flags_a_tight_estimate():
+    # 1,766 words at 130 wpm with 10 s per slide over 14 slides: about 16 min for a 15 min defence
+    notes=['palabra '*126]*13+['palabra '*128]
+    p=rehearsal_plan(_deck(notes),duration_minutes=15,main_slides=14)
+    assert p['reserve_seconds']==90 and p['budget_seconds']==810
+    assert sum(s['slot_seconds'] for s in p['timeline'])==810 and p['timeline'][-1]['end']=='13:30'
+    assert p['risk']=='over' and p['fits_with_reserve'] is False
+    assert any('over the limit' in w for w in p['warnings'])
+
+
+def test_optimistic_assumptions_cannot_make_a_long_speech_look_safe():
+    notes=['palabra '*126]*13+['palabra '*128]
+    fast=rehearsal_plan(_deck(notes),duration_minutes=15,main_slides=14,words_per_minute=135,pause_seconds=3)
+    assert fast['fits_estimate'] is True and fast['risk']=='tight' and fast['fits_with_reserve'] is False
+    assert len(fast['warnings'])==2 and 'optimistic' in fast['warnings'][0]
+    racing=rehearsal_plan(_deck(notes),duration_minutes=15,main_slides=14,words_per_minute=160,pause_seconds=10)
+    assert 'faster than a typical' in racing['warnings'][0]
+    calm=rehearsal_plan(_deck(['palabra '*90]*14),duration_minutes=15,main_slides=14)
+    assert calm['risk']=='ok' and calm['warnings']==[]
+
+
+@pytest.mark.parametrize('ratio',[-0.1,1,1.5])
+def test_invalid_reserve_is_rejected(ratio):
+    with pytest.raises(CiceroError):rehearsal_plan(_deck(['x']),reserve_ratio=ratio)

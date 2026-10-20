@@ -123,3 +123,14 @@ def test_missing_image_is_reported(services):
     assert "image_missing" not in kinds(services.check(d["id"])["issues"], s["id"])
     services.db.execute("DELETE FROM assets WHERE id = ?", (asset["asset_id"],))
     assert "image_missing" in kinds(services.check(d["id"])["issues"], s["id"])
+
+
+def test_sparse_slide_is_reported_and_full_slides_are_not():
+    from cicero_hoard.check import check_deck
+    def deck(blocks):
+        return {'title': 'D', 'language': 'en', 'theme': 'claro', 'slides': [
+            {'id': 's', 'position': 1, 'layout': 'evidence', 'title': 'Twelve unseen mixes', 'notes': 'n', 'status': 'approved', 'blocks': blocks}]}
+    sparse = check_deck(deck([{'type': 'metrics', 'items': [{'value': '12', 'label': 'Mixes'}]}]), [], lambda _id: None)
+    assert [i['kind'] for i in sparse] == ['sparse_slide'] and 'usable height' in sparse[0]['message']
+    full = check_deck(deck([{'type': 'chart', 'chart': 'bar', 'categories': ['A', 'B'], 'series': [{'name': 'x', 'values': [1, 2]}]}]), [], lambda _id: None)
+    assert 'sparse_slide' not in [i['kind'] for i in full]

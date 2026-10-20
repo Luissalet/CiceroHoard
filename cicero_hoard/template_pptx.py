@@ -111,6 +111,8 @@ def _replace_text(shape, value, theme, prefix='', font_points=None):
 
 def build_template_pptx(deck, *, assets):
     from .export_pptx import _add_box,stamp_motion
+    from .chrome import label as chrome_label,shows_on as chrome_shows
+    from .layouts import chrome_boxes
     descriptor=deck['template'];path=Path(descriptor['path'])
     try:data=path.read_bytes()
     except OSError:raise CiceroError('The attached template snapshot is missing; attach it again.') from None
@@ -144,9 +146,12 @@ def build_template_pptx(deck, *, assets):
         if title is not None and title.shape_id in cloned:_replace_text(cloned[title.shape_id],item['title'],theme,binding.prefix,binding.title_font_points)
         if subtitle is not None and subtitle.shape_id in cloned:_replace_text(cloned[subtitle.shape_id],item.get('subtitle') or '',theme)
         if binding.chart_font_points is not None:theme['chart_font_points']=binding.chart_font_points
+        number_text=chrome_label(deck.get('chrome'),n,len(deck['slides']),template=True) if not deck.get('chrome') or chrome_shows(deck.get('chrome'),item['layout']) else None
         for sid in numbers:
             if sid in cloned:
-                s=cloned[sid];s.width=min(s.width,prs.slide_width-s.left);_replace_text(s,f'{n:02d}',theme)
+                s=cloned[sid];s.width=min(s.width,prs.slide_width-s.left)
+                if number_text is None:s._element.getparent().remove(s._element)
+                else:_replace_text(s,number_text,theme)
         if binding.content_frame:frame=binding.content_frame
         elif slots:
             x=min(s.left for s in slots)/PX;y=min(s.top for s in slots)/PX
@@ -167,6 +172,8 @@ def build_template_pptx(deck, *, assets):
                 previous={shape.shape_id for shape in slide.shapes}
                 _add_box(slide,moved,{**theme, 'chart_font_scale': scale},deck.get('language','es'),assets,None)
                 stamp_motion(slide,previous,moved)
+        for box in chrome_boxes(item['layout'],n,len(deck['slides']),deck.get('chrome'),prs.slide_width/PX,prs.slide_height/PX):
+            _add_box(slide,box,theme,deck.get('language','es'),assets,None)  # named Decoration: never animated
         slide.notes_slide.notes_text_frame.text=item.get('notes') or ''
     # Source slides were examples, not additional pages in the authored deck.
     for source in sources:

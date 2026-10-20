@@ -59,6 +59,17 @@ Issue kinds: `no_slides`, `empty_slide`, `overflow`, `overflow_risk`, `too_many_
 `image_prompt_only`, `layout_content`, `missing_notes`, `not_approved`. The number check runs only when the deck has
 at least one source; the deck's own title, brief, audience and tone count as sources of numbers.
 
+## Slide numbering and progress
+
+GET `/api/decks/{id}/chrome` returns `{deck_id, settings, custom}`. PUT accepts
+`number: auto|n|n_total|none`, `progress: none|bar|segments`,
+`position: bottom|top`, `thickness: 2..20`, optional `main_slides`,
+`show_title` and `on_cover`. DELETE resets to the historical theme/template
+footer. The equivalent MCP operation is `deck_chrome` with `action: get|set|reset`.
+The optional main-slide count excludes later appendix slides from totals and
+progress. Preview, HTML, native PPTX and template output share these settings;
+the template's existing two-digit numbering remains the default.
+
 ## Sources
 
 | method and path | body | answer |

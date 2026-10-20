@@ -138,3 +138,22 @@ def test_blank_template_still_exports_the_authored_title(services, tmp_path):
     exported = Presentation(out['path'])
     texts = [s.text for s in exported.slides[0].shapes if s.has_text_frame]
     assert 'Authored title' in texts and 'Authored subtitle' in texts
+
+
+def test_snapshot_survives_a_moved_data_folder(services,tmp_path):
+    # The stored path is absolute (for example a Windows path from another machine); the
+    # content-addressed snapshot is still found by name in this installation's templates folder.
+    import json
+    file=tmp_path/'source.pptx';template(file)
+    d=decks.create_deck(services,DeckCreate(title='Moved',slide_count=3));decks.add_slide(services,d['id'],title='Body',notes='Notes')
+    attached=agent_tools.call_tool(services,'deck_template',{'deck_id':d['id'],'path':str(file)})['template']
+    stored=dict(attached,path='C:\\Users\\someone\\Cicero\\data\\templates\\'+attached['sha256']+'.pptx')
+    services.db.execute('UPDATE decks SET template=? WHERE id=?',(json.dumps(stored),d['id']))
+    view=decks.deck_view(services,d['id'])
+    snapshot=services.config.templates_dir/(attached['sha256']+'.pptx')
+    assert Path(view['template']['path'])==snapshot
+    exported=agent_tools.call_tool(services,'deck_export',{'deck_id':d['id'],'format':'pptx'})
+    assert Presentation(exported['path']).slide_width==Inches(16)
+    # a snapshot that is really gone still fails clearly
+    snapshot.unlink()
+    with pytest.raises(CiceroError):agent_tools.call_tool(services,'deck_export',{'deck_id':d['id'],'format':'pptx'})

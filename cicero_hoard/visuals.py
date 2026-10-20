@@ -8,6 +8,9 @@ from .errors import CiceroError
 from .hoard_link import proc
 
 ROOT=Path(__file__).resolve().parent/'static/visual-runtime'
+# Vertical stretch of width-limited diagrams: applies below this share of the frame height, fills up to
+# STRETCH_FILL of it, and never makes nodes more than STRETCH_MAX times taller than the uniform scale.
+STRETCH_BELOW, STRETCH_FILL, STRETCH_MAX = .55, .7, 1.8
 
 @lru_cache(maxsize=512)
 def _run(payload: str) -> str:
@@ -28,12 +31,18 @@ def chart_svg(block: dict,width: float,height: float,theme: dict,lang: str) -> s
 def graph_layout(block: dict,width: float,height: float) -> dict:
     layout=json.loads(_run(json.dumps({'kind':'diagram','block':block},sort_keys=True)))
     scale=min(width/max(1,layout['width']),height/max(1,layout['height']))
-    left=(width-layout['width']*scale)/2;top=(height-layout['height']*scale)/2
+    # A wide graph (a left-to-right chain) is limited by the width and used to leave most of the frame empty with
+    # tiny labels. Stretch it vertically, within limits, so nodes gain room for larger, wrapped text. Orthogonal
+    # routes stay orthogonal under an axis-aligned stretch.
+    vscale=scale
+    if layout['height']*scale<height*STRETCH_BELOW:
+        vscale=scale*min(STRETCH_MAX,height*STRETCH_FILL/max(1,layout['height']*scale))
+    left=(width-layout['width']*scale)/2;top=(height-layout['height']*vscale)/2
     nodes={n['id']:n for n in block['nodes']}
-    return {'scale':scale,'nodes':[{**nodes[n['id']],'x':left+n['x']*scale,'y':top+n['y']*scale,
-        'width':n['width']*scale,'height':n['height']*scale} for n in layout['children']],
+    return {'scale':scale,'vscale':vscale,'nodes':[{**nodes[n['id']],'x':left+n['x']*scale,'y':top+n['y']*vscale,
+        'width':n['width']*scale,'height':n['height']*vscale} for n in layout['children']],
         'edges':[{'source':e['source'],'target':e['target'],'label':e.get('label',''),
-            'label_frame':([left+le['labels'][0]['x']*scale,top+le['labels'][0]['y']*scale,le['labels'][0]['width']*scale,le['labels'][0]['height']*scale] if le.get('labels') else None),
-            'points':[{'x':left+p['x']*scale,'y':top+p['y']*scale} for p in
+            'label_frame':([left+le['labels'][0]['x']*scale,top+le['labels'][0]['y']*vscale,le['labels'][0]['width']*scale,le['labels'][0]['height']*vscale] if le.get('labels') else None),
+            'points':[{'x':left+p['x']*scale,'y':top+p['y']*vscale} for p in
                 [s['startPoint'],*s.get('bendPoints',[]),s['endPoint']]]}
             for e,le in zip(block['edges'],layout.get('edges',[])) for s in le.get('sections',[])]}

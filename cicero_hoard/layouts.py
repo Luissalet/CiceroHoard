@@ -392,11 +392,28 @@ def plain_box(text: str, x: float, y: float, w: float, h: float, ctx: Ctx, *, hi
     return Box("text", x, y, w, h, paras=make(size), anchor=anchor, overflow=over, role=role)
 
 
-def _footer(deck_title: str, number: int, total: int, ctx: Ctx) -> list[Box]:
-    return [
-        Box("text", MARGIN_X, 682, 900, 20, role="footer", paras=[Para(deck_title, 13, color="muted")], anchor="middle"),
-        Box("text", W - MARGIN_X - 120, 682, 120, 20, role="footer", paras=[Para(f"{number} / {total}", 13, color="muted", align="right")], anchor="middle"),
-    ]
+def _number_box(text: str) -> Box:
+    return Box("text", W - MARGIN_X - 120, 682, 120, 20, role="footer", paras=[Para(text, 13, color="muted", align="right")], anchor="middle")
+
+
+def _footer(deck_title: str, number: int, total: int, ctx: Ctx, chrome: Optional[dict[str, Any]] = None) -> list[Box]:
+    from .chrome import label, resolve
+    boxes = []
+    if resolve(chrome)["show_title"]:
+        boxes.append(Box("text", MARGIN_X, 682, 900, 20, role="footer", paras=[Para(deck_title, 13, color="muted")], anchor="middle"))
+    text = label(chrome, number, total)
+    if text:
+        boxes.append(_number_box(text))
+    return boxes
+
+
+def chrome_boxes(layout: str, number: int, total: int, chrome: Optional[dict[str, Any]], width: float = W, height: float = H) -> list[Box]:
+    """Progress indicator rectangles; the track uses the surface colour and the done part the accent."""
+    from .chrome import progress_frames, shows_on
+    if not shows_on(chrome, layout):
+        return []
+    return [Box("rect", x, y, w, h, fill="accent" if role == "fill" else "surface", role="progress")
+            for role, x, y, w, h in progress_frames(chrome, number, total, width, height)]
 
 
 def _first_blocks_text(blocks: list[dict[str, Any]]) -> str:
@@ -412,7 +429,8 @@ def _first_blocks_text(blocks: list[dict[str, Any]]) -> str:
 
 
 def build_plan(slide: dict[str, Any], *, deck_title: str, theme: dict[str, Any], number: int, total: int,
-               lang: str = "es", assets: Optional[Callable[[str], Optional[dict[str, Any]]]] = None) -> Plan:
+               lang: str = "es", assets: Optional[Callable[[str], Optional[dict[str, Any]]]] = None,
+               chrome: Optional[dict[str, Any]] = None) -> Plan:
     ctx = Ctx(theme=theme, lang=lang, assets=assets or (lambda _id: None))
     layout = slide.get("layout") or "bullets"
     title = (slide.get("title") or "").strip()
@@ -559,6 +577,13 @@ def build_plan(slide: dict[str, Any], *, deck_title: str, theme: dict[str, Any],
         else:
             got, _ = stack(blocks, MARGIN_X, top, 1136, region_h, ctx, smax=BODY_MAX)
             boxes += got
-        boxes += _footer(deck_title, number, total, ctx)
+        boxes += _footer(deck_title, number, total, ctx, chrome)
+
+    if layout in ("title", "section", "closing") and chrome:
+        from .chrome import label, shows_on
+        text = label(chrome, number, total) if shows_on(chrome, layout) else None
+        if text:
+            boxes.append(_number_box(text))
+    boxes += chrome_boxes(layout, number, total, chrome)
 
     return Plan(boxes=boxes, overflow=bool(ctx.overflow_where), overflow_where=list(ctx.overflow_where))

@@ -90,7 +90,7 @@ def variants(svc,args):
     out=[]
     for layout in choices:
         draft={**deepcopy(slide),'layout':layout}
-        plan=build_plan(draft,deck_title=deck['title'],theme=theme_of(deck),number=slide['position'],total=len(deck['slides']),lang=deck['language'],assets=svc.assets_lookup())
+        plan=build_plan(draft,deck_title=deck['title'],theme=theme_of(deck),number=slide['position'],total=len(deck['slides']),lang=deck['language'],assets=svc.assets_lookup(),chrome=deck.get('chrome'))
         out.append({'layout':layout,'patch':{'layout':layout},'content_changed':False,'fits_estimate':not plan.overflow,'warnings':plan.overflow_where,'objects':len(plan.boxes),
             'preview_url':svc.base_url()+f'/api/decks/{deck["id"]}/slides/{slide["id"]}/variant.html?layout={layout}'})
     return {'slide_id':slide['id'],'expected_revision':slide['revision'],'variants':out,'basis':'deterministic composition, not a measured aesthetic score'}
@@ -106,7 +106,7 @@ def scene(svc,args):
     for slide in selected:
         if slide['id'] in plans:boxes=plans[slide['id']]['boxes'];warnings=plans[slide['id']]['overflow']
         else:
-            plan=build_plan(slide,deck_title=deck['title'],theme=theme_of(deck),number=slide['position'],total=len(deck['slides']),lang=deck['language'],assets=svc.assets_lookup())
+            plan=build_plan(slide,deck_title=deck['title'],theme=theme_of(deck),number=slide['position'],total=len(deck['slides']),lang=deck['language'],assets=svc.assets_lookup(),chrome=deck.get('chrome'))
             boxes=plan.boxes;warnings=plan.overflow_where
         result.append({'slide_id':slide['id'],'revision':slide['revision'],'title':slide['title'],
             'objects':[{'id':b.object_id or f'{slide["id"]}/{i}','kind':b.kind,'frame':[round(v,2) for v in (b.x,b.y,b.w,b.h)],

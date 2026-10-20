@@ -54,7 +54,7 @@ def start(svc,args):
         if args.restart or args.deck_id not in sessions.rooms:
             slides=[]
             for i,slide in enumerate(deck['slides']):
-                plan=build_plan(slide,deck_title=deck['title'],theme=theme_of(deck),number=i+1,total=len(deck['slides']),lang=deck['language'],assets=svc.assets_lookup())
+                plan=build_plan(slide,deck_title=deck['title'],theme=theme_of(deck),number=i+1,total=len(deck['slides']),lang=deck['language'],assets=svc.assets_lookup(),chrome=deck.get('chrome'))
                 groups={b.build for b in plan.boxes if b.build and b.effect!='none'}
                 slides.append({'id':slide['id'],'title':slide['title'],'revision':slide['revision'],'steps':len(groups),
                     'media':[{'asset_id':b['asset_id'],'type':b['type'],'caption':b.get('caption',''),

@@ -130,6 +130,105 @@
           "height": 94
         }
       ]
+    },
+    "combined1021": {
+      "recordedAt": "2026-10-20T14:23:21.781143Z",
+      "mode": "Operate",
+      "status": "Isolated combination retaining pre-existing WIP authorised by Luis; formal combined review, integration and installation pending.",
+      "authority": "Incumbent implementation and docs/design/figures.md; PRODUCT.md and DESIGN.md absent. No replacement world or root design files created.",
+      "sourceFiles": [
+        "client/src/pages/deck/BlockEditor.jsx",
+        "client/src/pages/deck/ChromeEditor.jsx",
+        "client/src/pages/deck/Export.jsx",
+        "cicero_hoard/chrome.py"
+      ],
+      "finish": {
+        "path": "D:/LocalAI/research-inbox/expansiones-fusiones-20261020/qa1021-combined/FINISH.txt",
+        "disposition": "ship",
+        "sections": [
+          "persistence",
+          "fidelity",
+          "ceiling",
+          "material_fixes",
+          "keep"
+        ],
+        "scope": "Visible finish/coherence of combined figure-source and ChromeEditor controls only; no material visual fixes. Formal combined review remains pending."
+      },
+      "captures": [
+        "D:/LocalAI/research-inbox/expansiones-fusiones-20261020/qa1021-combined/figures-desktop.png",
+        "D:/LocalAI/research-inbox/expansiones-fusiones-20261020/qa1021-combined/figures-desktop-controls.png",
+        "D:/LocalAI/research-inbox/expansiones-fusiones-20261020/qa1021-combined/figures-mobile.png",
+        "D:/LocalAI/research-inbox/expansiones-fusiones-20261020/qa1021-combined/figures-mobile-controls.png",
+        "D:/LocalAI/research-inbox/expansiones-fusiones-20261020/qa1021-combined/chrome-desktop.png",
+        "D:/LocalAI/research-inbox/expansiones-fusiones-20261020/qa1021-combined/chrome-desktop-controls.png",
+        "D:/LocalAI/research-inbox/expansiones-fusiones-20261020/qa1021-combined/chrome-mobile.png",
+        "D:/LocalAI/research-inbox/expansiones-fusiones-20261020/qa1021-combined/chrome-mobile-controls.png"
+      ],
+      "captureTreatment": "Full captures preserve real UI sequence. Detail captures hide sticky/Faustus overlays only while capturing controls; no product overlay removal.",
+      "browser": {
+        "path": "D:/LocalAI/research-inbox/expansiones-fusiones-20261020/qa1021-combined/browser-results.json",
+        "owner": "author",
+        "result": "Figures/chrome reopen; exact source download; manual notes/crop/text preserved; no overflow in four views and no JS/HTTP errors.",
+        "desktopWidth": 1440,
+        "mobileWidth": 390,
+        "loadedFonts": []
+      },
+      "native": {
+        "path": "D:/LocalAI/research-inbox/expansiones-fusiones-20261020/qa1021-combined/native-results.json",
+        "owner": "author",
+        "tools": 69,
+        "results": [
+          "Immutable source/deduplication",
+          "Selective undo preserves manual edits",
+          "Numbering/appendix exports",
+          "Template snapshot after moving template",
+          "Rehearsal reserve 90 seconds"
+        ],
+        "exports": {
+          "pptx": {
+            "path": "D:/LocalAI/research-inbox/expansiones-fusiones-20261020/qa1021-combined/combined.pptx",
+            "bytes": 44136
+          },
+          "html": {
+            "path": "D:/LocalAI/research-inbox/expansiones-fusiones-20261020/qa1021-combined/combined.html",
+            "bytes": 198592
+          },
+          "pdf": {
+            "path": "D:/LocalAI/research-inbox/expansiones-fusiones-20261020/qa1021-combined/combined.pdf",
+            "bytes": 32526
+          }
+        },
+        "modelCalls": 0
+      },
+      "suite": {
+        "path": "D:/LocalAI/research-inbox/expansiones-fusiones-20261020/cicero1021-combined-suite-r1.log",
+        "owner": "author",
+        "passed": 493,
+        "skipped": 8
+      },
+      "build": {
+        "path": "D:/LocalAI/research-inbox/expansiones-fusiones-20261020/cicero1021-combined-build-r1.log",
+        "owner": "author",
+        "result": "success"
+      },
+      "detector": {
+        "path": "D:/LocalAI/research-inbox/expansiones-fusiones-20261020/cicero1021-combined-detector.json",
+        "findings": [],
+        "rerun": false
+      },
+      "documenterActivity": "Read incumbent source, briefs, supplied finish and author receipts. No context loader, detector, browser/server, functional tests, model calls or new polish round.",
+      "limits": [
+        "Author functional receipts are not independent review.",
+        "No loaded-webfont proof: all loaded arrays empty.",
+        "No certification of unseen focus/hover/loading/error/empty states or all translations.",
+        "No LLM-quality evaluation.",
+        "No Main, installed activation or whole-WIP capability claim."
+      ],
+      "figures": "Frozen imported revision/native source; origin/download grouped; ordinary images omit provenance; replacement preserves remaining block properties.",
+      "coexistingChrome": "Number/progress/position/thickness/main_slides/on_cover/show_title, Save/Reset between transitions and exports, two desktop columns and one mobile column.",
+      "cascadeClarification": "Earlier extraction/examples retained as history. Current unlayered index.css: secondary buttons transparent at rest, fields Hoard surface, 8px field/button radius, 10px panel radius.",
+      "companionBrief": "docs/design/export-chrome.md",
+      "companionSidecar": ".impeccable/surfaces/export-chrome.json"
     }
   },
   "components": [

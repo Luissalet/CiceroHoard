@@ -6,6 +6,15 @@
 El editor ofrece el mismo selector. HTML y las sesiones en vivo recuperan el origen y el paso de cada rama;
 PPTX utiliza enlaces nativos y vuelta a la ultima diapositiva vista. [Contratos](docs/INTERACTIVE_NAVIGATION.md).
 
+## Numeracion Y Progreso
+
+`deck_chrome` fija el numero de diapositiva (`n`, `n / total` o ninguno) y una barra de progreso o un segmento por
+diapositiva, arriba o abajo. `main_slides` marca el resto como anexo: no cuenta en el total ni en el progreso, asi que
+un anexo nunca muestra "16 / 15". Vista previa, HTML, PPTX y plantillas adjuntas dibujan lo mismo; el campo de numero de
+una plantilla recibe el texto. Sin ajustes se mantiene el pie de siempre. La pestana Exportar tiene el mismo panel.
+`deck_check` avisa ademas de diapositivas cuyos visuales dejan vacia la mayor parte del cuerpo, y los diagramas anchos
+se estiran en vertical.
+
 ## Movimiento, Multimedia Y Datos Vinculados
 
 `deck_transitions` configura transiciones de pantalla y archivo, morph por identidad y ajustes por diapositiva.
@@ -13,7 +22,7 @@ PPTX utiliza enlaces nativos y vuelta a la ultima diapositiva vista. [Contratos]
 `deck_media_control` controla la reproduccion de la diapositiva activa.
 `dataset_link`, `dataset_links`, `dataset_bind` y `dataset_link_control` ofrecen actualizacion automatica durable,
 snapshots inmutables, recetas visuales y recuperacion del ultimo estado valido. Las mismas funciones estan en el editor.
-El catalogo publico contiene 67 herramientas. Contratos y diferencias de formato: [multimedia y datos](docs/LIVE_MEDIA.md).
+El catalogo publico contiene 69 herramientas, incluidas las figuras con fuente y la numeración/progreso. Contratos y diferencias de formato: [multimedia y datos](docs/LIVE_MEDIA.md).
 
 `deck_design` ejecuta un ciclo de crear/renderizar/corregir con el modelo global configurado, enviando imagenes reales en modo vision. La revision externa queda vinculada a version, variante y hash de PNG. Permite continuar, cancelar y deshacer los cambios propios.
 `scene_model_import` incorpora GLB/glTF/ZIP completos con texturas, materiales, iluminacion y clips, tambien offline.
@@ -367,4 +376,4 @@ El original vectorial se edita en VectorCraft. El PPTX contiene el SVG como imag
 
 ## Asistente compartido de Faustus
 
-El botón Faustus monta el panel común servido por Faustus. Conversaciones, modelo, streaming, recuperación y memoria del proyecto viven allí. Cicero aporta su espacio de datos, presentación, diapositiva y revisión, selección y borrador sin guardar. Mantiene sus 68 herramientas de dominio y las revisiones para deshacer. Se conservan presentaciones, notas, fuentes y cambios manuales sin guardar. La conexión utiliza CICERO_FAUSTUS_URL o backend.json. Requiere Faustus disponible con el contrato común; no crea otro chat ni otro modelo privado.
+El botón Faustus monta el panel común servido por Faustus. Conversaciones, modelo, streaming, recuperación y memoria del proyecto viven allí. Cicero aporta su espacio de datos, presentación, diapositiva y revisión, selección y borrador sin guardar. Mantiene sus 69 herramientas de dominio y las revisiones para deshacer. Se conservan presentaciones, notas, fuentes y cambios manuales sin guardar. La conexión utiliza CICERO_FAUSTUS_URL o backend.json. Requiere Faustus disponible con el contrato común; no crea otro chat ni otro modelo privado.

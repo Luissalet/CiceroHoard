@@ -23,7 +23,8 @@ def test_native_explicit_label_hide_preserved_and_fractional_format():
        {'id':'1','position':1,'title':'Values','layout':'evidence','blocks':[b]}]},assets=lambda _:None)
     native=next(s.chart for s in Presentation(io.BytesIO(raw)).slides[0].shapes if s.has_chart)
     assert not native.plots[0].has_data_labels
-    assert native.value_axis.tick_labels.number_format=='#,##0.###'
+    # fractional ticks survive through General; whole ticks print without a bare separator
+    assert native.value_axis.tick_labels.number_format=='General'
 
 @pytest.mark.parametrize('kind',['bar','pie','donut','funnel'])
 def test_native_all_axis_captions_preserved_and_separated(kind):

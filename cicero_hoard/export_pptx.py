@@ -29,6 +29,22 @@ AssetLookup = Callable[[str], Optional[dict[str, Any]]]
 LANG_IDS = {"es": "es-ES", "en": "en-US"}
 
 
+def axis_number_format(values, *, from_zero: bool = True) -> str:
+    """Tick-label format for a value axis.
+
+    Office prints '#,##0.###' with a bare trailing separator on whole ticks ("5." or "5,"), so axes
+    use General, which keeps fractional ticks and the viewer's decimal separator. Only axes spanning a
+    thousand or more, whose automatic ticks are whole numbers, group thousands.
+    """
+    nums = [float(v) for v in values if isinstance(v, (int, float)) and not isinstance(v, bool)]
+    if not nums:
+        return "General"
+    lo, hi = min(nums), max(nums)
+    if from_zero:
+        lo, hi = min(lo, 0.0), max(hi, 0.0)
+    return "#,##0" if hi - lo >= 1000 else "General"
+
+
 def stamp_motion(slide,previous,box):
     for shape in slide.shapes:
         if shape.shape_id not in previous:
@@ -205,7 +221,7 @@ def _add_chart(slide: Any, box: Box, theme: dict[str, Any], lang: str) -> None:
             plot.data_labels.number_format = number_format
             plot.data_labels.number_format_is_linked = False
         cat_axis, val_axis = chart.category_axis, chart.value_axis
-        val_axis.tick_labels.number_format = '#,##0.###'
+        val_axis.tick_labels.number_format = axis_number_format(values)
         val_axis.tick_labels.number_format_is_linked = False
         for axis in (cat_axis, val_axis):
             axis.tick_labels.font.size = Pt(chart_font)
@@ -338,7 +354,7 @@ def build_pptx(deck: dict[str, Any], *, assets: AssetLookup) -> bytes:
     title_only = prs.slide_layouts[5]
     blank = prs.slide_layouts[6]
     for index, s in enumerate(slides):
-        plan = build_plan(s, deck_title=deck["title"], theme=theme, number=index + 1, total=len(slides), lang=lang, assets=assets)
+        plan = build_plan(s, deck_title=deck["title"], theme=theme, number=index + 1, total=len(slides), lang=lang, assets=assets, chrome=deck.get("chrome"))
         has_title = any(b.role == "title" for b in plan.boxes)
         slide = prs.slides.add_slide(title_only if has_title else blank)
         slide.background.fill.solid()

@@ -46,7 +46,7 @@ def add_graph_object(slide,box,theme):
 
 
 def add_chart(slide,box,theme,lang):
-    from .export_pptx import _emu,_rgb,_add_box
+    from .export_pptx import _emu,_rgb,_add_box,axis_number_format
     b=box.chart;kind=b['chart'];series=b['series'];cats=b['categories'];palette=[theme['colors']['accent'],theme['colors']['accent2'],'#667B89','#C16B36']
     if not cats or not series:
         from .errors import CiceroError
@@ -160,7 +160,8 @@ def add_chart(slide,box,theme,lang):
     for axis_name in ('category_axis','value_axis'):
         try:
             axis=getattr(chart,axis_name);axis.tick_labels.font.size=Pt(points);axis.tick_labels.font.color.rgb=_rgb(theme['colors']['text']);axis.tick_labels.font.name=theme['fonts']['body']
-            axis.tick_labels.number_format='#,##0.###';axis.tick_labels.number_format_is_linked=False
+            axis_values=[x for s in series for x in (s.get('x_values') or [])] if axis_name=='category_axis' else observed
+            axis.tick_labels.number_format=axis_number_format(axis_values,from_zero=kind not in ('dot','dumbbell'));axis.tick_labels.number_format_is_linked=False
             axis.major_tick_mark=XL_TICK_MARK.NONE;axis.minor_tick_mark=XL_TICK_MARK.NONE
             if axis.has_major_gridlines:
                 axis.major_gridlines.format.line.color.rgb=_rgb('#DFE6EB');axis.major_gridlines.format.line.width=Pt(.5)
@@ -168,6 +169,9 @@ def add_chart(slide,box,theme,lang):
                 values=[v for s in series for v in s['values'] if v is not None]
                 if values and min(values)>=0:axis.minimum_scale=0
             if kind=='bar_horizontal' and axis_name=='category_axis':axis.reverse_order=True
+            # Negative values put the axis crossing inside the plot: keep both axes' labels at the plot edge, clear of the data.
+            if kind not in ('dot','dumbbell','pie','donut') and observed and min(observed)<0:
+                axis.tick_label_position=XL_TICK_LABEL_POSITION.LOW
             if kind in ('dot','dumbbell') and axis_name=='value_axis':
                 axis.minimum_scale=.5;axis.maximum_scale=len(cats)+.5;axis.tick_label_position=XL_TICK_LABEL_POSITION.NONE
                 axis.has_major_gridlines=False
@@ -209,12 +213,15 @@ def add_chart(slide,box,theme,lang):
                 from pptx.chart.datalabel import DataLabels
                 for j,s in enumerate(chart.series):
                     labels=DataLabels(s._element.get_or_add_dLbls())
-                    labels.show_category_name=True;labels.show_value=False;labels.show_series_name=False
-                    labels.number_format='#,##0.0#';labels.font.size=Pt(points);labels.font.name=theme['fonts']['body'];labels.font.color.rgb=_rgb(theme['colors']['text'])
+                    labels.show_category_name=False;labels.show_value=False;labels.show_series_name=False
+                    labels.font.size=Pt(points);labels.font.name=theme['fonts']['body'];labels.font.color.rgb=_rgb(theme['colors']['text'])
+                    # Each point carries its own text: readers disagree on what "category name" means in XY charts
+                    # (one prints the X value, another the series name), and the deck language sets the decimal mark.
+                    row=[model['values'][j] for model in series if model['values'][j] is not None]
                     for i,point in enumerate(s.points):
                         point.data_label.position=XL_DATA_LABEL_POSITION.ABOVE if i==0 else XL_DATA_LABEL_POSITION.BELOW
-                        label=point.data_label._get_or_add_dLbl()
-                        label.find(qn('c:showVal')).set('val','0');label.find(qn('c:showCatName')).set('val','1')
+                        frame=point.data_label.text_frame;frame.text=fmt_num(row[i],lang)
+                        run=frame.paragraphs[0].runs[0];run.font.size=Pt(points);run.font.name=theme['fonts']['body'];run.font.color.rgb=_rgb(theme['colors']['text'])
     unit=b.get('y_label') or b.get('unit')
     if unit and kind not in ('pie','donut','funnel'):
         axis=chart.value_axis;axis.has_title=True

@@ -265,7 +265,7 @@ def _theme_vars(theme: dict[str, Any]) -> str:
 def slide_section(slide: dict[str, Any], *, deck: dict[str, Any], theme: dict[str, Any], number: int, total: int,
                   assets: AssetLookup, src: Callable[[str], str], index: int) -> tuple[str, Plan]:
     lang = deck.get("language", "es")
-    plan = build_plan(slide, deck_title=deck["title"], theme=theme, number=number, total=total, lang=lang, assets=assets)
+    plan = build_plan(slide, deck_title=deck["title"], theme=theme, number=number, total=total, lang=lang, assets=assets, chrome=deck.get("chrome"))
     body = "".join(motion_box_html(b,theme,lang,assets,src) for b in plan.boxes)
     ui = UI_TEXT.get(lang, UI_TEXT["es"])
     label = f'{ui["slide"]} {number} {ui["of"]} {total}: {slide.get("title") or ""}'

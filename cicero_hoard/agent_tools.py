@@ -111,13 +111,15 @@ class RehearsalArgs(DeckIdArgs):
     pause_seconds: int = Field(10, ge=0, le=120, description="Planning allowance per main slide, for pauses and transitions.")
     main_slides: Optional[int] = Field(None, ge=1, le=MAX_SLIDES,
                                      description="Number of leading slides in the timed talk. Remaining slides are support; omit for all.")
+    reserve_ratio: float = Field(0.1, ge=0, le=0.5,
+                                 description="Share of the limit kept free; slots are planned inside the rest and risk is 'tight' when the estimate enters it.")
 
 
 def run_deck_rehearsal(svc: Services, a: RehearsalArgs) -> dict:
     from .rehearsal import rehearsal_plan
     return rehearsal_plan(store.deck_view(svc, a.deck_id), duration_minutes=a.duration_minutes,
                           words_per_minute=a.words_per_minute, pause_seconds=a.pause_seconds,
-                          main_slides=a.main_slides)
+                          main_slides=a.main_slides, reserve_ratio=a.reserve_ratio)
 
 
 class OutlineUpdateArgs(BaseModel):

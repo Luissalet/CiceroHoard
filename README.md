@@ -6,6 +6,14 @@
 The editor offers the same destination selector. HTML and live sessions restore nested branch origins and click stages;
 native PPTX uses editable slide relationships and last-slide-viewed return. [Contracts](docs/INTERACTIVE_NAVIGATION.md).
 
+## Numbering And Progress
+
+`deck_chrome` sets the slide number (`n`, `n / total` or none) and a progress bar or one segment per slide, at the
+top or the bottom. `main_slides` marks the rest as an appendix: excluded from the total and from the progress, so an
+appendix never reads "16 / 15". The preview, HTML, PPTX and attached templates draw the same settings; a template's own
+slide-number field receives the text. Without settings the historical footer is kept. The Export tab has the same panel.
+`deck_check` also reports slides whose visuals leave most of the body empty, and wide diagrams stretch vertically.
+
 ## Motion, Media And Linked Data
 
 Use `deck_transitions` for common screen/native transitions, stable-object morph and per-slide overrides.
@@ -13,7 +21,7 @@ Use `media_import` and `media_get` for local or HTTP(S) audio/video, then add ty
 `deck_media_control` operates playback on the current live slide.
 `dataset_link`, `dataset_links`, `dataset_bind` and `dataset_link_control` provide durable automatic local/URL
 data refresh, immutable snapshots, typed visual recipes and last-good recovery. The editor exposes the same features.
-The public catalogue now contains 68 tools. See [live media](docs/LIVE_MEDIA.md) and [advanced authoring](docs/ADVANCED_AUTHORING.md) for contracts and format differences.
+The public catalogue now contains 69 tools, including portable figures and numbering/progress. See [live media](docs/LIVE_MEDIA.md) and [advanced authoring](docs/ADVANCED_AUTHORING.md) for contracts and format differences.
 
 `deck_design` runs a model-driven create/render/correct loop using the configured global model, with real image content in vision mode. External image feedback is bound to a source revision, variant and PNG hash; runs support resumption, cancellation and selective undo.
 `scene_model_import` packages local GLB/glTF/ZIP resources offline, retaining textures, materials, lights and clips.
@@ -352,4 +360,4 @@ The vector source is editable in VectorCraft. PPTX embeds the SVG as a picture w
 
 ## Shared Faustus assistant
 
-The Faustus button mounts the common panel served by the configured Faustus service. Conversation storage, model choice, streaming, recovery and project memory live in Faustus. Cicero supplies its data-space identity, deck, selected slide/revision, editor selection and unsaved slide draft. Its 68 native domain tools and slide revisions remain available. Existing decks, notes, sources and manual unsaved edits are preserved. Configure CICERO_FAUSTUS_URL or the existing backend.json Faustus connection. This requires a reachable Faustus service with the shared copilot contract; no private chat/model fallback is created.
+The Faustus button mounts the common panel served by the configured Faustus service. Conversation storage, model choice, streaming, recovery and project memory live in Faustus. Cicero supplies its data-space identity, deck, selected slide/revision, editor selection and unsaved slide draft. Its 69 native domain tools and slide revisions remain available. Existing decks, notes, sources and manual unsaved edits are preserved. Configure CICERO_FAUSTUS_URL or the existing backend.json Faustus connection. This requires a reachable Faustus service with the shared copilot contract; no private chat/model fallback is created.

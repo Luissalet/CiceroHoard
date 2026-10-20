@@ -73,7 +73,7 @@ def layout_visual(block,x,y,w,h,ctx):
         def text_at(size):
             label=Para(node['label'],size,bold=True,font='heading',line=1.15,align='center',space_after=10*scale if node.get('detail') else 0)
             return [label,Para(node['detail'],size*18/26,color='muted',align='center',line=1.2)] if node.get('detail') else [label]
-        size,overflow=fit_size(text_at,nw-2*pad,nh-2*pad,block.get('font_size') or max(12,round(26*scale)),max(10,round(16*scale)),ctx)
+        size,overflow=fit_size(text_at,nw-2*pad,nh-2*pad,block.get('font_size') or max(12,round(26*min(1.0,layout.get('vscale',scale)))),max(10,round(16*scale)),ctx)
         text=text_at(size)
         if overflow:ctx.overflow_where.append('diagram node: '+node['id'])
         boxes.append(Box('text',left+pad,top+pad,nw-2*pad,nh-2*pad,paras=text,anchor='middle',build=build,effect='fade',object_id='node-'+node['id']+'-label'))
