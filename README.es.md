@@ -1,5 +1,7 @@
 # Cicero's Hoard
 
+**Duplicar contenido**, en el editor de diapositivas, crea un borrador justo detrás con el contenido visible, incluidos cambios sin guardar, notas, bloques y referencias a fuentes. Abre la copia sin guardar cambios en el original. Reutiliza `slide_add` de API/MCP para obtener otro ID y revisión inicial; no copia aprobación ni historial, y los recursos siguen referenciados en la misma presentación.
+
 ## Preparar un ensayo
 
 La pestaña **Ensayo** planifica la exposición a partir de las notas guardadas: límite de tiempo, palabras por minuto, pausas, margen reservado y número de diapositivas principales. Muestra el intervalo asignado y la duración estimada de cada diapositiva, separa las de apoyo, permite consultar o abrir las notas para editarlas y conserva los ajustes elegidos al cambiar de pestaña. Puedes copiar o descargar el plan con sus notas en castellano o inglés. Si faltan notas, la duración total queda sin estimar; una exposición larga conserva el aviso de exceso. Es planificación, no un ensayo grabado ni medido. La UI utiliza `POST /api/decks/{id}/rehearsal` y el cálculo MCP existente `deck_rehearsal`, que ahora devuelve también `text` y acepta `language: es|en`. `GET /api/decks/{id}/rehearsal.txt` descarga el mismo texto con los supuestos en los parámetros de consulta. La planificación no modifica notas ni aprobaciones.

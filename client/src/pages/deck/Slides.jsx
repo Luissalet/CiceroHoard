@@ -117,7 +117,7 @@ export default function Slides() {
       </div>
 
       <div className="slides-editor min-w-0">
-        <SlideEditor key={`${slide.id}:${slide.revision}`} slide={slide} onDeleted={afterDelete} />
+        <SlideEditor key={`${slide.id}:${slide.revision}`} slide={slide} onDeleted={afterDelete} onDuplicated={(id) => selectSlide(deckId, id)} />
       </div>
     </div>
   );

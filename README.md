@@ -1,5 +1,7 @@
 # Cicero's Hoard
 
+The slide editor's **Duplicate content** action creates a draft immediately after the current slide, including visible unsaved edits, notes, blocks and source references. It opens the new copy without saving changes to the original. The existing `slide_add` API/MCP operation creates the new ID and revision; approval and revision history are not copied, and referenced assets remain in the same deck.
+
 ## Interactive Routes
 
 `deck_navigation` configures stable slide links, external URLs and next/previous/return actions on ordinary objects.

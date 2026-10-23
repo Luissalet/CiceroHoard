@@ -5,7 +5,7 @@ import { useDeck, useDirty } from "../../components/deckContext.js";
 import { ConfirmButton, Field, Section } from "../../components/ui.jsx";
 import { BLOCK_TYPES, LAYOUTS, clock } from "../../format.js";
 import BlockEditor from "./BlockEditor.jsx";
-import { blockToApi, blockToDraft, newBlock } from "./blocks.js";
+import { blockToApi, blockToDraft, duplicateSlideBody, newBlock } from "./blocks.js";
 import {Play,Eye} from 'lucide-react';
 import DataPanel from './DataPanel.jsx';
 import LinkedData from './LinkedData.jsx';
@@ -58,7 +58,7 @@ function Revisions({ slide }) {
   );
 }
 
-export default function SlideEditor({ slide, onDeleted }) {
+export default function SlideEditor({ slide, onDeleted, onDuplicated }) {
   const { t, notify } = useApp();
   const { deckId, deck, reload, run, busy, noteGenerator } = useDeck();
   const initialKey = JSON.stringify(toDraft(slide));
@@ -107,6 +107,17 @@ export default function SlideEditor({ slide, onDeleted }) {
   const saveInner = async () => { await api.slideUpdate(deckId, slide.id, patchBody()); await reload(); };
 
   const save = () => run(t("busy_saving"), async () => { await saveInner(); notify(t("saved")); return true; });
+  const duplicate = async () => {
+    const created = await run(t("busy_adding"), async () => {
+      const res = await api.slideAdd(deckId, duplicateSlideBody(slide.id, draft, t));
+      await reload();
+      return res.slide || res;
+    });
+    if (created?.id) {
+      onDuplicated(created.id);
+      notify(t("slide_duplicated"));
+    }
+  };
   const approve = () => run(t("busy_saving"), async () => {
     await (approved ? api.slideUnapprove(deckId, slide.id) : api.slideApprove(deckId, slide.id));
     await reload();
@@ -141,6 +152,11 @@ export default function SlideEditor({ slide, onDeleted }) {
           {approved ? t("unapprove") : t("approve")}
         </button>
         {dirty && <span className="help" role="status">{t("unsaved")}</span>}
+      </div>
+
+      <div className="space-y-1.5">
+        <button type="button" className="btn" disabled={off} onClick={duplicate} aria-describedby="slide-duplicate-help">{t("slide_duplicate")}</button>
+        <p id="slide-duplicate-help" className="help">{t("slide_duplicate_help")}</p>
       </div>
 
       <Section title={t("slide_content")}>

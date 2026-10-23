@@ -97,3 +97,16 @@ export function blockToApi(block,t,n){
   for(const key of ['id','frame','font_size','fit','position','action'])if(block[key]!=null&&block[key]!=='')out[key]=block[key];
   return out;
 }
+
+export function duplicateSlideBody(slideId, draft, t) {
+  return {
+    after_id: slideId,
+    layout: draft.layout,
+    title: draft.title,
+    subtitle: draft.subtitle,
+    blocks: draft.blocks.map((block, i) => blockToApi(block, t, i + 1)),
+    notes: draft.notes,
+    image_prompt: draft.image_prompt,
+    sources: [...draft.sources],
+  };
+}
