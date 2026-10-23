@@ -896,6 +896,29 @@ Object.assign(DICT.en, {
   rehearsal_support_help:'Outside the main schedule. Use these for questions or additional information.'
 });
 
+Object.assign(DICT.es, {
+  data_filter_sort:'Filtrar y ordenar', data_filter_saved_hint:'Crea una fuente de datos guardada con estos criterios. La fuente original se conserva.',
+  data_filter_column:'Columna del filtro', data_filter_operator:'Condición', data_filter_value:'Valor del filtro',
+  data_filter_eq:'Es igual a', data_filter_ne:'Es distinto de', data_filter_gt:'Es mayor que', data_filter_ge:'Es mayor o igual que',
+  data_filter_lt:'Es menor que', data_filter_le:'Es menor o igual que', data_filter_contains:'Contiene', data_filter_isnull:'Sin valor',
+  data_filter_semantics:'«Contiene» distingue mayúsculas. «Sin valor» incluye celdas ausentes o vacías.',
+  data_sort_column:'Ordenar por', data_sort_direction:'Dirección', data_sort_asc:'Ascendente', data_sort_desc:'Descendente',
+  data_sort_missing:'Los valores ausentes o vacíos quedan al final.', data_derived_title:'Nombre de los datos derivados (opcional)',
+  data_filter_retry:'Reintentar creación', data_saved_source:'Fuente guardada #{id}', data_derived_origin:'Derivada de la fuente #{id}',
+  data_saved_transform:'Transformación guardada', data_preview_first:'Primeras filas: {n} de {total}', data_row:'fila', data_empty_visual:'Este conjunto no tiene filas para insertar un visual.',
+});
+Object.assign(DICT.en, {
+  data_filter_sort:'Filter and sort', data_filter_saved_hint:'Create a saved dataset with these criteria. The original source is retained.',
+  data_filter_column:'Filter column', data_filter_operator:'Condition', data_filter_value:'Filter value',
+  data_filter_eq:'Equals', data_filter_ne:'Does not equal', data_filter_gt:'Greater than', data_filter_ge:'Greater than or equal to',
+  data_filter_lt:'Less than', data_filter_le:'Less than or equal to', data_filter_contains:'Contains', data_filter_isnull:'No value',
+  data_filter_semantics:'Contains is case-sensitive. No value includes missing or empty cells.',
+  data_sort_column:'Sort by', data_sort_direction:'Direction', data_sort_asc:'Ascending', data_sort_desc:'Descending',
+  data_sort_missing:'Missing or empty values stay at the end.', data_derived_title:'Derived dataset name (optional)',
+  data_filter_retry:'Retry creation', data_saved_source:'Saved source #{id}', data_derived_origin:'Derived from source #{id}',
+  data_saved_transform:'Saved transformation', data_preview_first:'First rows: {n} of {total}', data_row:'row', data_empty_visual:'This dataset has no rows to insert as a visual.',
+});
+
 export function makeT(lang) {
   const dict = DICT[lang] || DICT.es;
   return (key, vars) => {

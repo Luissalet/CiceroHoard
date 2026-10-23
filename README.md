@@ -1,5 +1,11 @@
 # Cicero's Hoard
 
+In the Data panel, **Filter and sort** creates a saved derived dataset with one
+condition, an optional sort order and a name. The original stays intact. Inspect
+the saved source/parent IDs and transformation, then use the result in the existing
+chart or table editor. The preview explicitly shows its first eight rows; inserting
+a visual edits the current slide draft until Save. Errors retain the filter draft.
+
 The slide editor's **Duplicate content** action creates a draft immediately after the current slide, including visible unsaved edits, notes, blocks and source references. It opens the new copy without saving changes to the original. The existing `slide_add` API/MCP operation creates the new ID and revision; approval and revision history are not copied, and referenced assets remain in the same deck.
 
 ## Interactive Routes

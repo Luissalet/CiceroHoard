@@ -25,8 +25,13 @@ A cited snapshot is protected by the existing source undo conflict handling.
 Ancestor snapshots are also preserved while derived datasets depend on them. Undo derived snapshots first;
 whole-session undo handles the reverse order and its preview identifies this dependency.
 
-The UI offers file/pasted import, profiles, sample rows, grouping/aggregation and chart/table mapping.
-All filtering and sorting options are exposed through REST/MCP; the current UI does not expose every transform argument.
+The UI offers file/pasted import, profiles, the first eight preview rows, grouping/aggregation and chart/table mapping.
+Filter and sort creates a saved derived source with one optional native condition (all eight operators),
+an optional sort column/direction and a name. It selects the resulting source for the existing visual editor;
+insertion changes its draft until Save. The source ID, parent ID and saved transformation remain inspectable.
+Contains is case-sensitive; No value includes missing/empty cells; sorting leaves missing cells last.
+Changing source clears the previous details and choices. Native errors retain the filter draft for Retry.
+REST/MCP additionally support multiple filters and combined filtering/aggregation in a single transform.
 Tables contain at most 30 selected rows, with a truncation warning. Charts can map up to 2,000 rows and six series.
 Workbook imports and explicit locale conversion are supported, not external database connectors.
 

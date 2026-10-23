@@ -1,5 +1,12 @@
 # Cicero's Hoard
 
+En Datos, **Filtrar y ordenar** crea una fuente derivada guardada con una condición,
+orden opcional y nombre. El original se conserva. Puedes consultar los IDs de la
+fuente y su origen y la transformación guardada, y usar el resultado en el editor
+actual de gráficos o tablas. La vista previa indica sus primeras ocho filas;
+insertar un visual cambia el borrador de la diapositiva hasta Guardar. Los errores
+conservan el borrador del filtro.
+
 **Duplicar contenido**, en el editor de diapositivas, crea un borrador justo detrás con el contenido visible, incluidos cambios sin guardar, notas, bloques y referencias a fuentes. Abre la copia sin guardar cambios en el original. Reutiliza `slide_add` de API/MCP para obtener otro ID y revisión inicial; no copia aprobación ni historial, y los recursos siguen referenciados en la misma presentación.
 
 ## Preparar un ensayo
