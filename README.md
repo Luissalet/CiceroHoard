@@ -121,6 +121,8 @@ app, the Review tab runs the visual review, shows the capture of each flagged sl
 
 ## Data And Live Presentation
 
+The **Rehearsal** tab prepares a schedule from saved speaker notes, with a time limit, speaking pace, pauses, reserved margin and a main-talk boundary. It shows each slide's allocated slot and estimated speech duration, keeps support slides separate, opens notes for reading/editing, and retains the chosen assumptions when switching tabs. Copy or download the plan with its notes in Spanish or English. Missing notes leave the total estimate unknown; an overlong speech remains visibly over the limit. This is planning, not a recorded or measured rehearsal. The UI uses `POST /api/decks/{id}/rehearsal` and the existing `deck_rehearsal` MCP calculation, which now also returns portable `text` (optional `language: es|en`). `GET /api/decks/{id}/rehearsal.txt` downloads that same text using query parameters for the assumptions. Planning changes neither notes nor slide approvals.
+
 - `dataset_import`: immutable CSV/TSV/XLSX sources, worksheets and explicit decimal profiles.
 - `dataset_get`: paginated rows, missing/numeric profiles and import warnings.
 - `dataset_transform`: reproducible filters, grouping, aggregates and mixed-type sorting.

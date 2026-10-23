@@ -1,5 +1,22 @@
 @import "tailwindcss";
 
+.rehearsal-page{max-width:72rem}
+.rehearsal-settings{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1rem}
+.rehearsal-actions{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:.5rem}
+.rehearsal-summary{display:flex;flex-wrap:wrap;gap:1.5rem 2.5rem;border-block:1px solid var(--line);padding:1rem 0;margin:1.5rem 0 1rem}
+.rehearsal-summary dt{font-size:12px;color:var(--muted)}
+.rehearsal-summary dd{margin:.25rem 0 0;font-size:20px;font-weight:600}
+.rehearsal-verdict{font-size:14px;color:var(--ink)}
+.rehearsal-over{color:var(--danger)}
+.rehearsal-timeline{list-style:none;padding:0;margin:1rem 0 0}
+.rehearsal-timeline>li{display:grid;grid-template-columns:145px minmax(0,1fr);gap:1rem;border-bottom:1px solid var(--line);padding:1.1rem 0}
+.rehearsal-clock{font-size:14px;color:var(--ink)}
+.rehearsal-clock span{display:block;margin-top:.35rem;font-size:12px;color:var(--muted)}
+.rehearsal-notes{margin-top:.8rem;font-size:13px;line-height:1.6}
+.rehearsal-notes summary{cursor:pointer;color:var(--accent)}
+.rehearsal-notes p{white-space:pre-wrap;overflow-wrap:anywhere;max-width:72ch;margin:.6rem 0 0}
+@media(max-width:600px){.rehearsal-timeline>li{grid-template-columns:1fr;gap:.5rem}.rehearsal-clock span{display:inline;margin-left:.8rem}.rehearsal-settings{grid-template-columns:1fr 1fr}.rehearsal-actions>.btn{white-space:normal}}
+
 /* Colours come from the shared Hoard theme (hoard-theme.css); names below are this app's own. */
 :root {
   color-scheme: dark;

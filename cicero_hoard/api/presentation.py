@@ -1,11 +1,20 @@
 """Separate local audience and speaker surfaces, sharing only navigation state."""
 from fastapi import APIRouter,Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse,PlainTextResponse
 from .. import presentation,decks as store
 from .deps import services,tool
 from .decks import PREVIEW_HEADERS
 
 router=APIRouter(prefix='/api')
+
+@router.post('/decks/{deck_id}/rehearsal')
+async def rehearsal(request:Request,deck_id:str):
+    return tool(request,'deck_rehearsal',**{**await request.json(),'deck_id':deck_id})
+
+@router.get('/decks/{deck_id}/rehearsal.txt',response_class=PlainTextResponse)
+def rehearsal_download(request:Request,deck_id:str):
+    plan = tool(request,'deck_rehearsal',**{**dict(request.query_params),'deck_id':deck_id})
+    return PlainTextResponse(plan['text'],headers={'Content-Disposition':'attachment; filename="rehearsal.txt"'})
 
 @router.post('/decks/{deck_id}/live')
 async def start(request:Request,deck_id:str):

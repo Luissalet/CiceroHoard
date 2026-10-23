@@ -52,6 +52,28 @@ def test_real_tool_never_changes_notes_revisions_or_approvals(services,deck):
     assert decks.deck_view(services,deck['id'])==before
 
 
+def test_browser_plan_matches_tool_and_keeps_deck_unchanged(client):
+    from conftest import new_deck
+    deck = new_deck(client.svc)
+    slide = client.post(f"/api/decks/{deck['id']}/slides", json={'title': 'First', 'notes': 'hello ' * 60}).json()
+    client.post(f"/api/decks/{deck['id']}/slides", json={'title': 'Support', 'notes': 'backup ' * 80})
+    before = decks.deck_view(client.svc, deck['id'])
+    options = dict(duration_minutes=2, words_per_minute=120, pause_seconds=5, main_slides=1, reserve_ratio=0.1)
+    response = client.post(f"/api/decks/{deck['id']}/rehearsal", json=options)
+    assert response.status_code == 200
+    assert response.json() == agent_tools.call_tool(client.svc, 'deck_rehearsal', {'deck_id': deck['id'], **options})
+    assert response.json()['timeline'][0]['slide_id'] == slide['id']
+    assert response.json()['support_slides'] == 1
+    download = client.get(f"/api/decks/{deck['id']}/rehearsal.txt", params=options)
+    assert download.status_code == 200 and download.text == response.json()['text']
+    assert 'attachment' in download.headers['content-disposition']
+    assert all(item['notes'] in download.text for item in before['slides'])
+    english = client.post(f"/api/decks/{deck['id']}/rehearsal", json={**options, 'language': 'en'}).json()
+    assert 'Time limit: 02:00' in english['text'] and 'Support slides' in english['text']
+    assert client.post(f"/api/decks/{deck['id']}/rehearsal", json={**options, 'words_per_minute': 0}).status_code == 400
+    assert decks.deck_view(client.svc, deck['id']) == before
+
+
 def test_schedule_keeps_a_reserve_and_flags_a_tight_estimate():
     # 1,766 words at 130 wpm with 10 s per slide over 14 slides: about 16 min for a 15 min defence
     notes=['palabra '*126]*13+['palabra '*128]

@@ -849,6 +849,47 @@ Object.assign(DICT.en,{
  chrome_thickness:'Thickness (px)',chrome_main:'Main slides',chrome_main_help:'Later slides are an appendix: excluded from the total and the progress. Empty: all.',chrome_show_title:'Presentation title in the footer',chrome_on_cover:'Also on cover, section and closing slides',chrome_reset:'Reset numbering'
 });
 
+Object.assign(DICT.es, {
+  tab_rehearsal:'Ensayo', rehearsal_title:'Preparar el ensayo',
+  rehearsal_help:'Planifica el tiempo a partir de las notas del orador. Es una estimación: no se ha medido tu exposición.',
+  rehearsal_pace:'Palabras por minuto', rehearsal_pauses:'Pausa por diapositiva (s)', rehearsal_main:'Diapositivas principales',
+  rehearsal_reserve_percent:'Margen reservado (%)', rehearsal_calculate:'Calcular plan', rehearsal_calculating:'Calculando el plan de ensayo…',
+  rehearsal_copy:'Copiar plan y notas', rehearsal_download:'Descargar texto', rehearsal_copied:'Plan y notas copiados.',
+  rehearsal_copy_failed:'No se pudo copiar. Usa Descargar texto para guardar el plan.',
+  rehearsal_main_help:'Las primeras diapositivas forman la exposición; las siguientes quedan como apoyo.',
+  rehearsal_changed:'Has cambiado los supuestos. Pulsa Calcular plan para actualizar el cronograma.',
+  rehearsal_limit:'Límite', rehearsal_estimate:'Duración estimada', rehearsal_planned:'Cronograma', rehearsal_reserve:'Margen reservado',
+  rehearsal_unknown:'Sin estimación completa', rehearsal_empty:'Añade diapositivas y notas para preparar un ensayo.',
+  rehearsal_risk_ok:'La estimación cabe en el tiempo disponible y conserva el margen reservado.',
+  rehearsal_risk_tight:'La estimación cabe en el límite, pero consume parte del margen reservado.',
+  rehearsal_risk_over:'Las notas superan el límite estimado. Acórtalas o aumenta la duración antes del ensayo.',
+  rehearsal_risk_unknown:'Faltan notas habladas en {n} diapositiva(s). Completa las notas para estimar la duración total.',
+  rehearsal_optimistic:'El ritmo alto o las pausas cortas pueden infravalorar la duración. Contrasta este plan con un ensayo real.',
+  rehearsal_timeline:'Cronograma de la exposición', rehearsal_slot:'{n} s asignados', rehearsal_edit_notes:'Editar notas',
+  rehearsal_words:'{n} palabras', rehearsal_notes_missing:'Sin notas habladas; duración desconocida',
+  rehearsal_support_help:'Fuera del cronograma principal. Consúltalas para preguntas o información adicional.'
+});
+Object.assign(DICT.en, {
+  tab_rehearsal:'Rehearsal', rehearsal_title:'Prepare the rehearsal',
+  rehearsal_help:'Plan the timing from speaker notes. This is an estimate: your delivery has not been measured.',
+  rehearsal_pace:'Words per minute', rehearsal_pauses:'Pause per slide (s)', rehearsal_main:'Main slides',
+  rehearsal_reserve_percent:'Reserved margin (%)', rehearsal_calculate:'Calculate plan', rehearsal_calculating:'Calculating the rehearsal plan…',
+  rehearsal_copy:'Copy plan and notes', rehearsal_download:'Download text', rehearsal_copied:'Plan and notes copied.',
+  rehearsal_copy_failed:'Could not copy. Use Download text to save the plan.',
+  rehearsal_main_help:'The first slides form the talk; the remaining slides are support.',
+  rehearsal_changed:'The assumptions changed. Select Calculate plan to update the schedule.',
+  rehearsal_limit:'Time limit', rehearsal_estimate:'Estimated duration', rehearsal_planned:'Schedule', rehearsal_reserve:'Reserved margin',
+  rehearsal_unknown:'No complete estimate', rehearsal_empty:'Add slides and notes to prepare a rehearsal.',
+  rehearsal_risk_ok:'The estimate fits the available time and keeps the reserved margin.',
+  rehearsal_risk_tight:'The estimate fits the limit, but uses part of the reserved margin.',
+  rehearsal_risk_over:'The notes exceed the estimated limit. Shorten them or increase the duration before rehearsing.',
+  rehearsal_risk_unknown:'Spoken notes are missing on {n} slide(s). Complete them to estimate the full duration.',
+  rehearsal_optimistic:'A fast pace or short pauses can underestimate the duration. Compare this plan with a real rehearsal.',
+  rehearsal_timeline:'Talk schedule', rehearsal_slot:'{n} s allocated', rehearsal_edit_notes:'Edit notes',
+  rehearsal_words:'{n} words', rehearsal_notes_missing:'No spoken notes; duration unknown',
+  rehearsal_support_help:'Outside the main schedule. Use these for questions or additional information.'
+});
+
 export function makeT(lang) {
   const dict = DICT[lang] || DICT.es;
   return (key, vars) => {

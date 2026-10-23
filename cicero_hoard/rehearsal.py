@@ -22,6 +22,34 @@ def _clock(seconds: int) -> str:
     return f'{seconds // 60:02d}:{seconds % 60:02d}'
 
 
+def rehearsal_text(deck: dict, plan: dict, language: str) -> str:
+    """A portable speaker script from the same saved notes and calculated plan."""
+    if language == 'en':
+        note = 'Planning estimate from speaker notes; delivery has not been measured.'
+        limit, reserve, estimate = 'Time limit', 'Reserved margin', 'Estimated duration'
+        pace, pauses, support = 'Words per minute', 'Pause per slide (s)', 'Support slides'
+        missing, empty = 'No complete estimate', 'No notes.'
+    else:
+        note = 'Estimación a partir de las notas del orador; no se ha medido la exposición.'
+        limit, reserve, estimate = 'Límite', 'Margen reservado', 'Duración estimada'
+        pace, pauses, support = 'Palabras por minuto', 'Pausa por diapositiva (s)', 'Diapositivas de apoyo'
+        missing, empty = 'Sin estimación completa', 'Sin notas.'
+    notes = {slide['id']: slide.get('notes') or empty for slide in deck['slides']}
+    lines = [deck['title'], note,
+             f"{limit}: {_clock(plan['target_seconds'])} · {reserve}: {_clock(plan['reserve_seconds'])}",
+             f"{estimate}: {_clock(plan['estimated_seconds']) if plan['estimated_seconds'] is not None else missing}",
+             f"{pace}: {plan['words_per_minute']} · {pauses}: {plan['pause_seconds_per_slide']}", '']
+    for item in plan['timeline']:
+        duration = _clock(item['estimated_seconds']) if item['estimated_seconds'] is not None else missing
+        lines.extend([f"{item['start']}–{item['end']} · {item['position']}. {item['title']}",
+                      f'{estimate}: {duration}', notes[item['slide_id']], ''])
+    if plan['support']:
+        lines.append(support)
+        for item in plan['support']:
+            lines.extend([f"{item['position']}. {item['title']}", notes[item['slide_id']], ''])
+    return '\n'.join(lines)
+
+
 # Pace and pause assumptions beyond these make an estimate optimistic for a spoken defence or talk.
 TYPICAL_MAX_WPM = 140
 TYPICAL_MIN_PAUSE_SECONDS = 5

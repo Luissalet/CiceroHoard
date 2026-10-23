@@ -106,6 +106,7 @@ class DeckIdArgs(BaseModel):
 
 
 class RehearsalArgs(DeckIdArgs):
+    language: Optional[Language] = Field(None, description="Language of the portable speaker script; defaults to the deck language.")
     duration_minutes: float = Field(15, ge=1, le=180)
     words_per_minute: int = Field(130, ge=80, le=240)
     pause_seconds: int = Field(10, ge=0, le=120, description="Planning allowance per main slide, for pauses and transitions.")
@@ -116,10 +117,12 @@ class RehearsalArgs(DeckIdArgs):
 
 
 def run_deck_rehearsal(svc: Services, a: RehearsalArgs) -> dict:
-    from .rehearsal import rehearsal_plan
-    return rehearsal_plan(store.deck_view(svc, a.deck_id), duration_minutes=a.duration_minutes,
+    from .rehearsal import rehearsal_plan, rehearsal_text
+    deck = store.deck_view(svc, a.deck_id)
+    plan = rehearsal_plan(deck, duration_minutes=a.duration_minutes,
                           words_per_minute=a.words_per_minute, pause_seconds=a.pause_seconds,
                           main_slides=a.main_slides, reserve_ratio=a.reserve_ratio)
+    return {**plan, 'text': rehearsal_text(deck, plan, a.language or deck['language'])}
 
 
 class OutlineUpdateArgs(BaseModel):
@@ -643,7 +646,7 @@ TOOLS: list[Tool] = [
          "Sinónimos: mover, cambiar el orden, subir, bajar.\nKeywords: reorder, move, order.",
          ReorderArgs, _ann(False, False, True), run_slides_reorder),
     Tool("deck_rehearsal", "Plan a timed rehearsal from speaker notes; separate the main talk from support slides.\n"
-         "Returns an exact target schedule and a speech estimate at the requested pace. Does not measure actual speech or change the deck.\n"
+         "Returns a target schedule, a speech estimate and portable text with saved notes (language: es/en). Does not measure actual speech or change the deck.\n"
          "Keywords: rehearsal, timed talk, speaker schedule. Ensayo, guion cronometrado, diapositivas de apoyo.",
          RehearsalArgs, _ann(True, False, True), run_deck_rehearsal),
     Tool("deck_check",

@@ -69,6 +69,7 @@ export const api = {
   dataLinkControl: (id,body) => request('POST',`${deckBase(id)}/data-links/control`,{body}),
   dataBind: (id,body) => request('POST',`${deckBase(id)}/data-links/bind`,{body}),
   liveStart:(id,body)=>request('POST',`${deckBase(id)}/live`,{body}),
+  rehearsal:(id,body)=>request('POST',`${deckBase(id)}/rehearsal`,{body}),
   liveState:(id,session)=>request('GET',`${deckBase(id)}/live/${e(session)}/state`),
   liveSpeaker:(id,session)=>request('GET',`${deckBase(id)}/live/${e(session)}/speaker`),
   liveControl:(id,session,body)=>request('POST',`${deckBase(id)}/live/${e(session)}/control`,{body}),

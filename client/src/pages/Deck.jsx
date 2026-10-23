@@ -11,8 +11,9 @@ import Review from "./deck/Review.jsx";
 import Theme from "./deck/Theme.jsx";
 import Export from "./deck/Export.jsx";
 import VisualLab from './deck/VisualLab.jsx';
+import Rehearsal from './deck/Rehearsal.jsx';
 
-const TAB_COMPONENTS = { brief: Brief, outline: Outline, slides: Slides, review: Review, theme: Theme, export: Export,lab:VisualLab };
+const TAB_COMPONENTS = { brief: Brief, outline: Outline, slides: Slides, review: Review, rehearsal: Rehearsal, theme: Theme, export: Export,lab:VisualLab };
 const TAB_KEYS = Object.keys(TAB_COMPONENTS);
 
 export default function Deck({ deckId, tab, query }) {
@@ -22,6 +23,7 @@ export default function Deck({ deckId, tab, query }) {
   const [busy, setBusy] = useState(null);
   const [error, setError] = useState(null);
   const [generator, setGenerator] = useState(null);
+  const [rehearsalOptions, setRehearsalOptions] = useState(null);
   const busyRef = useRef(null);
   const dirtyRef = useRef(false);
 
@@ -92,7 +94,8 @@ export default function Deck({ deckId, tab, query }) {
 
   const value = useMemo(() => ({
     deckId, deck, setDeck, reload, run, busy, error, setError, dirtyRef, query, noteGenerator, confirmDiscard,
-  }), [deckId, deck, reload, run, busy, error, query, noteGenerator, confirmDiscard]);
+    rehearsalOptions, setRehearsalOptions,
+  }), [deckId, deck, reload, run, busy, error, query, noteGenerator, confirmDiscard, rehearsalOptions]);
 
   const Body = TAB_COMPONENTS[active];
 
@@ -105,6 +108,7 @@ export default function Deck({ deckId, tab, query }) {
     { key: "outline", label: t("tab_outline"), badge: (deck.outline || []).length || null },
     { key: "slides", label: t("tab_slides"), badge: slides.length || null },
     { key: "review", label: t("tab_review") },
+    { key: "rehearsal", label: t("tab_rehearsal") },
     { key: "theme", label: t("tab_theme") },
     { key: "export", label: t("tab_export") },
     { key: "lab", label: t("tab_lab") },
