@@ -21,6 +21,12 @@ def themes(request: Request):
     return {"items": services(request).themes()}
 
 
+@router.delete("/themes/{theme_id}")
+def theme_delete(request: Request, theme_id: str):
+    """Delete a saved theme; decks that used it move to the built-in light or dark theme. Built-ins answer 400."""
+    return services(request).theme_delete(theme_id)
+
+
 @router.get("/themes/design-systems")
 def design_systems(request: Request):
     # Plain functions: they wait for the hub, which must not block the event loop.

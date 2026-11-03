@@ -208,8 +208,16 @@ function FromPresets({ deckId, setDeck, run, busy, onCreated }) {
   );
 }
 
+// Same rule as the server (relative luminance under 0.4 is a dark page).
+function isDark(hex) {
+  const m = /^#([0-9a-f]{6})$/i.exec(hex || "");
+  if (!m) return false;
+  const [r, g, b] = [0, 2, 4].map((i) => parseInt(m[1].slice(i, i + 2), 16) / 255).map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b < 0.4;
+}
+
 export default function Theme() {
-  const { t } = useApp();
+  const { t, notify } = useApp();
   const [source, setSource] = React.useState("theme-ds");
   const { deckId, deck, setDeck, run, busy } = useDeck();
   const themes = useAsync(() => api.themes(), []);
@@ -232,6 +240,21 @@ export default function Theme() {
     setDeck(res.deck || res);
     return true;
   });
+
+  // Deleting a saved theme: decks that used it move to the built-in theme of the same kind (the server says which).
+  const remove = (th) => {
+    const fallbackId = isDark(th.colors?.background) ? "oscuro" : "claro";
+    const fallback = items.find((x) => x.id === fallbackId)?.name || fallbackId;
+    if (!window.confirm(t("theme_delete_confirm", { name: th.name, fallback }))) return;
+    run(t("busy_saving"), async () => {
+      const res = await api.themeDelete(th.id);
+      const moved = res.decks_moved || [];
+      if (moved.includes(deckId)) { const fresh = await api.deck(deckId); setDeck(fresh.deck || fresh); }
+      themes.reload();
+      notify(moved.length ? t("theme_deleted_moved", { name: th.name, n: moved.length, fallback }) : t("theme_deleted", { name: th.name }));
+      return true;
+    });
+  };
 
   if (themes.error) return <Empty>{themes.error.message}</Empty>;
   return (
@@ -262,6 +285,10 @@ export default function Theme() {
                 {deck.theme === th.id && <span className="chip chip-accent">{t("theme_current")}</span>}
               </div>
               <div className="help">{th.fonts?.heading} · {th.fonts?.body}{th.custom ? ` · ${t(String(th.source_ref || "").includes("/preset/") ? "theme_vp_badge" : "theme_ds_badge")}` : ""}</div>
+              {th.custom && (
+                <button type="button" className="btn btn-sm mt-2" disabled={!!busy} data-action="theme-delete" data-theme={th.id}
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); remove(th); }}>{t("theme_delete")}</button>
+              )}
             </label>
           ))}
         </div>

@@ -183,6 +183,9 @@ class Services:
     def theme_from_tokens(self, tokens_id: str, mode: str = "light") -> dict[str, Any]:
         return custom_themes.from_tokens(self, tokens_id, mode)
 
+    def theme_delete(self, theme_id: str) -> dict[str, Any]:
+        return custom_themes.delete_custom(self, theme_id)
+
     def design_presets(self, query: Optional[str] = None, source: Optional[str] = None, limit: int = 200) -> dict[str, Any]:
         return custom_themes.list_presets(self, query=query, source=source, limit=limit)
 

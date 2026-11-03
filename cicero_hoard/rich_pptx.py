@@ -8,7 +8,7 @@ from pptx.util import Pt
 from pptx.oxml.ns import qn
 from lxml import etree
 from .layouts import fmt_num,Box,Para
-from .themes import hex_to_rgb,contrast
+from .themes import hex_to_rgb,contrast,on_accent
 
 
 def add_table(slide,box,theme,lang):
@@ -22,7 +22,7 @@ def add_table(slide,box,theme,lang):
             cell.fill.solid();cell.fill.fore_color.rgb=_rgb(theme['colors']['accent'] if i==0 else theme['colors']['surface'] if i-1 in (data.get('highlight_rows') or []) else theme['colors']['background'])
             _fill_text(cell.text_frame,Box('text',0,0,1,1,paras=[Para(str(value),size,bold=i==0,color='text')]),theme,lang)
             for run in cell.text_frame.paragraphs[0].runs:
-                run.font.color.rgb=_rgb('#FFFFFF' if i==0 else theme['colors']['text'])
+                run.font.color.rgb=_rgb(on_accent(theme) if i==0 else theme['colors']['text'])
     return frame
 
 

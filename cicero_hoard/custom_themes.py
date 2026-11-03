@@ -47,6 +47,27 @@ def save_custom(svc: Any, theme: dict[str, Any], *, source_ref: str, revision: s
     return get_custom(svc, clean["id"]) or clean
 
 
+def delete_custom(svc: Any, theme_id: str) -> dict[str, Any]:
+    """Delete a saved theme. Built-in themes cannot be deleted. Decks that used it move to the built-in theme of the same kind
+    (``oscuro`` for a dark page, the default otherwise), so previews and exports keep working; finished export files are kept."""
+    from .errors import NotFound
+    from .themes import DEFAULT_THEME, luminance
+
+    theme_id = (theme_id or "").strip()
+    if theme_id in BUILTIN_IDS:
+        raise CiceroError(f"{theme_id!r} is a built-in theme and cannot be deleted.", code="builtin_theme")
+    theme = get_custom(svc, theme_id)
+    if not theme:
+        raise NotFound(f"There is no saved theme {theme_id!r}.")
+    fallback = "oscuro" if luminance(theme["colors"]["background"]) < 0.4 else DEFAULT_THEME
+    moved = [r["id"] for r in svc.db.query("SELECT id FROM decks WHERE theme = ? ORDER BY id", (theme_id,))]
+    with svc.db.transaction() as conn:
+        conn.execute("UPDATE decks SET theme = ?, updated_ts = ? WHERE theme = ?", (fallback, svc.clock(), theme_id))
+        conn.execute("DELETE FROM custom_themes WHERE id = ?", (theme_id,))
+    svc.emit("cicero.theme.deleted", {"id": theme_id, "name": theme["name"], "ref": theme_ref(theme_id), "decks": moved, "fallback": fallback})
+    return {"deleted": theme_id, "name": theme["name"], "decks_moved": moved, "fallback": fallback}
+
+
 def all_themes(svc: Any) -> list[dict[str, Any]]:
     return [*list_themes(), *list_custom(svc)]
 

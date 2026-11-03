@@ -128,6 +128,18 @@ READABLE_ON = {"text": ("background", "surface"), "muted": ("background", "surfa
                "accent": ("background", "surface"), "accent2": ("background", "surface")}
 
 
+def on_accent(theme: dict[str, Any], minimum: float = MIN_CONTRAST) -> str:
+    """The colour for text set on an accent fill (table headers): white when it reads, otherwise the theme's page or text colour
+    when one reads (a dark theme's light accent takes its own dark page), otherwise whichever reads best, black included."""
+    colors = theme["colors"]
+    if contrast("#ffffff", colors["accent"]) >= minimum:
+        return "#ffffff"
+    for own in (colors["background"], colors["text"]):
+        if contrast(own, colors["accent"]) >= minimum:
+            return own
+    return max((colors["background"], colors["text"], "#000000"), key=lambda c: contrast(c, colors["accent"]))
+
+
 def contrast_issues(theme: dict[str, Any], minimum: float = MIN_CONTRAST) -> list[dict[str, Any]]:
     """The pairs of a theme that fall below ``minimum`` (WCAG contrast): ``[{"fg", "bg", "ratio"}]``; empty when the theme passes."""
     colors = theme["colors"]

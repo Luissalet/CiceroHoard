@@ -273,6 +273,10 @@ class ThemeFromTokensArgs(BaseModel):
     deck_id: Optional[str] = Field(None, max_length=40, description="Also apply the new theme to this presentation.")
 
 
+class ThemeDeleteArgs(BaseModel):
+    theme_id: str = Field(..., min_length=1, max_length=80, description="Id of a saved theme (made from a design system or a preset), as deck_theme lists it.")
+
+
 class ExportArgs(BaseModel):
     deck_id: str = DeckId
     format: ExportFormat
@@ -499,6 +503,10 @@ def run_theme_from_tokens(svc: Services, a: ThemeFromTokensArgs) -> dict:
     return out
 
 
+def run_theme_delete(svc: Services, a: ThemeDeleteArgs) -> dict:
+    return {"ok": True, **svc.theme_delete(a.theme_id)}
+
+
 def run_deck_export(svc: Services, a: ExportArgs) -> dict:
     export = svc.export(a.deck_id, a.format)
     path, _ = store.export_file(svc, export["id"])
@@ -662,6 +670,12 @@ TOOLS: list[Tool] = [
          "Colours are adjusted to read (contrast 4.5:1); a font that is not a Windows font is replaced. Sinónimos: usar mi marca, identidad visual, paleta corporativa, design system, tokens.\n"
          "Keywords: theme, design system, tokens, brand, palette, vitruvius.",
          ThemeFromTokensArgs, _ann(False, False, True, True), run_theme_from_tokens),
+    Tool("theme_delete",
+         "Delete a saved theme (one made from a design system or a preset). Borrar tema.\n"
+         "Built-in themes cannot be deleted. Presentations that used it move to the built-in theme of the same kind (claro, or oscuro "
+         "for a dark page) and keep exporting; finished export files are kept.\n"
+         "Sinónimos: eliminar tema, quitar tema, borrar paleta, limpiar temas.\nKeywords: theme, delete, remove, custom theme.",
+         ThemeDeleteArgs, _ann(False, True, True), run_theme_delete),
     Tool("template_inspect", "Inspect a PPTX template: dimensions, layouts, source slides and editable shape IDs.\n"
          "Use these IDs to map title, subtitle and content slots for any presentation. Inspeccionar una plantilla.",
          TemplateInspectArgs, _ann(True, False, True), run_template_inspect),

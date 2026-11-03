@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Any, Callable, Optional
 
 from .layouts import Box, Para, Plan, W, H, build_plan, fmt_num, is_card
-from .themes import COLOR_KEYS, css_font_stack, series_colors, theme_of
+from .themes import COLOR_KEYS, css_font_stack, on_accent, series_colors, theme_of
 
 AssetLookup = Callable[[str], Optional[dict[str, Any]]]
 _HEX = re.compile(r"^#[0-9a-fA-F]{6}$")
@@ -258,7 +258,7 @@ def box_html(box: Box, theme: dict[str, Any], lang: str, assets: AssetLookup, sr
 
 
 def _theme_vars(theme: dict[str, Any]) -> str:
-    colors = "".join(f"--{k}:{_hex(theme['colors'][k])};" for k in COLOR_KEYS)
+    colors = "".join(f"--{k}:{_hex(theme['colors'][k])};" for k in COLOR_KEYS) + f"--on-accent:{_hex(on_accent(theme))};"
     return colors + f"--f-h:{css_font_stack(theme['fonts']['heading'])};--f-b:{css_font_stack(theme['fonts']['body'])};"
 
 
@@ -312,7 +312,7 @@ body{font-family:"Segoe UI",Arial,sans-serif;background:#1c1f26;min-height:100vh
 .t h2{font-weight:inherit}
 .t p,.t h2,.t li{white-space:pre-wrap}
 .visual-table{border-collapse:collapse;width:100%;height:100%;font-family:var(--f-b);color:var(--text);table-layout:fixed}
-.visual-table th{text-align:left;background:var(--accent);color:white;padding:12px}
+.visual-table th{text-align:left;background:var(--accent);color:var(--on-accent,white);padding:12px}
 .visual-table td{padding:12px;border-bottom:1px solid var(--muted);overflow-wrap:anywhere}
 .fragment{opacity:1;visibility:visible}
 .media-poster{display:none}

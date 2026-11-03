@@ -127,6 +127,7 @@ export const api = {
   },
   templateClear: (id) => request("POST", `${deckBase(id)}/template`, { body: { clear: true } }),
   designSystems: () => request("GET", "/api/themes/design-systems"),
+  themeDelete: (id) => request("DELETE", `/api/themes/${encodeURIComponent(id)}`),
   themeFromTokens: (tokens_id, mode) => request("POST", "/api/themes/from-tokens", { body: { tokens_id, mode } }),
   designPresets: (params) => request("GET", "/api/themes/presets", { params }),
   pickPresets: (deck_id, n = 3) => request("POST", "/api/themes/presets/pick", { body: { deck_id, n } }),

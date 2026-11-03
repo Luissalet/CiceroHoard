@@ -139,3 +139,62 @@ def test_tool_lists_picks_makes_and_applies(svc):
     assert picked["recommended"] == "ledger-ink" and len(picked["presets"]) == 3
     made = at.call_tool(svc, "deck_theme_from_preset", {"deck_id": deck["id"], "preset": "ledger-ink", "mode": "dark"})
     assert made["applied_to"] == deck["id"] and store.deck_view(svc, deck["id"])["theme"] == made["theme_id"] and made["contrast_issues"] == []
+
+
+def test_table_headers_read_on_a_dark_preset_accent(svc):
+    # A dark preset's accent is pulled light to read on the page; white header text on it fell to about 2:1 (HTML and PPTX).
+    theme = svc.theme_from_preset("ledger-ink", "dark")["theme"]
+    on = themes.on_accent(theme)
+    assert themes.contrast("#ffffff", theme["colors"]["accent"]) < 4.5 and themes.contrast(on, theme["colors"]["accent"]) >= 4.5
+    assert themes.on_accent(themes.theme_of({"theme": "claro"})) == "#ffffff"         # a dark accent keeps white
+    deck = new_deck(svc, theme=theme["id"])
+    store.add_slide(svc, deck["id"], layout="table", title="Gasto", blocks=[{"type": "table", "headers": ["Area", "Gasto"], "rows": [["Nube", "12"], ["Viajes", "4"]]}])
+    assert f"--on-accent:{on}" in svc.preview_html(deck["id"])
+    pptx = svc.export(deck["id"], "pptx")
+    ppath, _ = store.export_file(svc, pptx["id"])
+    prs = Presentation(io.BytesIO(ppath.read_bytes()))
+    tables = [s.table for slide in prs.slides for s in slide.shapes if s.has_table]
+    assert tables and str(tables[0].cell(0, 0).text_frame.paragraphs[0].runs[0].font.color.rgb).lower() == on.lstrip("#")
+
+
+def test_deleting_a_saved_theme_moves_its_decks_to_a_builtin_and_exports_still_work(svc):
+    dark = svc.theme_from_preset("ledger-ink", "dark")["theme"]["id"]
+    light = svc.theme_from_preset("ledger-ink", "light")["theme"]["id"]
+    on_dark, on_light, other = new_deck(svc, theme=dark), new_deck(svc, theme=light), new_deck(svc, theme="editorial")
+    store.add_slide(svc, on_dark["id"], title="Gasto", blocks=[{"type": "bullets", "items": ["uno"]}])
+    gone = svc.theme_delete(dark)
+    assert gone == {"deleted": dark, "name": "Ledger Ink (oscuro)", "decks_moved": [on_dark["id"]], "fallback": "oscuro"}
+    assert custom_themes.get_custom(svc, dark) is None and store.deck_view(svc, on_dark["id"])["theme"] == "oscuro"
+    assert "cicero.theme.deleted" in svc._emit.types()
+    assert svc.theme_delete(light)["fallback"] == "claro" and store.deck_view(svc, on_light["id"])["theme"] == "claro"
+    assert store.deck_view(svc, other["id"])["theme"] == "editorial"
+    pptx = svc.export(on_dark["id"], "pptx")                                    # the moved deck still exports, in the built-in
+    ppath, _ = store.export_file(svc, pptx["id"])
+    assert {str(s.background.fill.fore_color.rgb).lower() for s in Presentation(io.BytesIO(ppath.read_bytes())).slides} == {"12151c"}
+    with pytest.raises(CiceroError) as caught:
+        svc.theme_delete("claro")
+    assert caught.value.code == "builtin_theme"
+    from cicero_hoard.errors import NotFound
+    with pytest.raises(NotFound):
+        svc.theme_delete(dark)
+    again = svc.theme_from_preset("ledger-ink", "dark")                         # can be made again afterwards
+    assert again["created"] is True and again["theme"]["id"] == dark
+
+
+def test_theme_delete_route_and_tool(tmp_path):
+    from fastapi.testclient import TestClient
+    from cicero_hoard.main import create_app
+
+    s = make_services(tmp_path, hub=StudioHub())
+    made = s.theme_from_preset("ledger-ink", "light")["theme"]["id"]
+    deck = new_deck(s, theme=made)
+    with TestClient(create_app(s.config, s), base_url="http://127.0.0.1") as client:
+        assert client.delete("/api/themes/claro").status_code == 400
+        out = client.delete(f"/api/themes/{made}")
+        assert out.status_code == 200 and out.json()["decks_moved"] == [deck["id"]]
+        assert client.delete(f"/api/themes/{made}").status_code == 404
+        assert all(t["id"] != made for t in client.get("/api/themes").json()["items"])
+        again = s.theme_from_preset("ledger-ink", "dark")["theme"]["id"]
+        assert at.call_tool(s, "theme_delete", {"theme_id": again}) == {"ok": True, "deleted": again, "name": "Ledger Ink (oscuro)", "decks_moved": [], "fallback": "oscuro"}
+        with pytest.raises(CiceroError):
+            at.call_tool(s, "theme_delete", {"theme_id": "oscuro"})
