@@ -105,7 +105,37 @@ def audit_document(svc: Any, deck: dict[str, Any]) -> tuple[str, float]:
     css = AUDIT_CSS.replace("aspect-ratio:16/9", f"aspect-ratio:{ratio:.6f}")
     description = (deck.get("brief") or deck.get("title") or "").strip()[:300]
     head = f'<meta name="description" content="{esc(description)}"><style id="cicero-audit-layout">{css}</style>'
-    return html.replace("</head>", head + "</head>", 1), ratio
+    return mark_slides(html.replace("</head>", head + "</head>", 1)), ratio
+
+
+# Every element of slide ``n`` (1-based) gets ``id="cs{n}-{k}"`` when it has none: the studio names elements by tag#id.class in its
+# evidence ("h2#cs6-3 “Resultados del…”") and finds their boxes by that label, so a finding lands on its own slide even when
+# several slides share the same words (a box found by quoted text alone is the first slide with those words).
+MARK = re.compile(r"#cs(\d+)-\d+")
+SECTION_MARK = re.compile(r"#s-([0-9A-Za-z_-]+)")
+_SECTION_START = re.compile(r'(?=<section class="slide"[\s>])')
+_OPEN_TAG = re.compile(r"<([a-zA-Z][a-zA-Z0-9-]*)(?=[\s/>])([^>]*)>")
+_RAW_TEXT = re.compile(r"(<script\b.*?</script\s*>|<style\b.*?</style\s*>)", re.S | re.I)
+
+
+def mark_slides(html: str) -> str:
+    """The audit document with an id on every element of every slide that has none (``cs{slide number}-{k}``)."""
+    parts = _SECTION_START.split(html)
+    out = [parts[0]]
+    for n, part in enumerate(parts[1:], start=1):
+        end = part.find("</section>")
+        body, rest = (part, "") if end < 0 else (part[:end], part[end:])
+        counter = [0]
+
+        def add(match: "re.Match[str]") -> str:
+            if re.search(r"\sid\s*=", match.group(2)):
+                return match.group(0)
+            counter[0] += 1
+            return f'<{match.group(1)} id="cs{n}-{counter[0]}"{match.group(2)}>'
+
+        pieces = _RAW_TEXT.split(body)  # script and style text is left alone
+        out.append("".join(p if i % 2 else _OPEN_TAG.sub(add, p) for i, p in enumerate(pieces)) + rest)
+    return "".join(out)
 
 
 def fingerprint(deck: dict[str, Any]) -> str:
@@ -174,16 +204,23 @@ def map_findings(findings: list[dict[str, Any]], slides: list[dict[str, Any]], r
     """One issue per (finding, slide) for the slides a finding is on, one deck issue for the rest; ``scope`` slide / deck / page."""
     issues: list[dict[str, Any]] = []
     texts = [_slide_text(s) for s in slides]
+    by_id = {s["id"]: i for i, s in enumerate(slides)}
     for f in findings:
         if f.get("pass") is True or f.get("waived"):
             continue
-        items = _items(f.get("evidence"))
+        named = _items(f.get("evidence"))
+        items = [MARK.sub("", i) for i in named]  # the ids are Cicero's own marks: shown without them
         base = {"source": "design", "rule": f.get("check_id") or "", "title": f.get("title") or "", "message": f.get("detail") or f.get("title") or "",
                 "fix": f.get("fix") or "", "severity": _severity(f), "tier": f.get("tier"), "pass": f.get("pass") if isinstance(f.get("pass"), str) else None,
                 "slop": bool(f.get("slop")), "widths": (f.get("evidence") or {}).get("widths") if isinstance(f.get("evidence"), dict) else None,
                 "items": items[:6]}
         indexes: list[int] = []
-        for box in f.get("boxes") or []:
+        for item in named:  # an element named by its mark (or the slide's own id) is on that slide, whatever its words
+            mark, section = MARK.search(item), SECTION_MARK.search(item)
+            i = int(mark.group(1)) - 1 if mark else by_id.get(section.group(1)) if section else None
+            if i is not None and 0 <= i < len(slides) and i not in indexes:
+                indexes.append(i)
+        for box in ([] if indexes else f.get("boxes") or []):
             i = slide_index_for_box(box, f.get("box_width") or 1440, len(slides), ratio)
             if i is not None and i not in indexes:
                 indexes.append(i)

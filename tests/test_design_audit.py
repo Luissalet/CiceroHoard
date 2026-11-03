@@ -208,3 +208,40 @@ def test_the_audit_is_asked_for_and_kept_in_the_ui_language(studio):
     studio.hub.audit["result"]["lang"] = "en"
     back = studio.design_audit_latest(deck["id"], "en")                    # and back, from the studio's English
     assert back["lang"] == "en" and back["summary"].startswith("A light polish")
+
+
+SAME_START = "Resultados del primer trimestre por region: "
+
+
+def similar_titles(svc, regions=("norte", "sur", "este", "oeste", "centro, todos sus canales", "islas, canales y clientes")):
+    deck = new_deck(svc, title="Ventas", brief="Ventas regionales")
+    for region in regions:
+        store.add_slide(svc, deck["id"], title=SAME_START + region, blocks=[{"type": "bullets", "items": ["Margen estable"]}])
+    return store.deck_view(svc, deck["id"])
+
+
+def test_every_slide_element_carries_its_slide_number(studio):
+    deck = similar_titles(studio)
+    html, _ = da.audit_document(studio, deck)
+    assert 'id="cs1-1"' in html and 'id="cs6-1"' in html and 'id="cs7-1"' not in html
+    assert all(f'id="s-{s["id"]}"' in html for s in deck["slides"])            # the slides keep their own ids
+    assert '<h2 id="cs5-' in html and '<main class="deck">' in html            # nothing outside the slides is touched
+    assert da.mark_slides('<section class="slide" id="s-a"><script>var x="<b>";</script><p id="keep">x</p><i>y</i></section>') == \
+        '<section class="slide" id="s-a"><script>var x="<b>";</script><p id="keep">x</p><i id="cs1-1">y</i></section>'
+
+
+def test_similar_titles_map_by_the_element_the_studio_names_not_by_its_words(studio):
+    # The studio quotes only the first ~32 characters, the same on every slide here, and its box for a quote is the first slide
+    # with those words; the marks name the slide (live: stubs on slides 5 and 6 were shown on slides 1 and 2).
+    deck = similar_titles(studio)
+    finding = {"check_id": "quality/unbalanced-heading", "title": "Unbalanced heading", "detail": "2 heading(s) leave a stub.", "level": "warning",
+               "evidence": ["h2#cs5-3 “Resultados del primer trimestre ” last line 130px of 1136px",
+                            "h2#cs6-3 “Resultados del primer trimestre ” last line 135px of 1136px"],
+               "boxes": [[152, 102, 1136, 46], [152, 850, 1136, 46]], "box_width": 1440, "pass": "type"}
+    issues = da.map_findings([finding], deck["slides"])
+    assert [i["slide_number"] for i in issues] == [5, 6] and [i["slide_id"] for i in issues] == [s["id"] for s in deck["slides"][4:6]]
+    assert issues[0]["items"][0] == "h2 “Resultados del primer trimestre ” last line 130px of 1136px"   # shown without the mark
+    section = {**finding, "evidence": [f"section#s-{deck['slides'][3]['id']}.slide overflow"], "boxes": []}
+    assert [i["slide_number"] for i in da.map_findings([section], deck["slides"])] == [4]
+    unmarked = {**finding, "evidence": ["h2 “Resultados del primer trimestre ”"], "boxes": [[152, 102, 1136, 46]]}
+    assert [i["slide_number"] for i in da.map_findings([unmarked], deck["slides"])] == [1]   # without a mark the box still decides
