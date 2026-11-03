@@ -1,6 +1,8 @@
 """Deck design audit: the audited document, mapping findings to slides, storage, staleness, the studio being down, routes and tool."""
 from __future__ import annotations
 
+import copy
+
 import pytest
 
 from cicero_hoard import agent_tools as at
@@ -173,3 +175,36 @@ def test_routes_and_tool(tmp_path, monkeypatch):
         one = at.call_tool(svc, "deck_design_audit", {"deck_id": deck["id"], "action": "latest", "slide_id": deck["slides"][0]["id"]})
         assert len(one["issues"]) == 2 and all(i["fix"] for i in one["issues"])
         assert at.call_tool(svc, "deck_design_audit", {"deck_id": new_deck(svc)["id"], "action": "latest"})["audit"] is None
+
+
+def _in_spanish(answer):
+    """What the studio answers for the same render in Spanish: the same findings and rule ids with Spanish titles, fixes and summary."""
+    es = copy.deepcopy(answer)
+    es["result"]["lang"] = "es"
+    es["result"]["plan"]["summary"] = "Un pulido ligero: 4 cambios, sin rediseño."
+    es["result"]["credit"] = "Lista de indicios y método: unslop, de Damir Sokolovsky (CC BY 4.0)."
+    for f in es["result"]["findings"]:
+        f["title"], f["fix"], f["detail"] = f"ES {f['check_id']}", "Arreglo en castellano.", "Detalle en castellano."
+    return es
+
+
+def test_the_audit_is_asked_for_and_kept_in_the_ui_language(studio):
+    deck = four_slides(studio)
+    assert da.norm_lang(None, None) == "es" and da.norm_lang("en") == "en" and da.norm_lang(None, "en-US,en;q=0.9") == "en"
+    english = studio.design_audit(deck["id"], lang="en")
+    assert [c for c in studio.hub.calls if c[1] == "design_slop_audit"][-1][2]["lang"] == "en"
+    assert english["lang"] == "en" and english["summary"].startswith("A light polish")
+    studio.hub.audit = _in_spanish(recorded("design_slop_audit"))
+    spanish = studio.design_audit_latest(deck["id"], "es")                 # re-read, not re-audited
+    asked = [c for c in studio.hub.calls if c[1] == "design_slop_audit"][-1][2]
+    assert asked["lang"] == "es" and asked["render_id"] == english["render_id"] and "html" not in asked
+    assert spanish["lang"] == "es" and spanish["summary"].startswith("Un pulido ligero") and "CC BY 4.0" in spanish["credit"]
+    assert spanish["slop_score"] == english["slop_score"] and spanish["counts"] == english["counts"]
+    assert all(i["title"].startswith("ES ") and i["fix"] == "Arreglo en castellano." for i in spanish["issues"])
+    calls = len(studio.hub.calls)
+    again = studio.design_audit_latest(deck["id"], "es")                   # kept in Spanish: no new call
+    assert len(studio.hub.calls) == calls and again["lang"] == "es"
+    studio.hub.audit = recorded("design_slop_audit")
+    studio.hub.audit["result"]["lang"] = "en"
+    back = studio.design_audit_latest(deck["id"], "en")                    # and back, from the studio's English
+    assert back["lang"] == "en" and back["summary"].startswith("A light polish")

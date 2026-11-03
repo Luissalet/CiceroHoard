@@ -56,13 +56,15 @@ def from_preset(request: Request, body: ThemeFromPresetBody):
 
 
 @router.get("/decks/{deck_id}/design-audit")
-def design_audit_latest(request: Request, deck_id: str):
-    return {"audit": services(request).design_audit_latest(deck_id)}
+def design_audit_latest(request: Request, deck_id: str, lang: Optional[str] = None):
+    from ..design_audit import norm_lang
+    return {"audit": services(request).design_audit_latest(deck_id, norm_lang(lang, request.headers.get("accept-language")))}
 
 
 @router.post("/decks/{deck_id}/design-audit")
 def design_audit_run(request: Request, deck_id: str, body: DesignAuditBody):
-    return {"audit": services(request).design_audit(deck_id, prepare=body.prepare)}
+    from ..design_audit import norm_lang
+    return {"audit": services(request).design_audit(deck_id, prepare=body.prepare, lang=norm_lang(body.lang, request.headers.get("accept-language")))}
 
 
 @router.post("/design/vitruvius/start")

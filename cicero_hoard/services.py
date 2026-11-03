@@ -192,13 +192,13 @@ class Services:
     def theme_from_preset(self, name: str, mode: str = "light") -> dict[str, Any]:
         return custom_themes.from_preset(self, name, mode)
 
-    def design_audit(self, deck_id: str, prepare: bool = False) -> dict[str, Any]:
+    def design_audit(self, deck_id: str, prepare: bool = False, lang: Optional[str] = None) -> dict[str, Any]:
         from . import design_audit
-        return design_audit.run(self, deck_id, prepare=prepare)
+        return design_audit.run(self, deck_id, prepare=prepare, lang=lang)
 
-    def design_audit_latest(self, deck_id: str) -> Optional[dict[str, Any]]:
+    def design_audit_latest(self, deck_id: str, lang: Optional[str] = None) -> Optional[dict[str, Any]]:
         from . import design_audit
-        return design_audit.latest(self, deck_id)
+        return design_audit.latest(self, deck_id, lang)
 
     def vitruvius_prepare(self) -> dict[str, Any]:
         """Start Vitruvius's Hoard through the Hub when it is down, and switch its design module on."""

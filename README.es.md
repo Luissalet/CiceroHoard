@@ -94,6 +94,8 @@ construidas con el mismo código, de modo que no pueden discrepar.
   envoltorio HTML se listan aparte. Se guarda la última revisión de cada presentación y se marca como desfasada cuando
   cambian las diapositivas o el tema. Si Vitruvius no está en marcha, la revisión lo dice y ofrece arrancarlo desde el
   Hoard Hub (y encender su módulo de diseño); `prepare=true` hace lo mismo desde MCP.
+  La revisión se pide en el idioma de la interfaz (`lang` es o en, castellano por defecto, en la ruta, la herramienta y la
+  llamada a Vitruvius); una revisión guardada en el otro idioma se vuelve a leer del estudio al cambiar de idioma, sin auditar de nuevo.
 - **Exportaciones**:
   - PPTX con cuadros de texto reales, párrafos con viñeta, notas del orador y gráficos nativos (editables en el
     paquete ofimático), en 16:9.

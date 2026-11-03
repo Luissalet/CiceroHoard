@@ -50,12 +50,12 @@ export function AuditIssue({ issue }) {
 // The "Review design" action: runs Vitruvius's slop audit on the deck and shows the score; the findings themselves are
 // merged by Review into the per-slide groups of the deck check.
 export default function DesignAudit({ deckId, audit, setAudit, loading }) {
-  const { t } = useApp();
+  const { t, lang } = useApp();
   const [state, setState] = React.useState({ busy: false, error: null, code: null });
   const runAudit = async (prepare) => {
     setState({ busy: true, error: null, code: null });
     try {
-      const res = await api.designAuditRun(deckId, prepare);
+      const res = await api.designAuditRun(deckId, prepare, lang);
       setAudit(res.audit);
       setState({ busy: false, error: null, code: null });
     } catch (error) {

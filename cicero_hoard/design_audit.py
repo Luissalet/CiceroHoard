@@ -217,25 +217,56 @@ def summarise(result: dict[str, Any], deck: dict[str, Any], ratio: float, clock:
             "issues": issues, "per_slide": per_slide,
             "counts": {s: sum(1 for i in issues if i["scope"] == s) for s in ("slide", "deck", "page")},
             "studio_url": f"{VITRUVIUS_URL}/design/#/critique/{render_id}" if render_id else None,
-            "credit": result.get("credit") or "", "fingerprint": fingerprint(deck), "created_ts": clock()}
+            "credit": result.get("credit") or "", "fingerprint": fingerprint(deck), "created_ts": clock(), "lang": result.get("lang") or "en"}
 
 
-def run(svc: Any, deck_id: str, *, prepare: bool = False) -> dict[str, Any]:
+def norm_lang(lang: Optional[str] = None, accept_language: Optional[str] = None) -> str:
+    """The language the review is shown in: explicit ``lang``, else the first supported Accept-Language tag, else Spanish."""
+    for cand in [lang] + [p.split(";")[0] for p in (accept_language or "").split(",")]:
+        c = (cand or "").strip().lower()[:2]
+        if c in ("es", "en"):
+            return c
+    return "es"
+
+
+def relocalize(svc: Any, audit: dict[str, Any], lang: str) -> dict[str, Any]:
+    """The kept audit read again in ``lang``: Vitruvius keeps its audits in English and renders them in either language, so the
+    titles, messages, fixes, summary and credit are replaced by the studio's text for the same rules; slides, scores and
+    mapping stay. If the studio does not answer, the audit stays as it was."""
+    if not audit.get("render_id") or audit.get("lang") == lang:
+        return audit
+    answer = svc.family_call(VITRUVIUS_APP, AUDIT_TOOL, {"render_id": audit["render_id"], "full": True, "rerender": False, "lang": lang}, timeout=AUDIT_TIMEOUT_S)
+    result = answer.get("result") if answer.get("ok") else None
+    if not isinstance(result, dict) or result.get("lang") != lang or "findings" not in result:
+        return audit
+    by_rule = {f.get("check_id"): f for f in result.get("findings") or []}
+    for issue in audit.get("issues") or []:
+        f = by_rule.get(issue.get("rule"))
+        if f:
+            issue["title"], issue["fix"] = f.get("title") or issue["title"], f.get("fix") or issue.get("fix", "")
+            issue["message"] = f.get("detail") or f.get("title") or issue["message"]
+    audit["summary"] = (result.get("plan") or {}).get("summary") or audit.get("summary", "")
+    audit["credit"], audit["lang"] = result.get("credit") or audit.get("credit", ""), lang
+    return audit
+
+
+def run(svc: Any, deck_id: str, *, prepare: bool = False, lang: Optional[str] = None) -> dict[str, Any]:
     """Audit a deck with the studio and keep the result. ``prepare``: start the studio through the Hub (and switch its design
-    module on) when it is not ready, then try once more."""
+    module on) when it is not ready, then try once more. ``lang`` (es default | en): the language of the findings."""
     from . import decks as store
 
+    lang = norm_lang(lang)
     deck = store.deck_view(svc, deck_id)
     if not deck["slides"]:
         raise CiceroError("The presentation has no slides to review.", code="no_slides")
     html, ratio = audit_document(svc, deck)
-    arguments: dict[str, Any] = {"html": html, "full": True}
+    arguments: dict[str, Any] = {"html": html, "full": True, "lang": lang}
     if len(html) > MAX_INLINE_HTML:  # the studio takes up to 2 MB inline; a deck with big pictures goes as a local file
         folder = svc.config.data_dir / "design-audits"
         folder.mkdir(parents=True, exist_ok=True)
         page = folder / f"{deck_id}.html"
         page.write_text(html, encoding="utf-8")
-        arguments = {"path": str(page.resolve()), "full": True}
+        arguments = {"path": str(page.resolve()), "full": True, "lang": lang}
     answer = svc.family_call(VITRUVIUS_APP, AUDIT_TOOL, arguments, timeout=AUDIT_TIMEOUT_S)
     prepared: Optional[dict[str, Any]] = None
     if not answer.get("ok") and prepare:
@@ -259,8 +290,9 @@ def run(svc: Any, deck_id: str, *, prepare: bool = False) -> dict[str, Any]:
     return {**audit, "stale": False}
 
 
-def latest(svc: Any, deck_id: str) -> Optional[dict[str, Any]]:
-    """The deck's last audit, with ``stale`` true when the slides or the theme changed since."""
+def latest(svc: Any, deck_id: str, lang: Optional[str] = None) -> Optional[dict[str, Any]]:
+    """The deck's last audit, with ``stale`` true when the slides or the theme changed since. With ``lang`` it is shown in that
+    language (re-read from the studio when it was kept in the other one, and kept that way)."""
     from . import decks as store
 
     deck = store.deck_view(svc, deck_id)
@@ -268,6 +300,10 @@ def latest(svc: Any, deck_id: str) -> Optional[dict[str, Any]]:
     if not row:
         return None
     audit = jload(row["result"], {})
+    if lang and audit.get("lang", "en") != norm_lang(lang):
+        audit = relocalize(svc, audit, norm_lang(lang))
+        if audit.get("lang") == norm_lang(lang):
+            svc.db.execute("UPDATE design_audits SET result = ? WHERE deck_id = ?", (json.dumps(audit, ensure_ascii=False), deck_id))
     known = {s["id"] for s in deck["slides"]}
     audit["issues"] = [i for i in audit.get("issues", []) if not i.get("slide_id") or i["slide_id"] in known]
     audit["stale"] = audit.get("fingerprint") != fingerprint(deck)

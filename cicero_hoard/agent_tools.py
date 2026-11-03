@@ -783,14 +783,15 @@ class DesignAuditArgs(BaseModel):
     action: Literal["run", "latest"] = Field("run", description="run: audit now (takes 5-60 s); latest: the last audit, with stale=true when slides or theme changed since.")
     prepare: bool = Field(False, description="When Vitruvius's Hoard is down or its design module is off: start it through the Hub, switch the module on and retry.")
     slide_id: Optional[str] = Field(None, max_length=40, description="Only the issues of this slide.")
+    lang: Optional[Literal["es", "en"]] = Field(None, description="Language of titles, messages and fixes: es (Spanish, Spain; default) or en. latest re-reads a kept audit in that language.")
 
 
 def run_deck_design_audit(svc: Services, a: DesignAuditArgs) -> dict:
-    audit = svc.design_audit(a.deck_id, prepare=a.prepare) if a.action == "run" else svc.design_audit_latest(a.deck_id)
+    audit = svc.design_audit(a.deck_id, prepare=a.prepare, lang=a.lang) if a.action == "run" else svc.design_audit_latest(a.deck_id, a.lang or "es")
     if audit is None:
         return {"audit": None, "hint": "No audit yet: call with action=run."}
     issues = audit["issues"] if not a.slide_id else [i for i in audit["issues"] if i.get("slide_id") == a.slide_id]
-    keep = ("slop_score", "mode", "signs", "summary", "counts", "per_slide", "by_pass", "studio_url", "render_id", "stale", "credit", "prepared")
+    keep = ("slop_score", "mode", "signs", "summary", "counts", "per_slide", "by_pass", "studio_url", "render_id", "stale", "credit", "prepared", "lang")
     return {**{k: audit[k] for k in keep if k in audit},
             "issues": [{k: i.get(k) for k in ("scope", "slide_id", "slide_number", "severity", "rule", "title", "message", "fix", "pass", "slop")} for i in issues]}
 

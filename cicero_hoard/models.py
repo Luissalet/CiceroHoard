@@ -540,6 +540,7 @@ class PresetPickBody(_Body):
 
 class DesignAuditBody(_Body):
     prepare: bool = False
+    lang: Optional[str] = Field(None, max_length=8)
 
 
 class SlideImageBody(_Body):

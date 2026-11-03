@@ -87,6 +87,8 @@ code, so the two cannot disagree.
   that are about the whole deck or only about the HTML wrapper are listed apart. The last audit of each deck is kept
   and marked out of date when slides or the theme change. When Vitruvius is not running, the review says so and
   offers to start it through the Hoard Hub (and to switch its design module on); `prepare=true` does the same from MCP.
+  The review is asked for in the UI language (`lang` es or en, Spanish by default, on the route, the tool and Vitruvius's
+  call); an audit kept in the other language is re-read from the studio when the language is switched, without auditing again.
 - **Exports**:
   - PPTX with real text boxes, bullet paragraphs, speaker notes and native charts (editable in the office suite),
     16:9 by default, or the attached template's size.

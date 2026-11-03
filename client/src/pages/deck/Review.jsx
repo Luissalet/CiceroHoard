@@ -8,10 +8,10 @@ import VisualReview from "./VisualReview.jsx";
 import DesignAudit, { AuditIssue } from "./DesignAudit.jsx";
 
 export default function Review() {
-  const { t } = useApp();
+  const { t, lang } = useApp();
   const { deckId, deck, run, busy, reload } = useDeck();
   const check = useAsync(() => api.check(deckId), [deckId, deck.updated_at]);
-  const saved = useAsync(() => api.designAudit(deckId), [deckId, deck.updated_at, deck.theme]);
+  const saved = useAsync(() => api.designAudit(deckId, lang), [deckId, deck.updated_at, deck.theme, lang]);
   const [fresh, setFresh] = React.useState(null);
   React.useEffect(() => setFresh(null), [deckId, saved.data]);
   const audit = fresh || saved.data?.audit || null;
