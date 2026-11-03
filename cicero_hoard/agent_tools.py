@@ -776,6 +776,71 @@ TOOLS.extend([
     Tool('dataset_connect','Connect a cloud spreadsheet or SQL query to the immutable scheduled data worker.\nPublic sheets or configured credentials; SQLAlchemy databases use read queries. Returns link_id for dataset_bind.',connectors.ConnectorArgs,_ann(False,False,False),connectors.create,capped=False,timeout_s=120),
 ])
 
+
+
+class DesignAuditArgs(BaseModel):
+    deck_id: str = DeckId
+    action: Literal["run", "latest"] = Field("run", description="run: audit now (takes 5-60 s); latest: the last audit, with stale=true when slides or theme changed since.")
+    prepare: bool = Field(False, description="When Vitruvius's Hoard is down or its design module is off: start it through the Hub, switch the module on and retry.")
+    slide_id: Optional[str] = Field(None, max_length=40, description="Only the issues of this slide.")
+
+
+def run_deck_design_audit(svc: Services, a: DesignAuditArgs) -> dict:
+    audit = svc.design_audit(a.deck_id, prepare=a.prepare) if a.action == "run" else svc.design_audit_latest(a.deck_id)
+    if audit is None:
+        return {"audit": None, "hint": "No audit yet: call with action=run."}
+    issues = audit["issues"] if not a.slide_id else [i for i in audit["issues"] if i.get("slide_id") == a.slide_id]
+    keep = ("slop_score", "mode", "signs", "summary", "counts", "per_slide", "by_pass", "studio_url", "render_id", "stale", "credit", "prepared")
+    return {**{k: audit[k] for k in keep if k in audit},
+            "issues": [{k: i.get(k) for k in ("scope", "slide_id", "slide_number", "severity", "rule", "title", "message", "fix", "pass", "slop")} for i in issues]}
+
+
+class ThemeFromPresetArgs(BaseModel):
+    deck_id: Optional[str] = Field(None, max_length=40, description="Apply the theme to this deck; with pick=true its brief chooses the presets.")
+    preset: Optional[str] = Field(None, max_length=80, description="A preset name; omit to list presets (query/source) or pick three (pick=true).")
+    mode: Literal["light", "dark"] = "light"
+    pick: bool = Field(False, description="Three presets for the deck brief (or brief), one recommended.")
+    brief: Optional[str] = Field(None, max_length=2000)
+    query: Optional[str] = Field(None, max_length=120, description="Filter the list by name, genre, keyword or character.")
+    source: Optional[Literal["vitruvius", "hallmark", "hoard"]] = None
+    limit: int = Field(40, ge=1, le=200)
+
+
+def run_deck_theme_from_preset(svc: Services, a: ThemeFromPresetArgs) -> dict:
+    compact = lambda p: {k: p.get(k) for k in ("name", "title", "genre", "character", "fonts", "radius", "swatches", "why") if p.get(k) is not None}  # noqa: E731
+    if not a.preset:
+        if a.pick or a.brief:
+            from .api.themes import deck_brief
+            brief = a.brief or (deck_brief(svc, a.deck_id) if a.deck_id else "")
+            picked = svc.pick_presets(brief)
+            return {"brief": picked["brief"], "recommended": picked["recommended"], "presets": [compact(p) for p in picked["items"]],
+                    "ranked_by": picked["ranked_by"], "hint": "Call again with preset=<name> (and deck_id) to make and apply the theme."}
+        listed = svc.design_presets(query=a.query, source=a.source, limit=a.limit)
+        return {"total": listed["total"], "count": listed["count"], "presets": [compact(p) for p in listed["items"]],
+                "hint": "Call again with preset=<name> (and deck_id, mode) to make and apply the theme."}
+    made = svc.theme_from_preset(a.preset, a.mode)
+    out = {"ok": True, "theme_id": made["theme"]["id"], "theme": {k: made["theme"][k] for k in ("id", "name", "colors", "fonts", "radius")},
+           "created": made["created"], "warnings": made["warnings"], "contrast_issues": made["contrast_issues"]}
+    if a.deck_id:
+        store.update_deck(svc, a.deck_id, {"theme": made["theme"]["id"]})
+        out["applied_to"] = a.deck_id
+    return out
+
+
+TOOLS.extend([
+    Tool("deck_design_audit",
+         "Review a deck's design with the design studio: slop score, fixes mapped to slides. Revisar diseño.\n"
+         "Exports the deck as stacked HTML, Vitruvius's Hoard renders it at 8 widths and finds generated-look signs; each finding goes to its slide\n"
+         "(scope slide), the deck (deck) or the HTML wrapper (page) with the fix text. prepare=true starts the studio through the Hub when it is down.\n"
+         "Sinónimos: auditoría de diseño, slop, parece hecho por IA, revisar estilo, arreglos de diseño.",
+         DesignAuditArgs, _ann(False, False, True, True), run_deck_design_audit, capped=False, timeout_s=300),
+    Tool("deck_theme_from_preset",
+         "Make and apply a theme from a Vitruvius design preset (colours, fonts, radius). Tema desde preset.\n"
+         "112 presets with light and dark colours. No preset lists them (query, source); pick=true proposes three for the deck brief, one recommended. Colours are adjusted to read\n"
+         "(contrast 4.5:1); non-Windows fonts are replaced. PPTX, PDF and HTML exports use the theme. Sinónimos: paleta, estilo, preset, tema para el encargo.",
+         ThemeFromPresetArgs, _ann(False, False, True, True), run_deck_theme_from_preset, timeout_s=180),
+])
+
 TOOLS_BY_NAME = {t.name: t for t in TOOLS}
 
 

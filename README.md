@@ -73,6 +73,20 @@ code, so the two cannot disagree.
   that would not read are pulled until they reach 4.5:1 (the changes are listed), and a font that is not on Windows is
   replaced by the closest one that is. Cards in a theme with a radius are drawn with rounded corners in the preview,
   the HTML and the PPTX.
+  The "From Vitruvius" tab of the theme screen (`deck_theme_from_preset`) lists the 112 design presets of
+  Vitruvius's Hoard with their light and dark swatches, searchable, and "Pick three for this brief" asks the studio
+  for three presets that fit the deck's title, brief, audience and tone (one recommended, with the reason). Applying
+  one, light or dark, maps its tokens into a custom theme: page = background, cards = secondary, text = foreground,
+  muted = muted-foreground, accent = primary, second accent = `chart-2` or the primary in the page's own hue, fonts
+  reduced to Windows fonts, radius = `md`; the same 4.5:1 fit applies and the theme is used by the preview and the
+  PPTX, PDF and HTML exports.
+- **Design review with Vitruvius** (`deck_design_audit`, "Review design" in the Review tab): the deck is rendered as
+  its stacked HTML (every slide, pictures inline) and sent to Vitruvius's Hoard `design_slop_audit`, which renders it
+  at eight widths, scores the generated look 0-100 and proposes fixes. Each finding is placed on its slide (by the
+  boxes the studio returns, or by the words it quotes) and shown next to the deck check with the fix text; findings
+  that are about the whole deck or only about the HTML wrapper are listed apart. The last audit of each deck is kept
+  and marked out of date when slides or the theme change. When Vitruvius is not running, the review says so and
+  offers to start it through the Hoard Hub (and to switch its design module on); `prepare=true` does the same from MCP.
 - **Exports**:
   - PPTX with real text boxes, bullet paragraphs, speaker notes and native charts (editable in the office suite),
     16:9 by default, or the attached template's size.
@@ -229,6 +243,8 @@ turns that off; the slow tools publish how long the bridge waits for them). Regi
 | `deck_theme` | list the themes (built-in and made from design systems) or apply one |
 | `template_inspect`, `deck_template` | inspect a local PPTX, attach it with optional per-layout bindings, read the attachment, or detach it with `clear=true` |
 | `theme_from_tokens` | make a theme from a design system (`tokens_id`, `mode` light or dark, optional `deck_id` to apply it); without `tokens_id` it lists the design systems |
+| `deck_theme_from_preset` | make a theme from a Vitruvius design preset (`preset`, `mode`, optional `deck_id` to apply it); without `preset` it lists presets (`query`, `source`) or, with `pick=true`, proposes three for the deck brief |
+| `deck_design_audit` | review the deck's design with Vitruvius's slop audit (`action` run or latest); slop score, mode, plan summary and every finding mapped to its slide with the fix; `prepare=true` starts the studio through the Hub when it is down |
 | `deck_export` | export to `pptx`, `pdf`, `html` or `md`; returns the file path and the download URL |
 | `deck_animations` | native animations and transitions of the exported PPTX: get, set, reset, preview, list |
 | `deck_visual_review` | render every slide in the browser, keep a PNG of each and check hard rules before exporting; `fix` applies the minimum font size where text overflows |

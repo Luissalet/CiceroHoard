@@ -1,0 +1,170 @@
+{
+ "ok": true,
+ "app": "vitruvius",
+ "tool": "design_pick_themes",
+ "status": 200,
+ "contract": "shared",
+ "result": {
+  "brief": "Quarterly budget review for the finance team",
+  "recommended": "ledger-ink",
+  "candidates": [
+   {
+    "name": "ledger-ink",
+    "title": "Ledger Ink",
+    "source": "vitruvius",
+    "genre": "editorial",
+    "character": "A bound ledger: warm stock, ruled hairlines, figures in mono, one bookkeeping green for what balances.",
+    "dark_first": false,
+    "keywords": [
+     "finance",
+     "accounting",
+     "ledger",
+     "invoices",
+     "bookkeeping",
+     "tax",
+     "payments",
+     "budget"
+    ],
+    "fonts": {
+     "heading": "IBM Plex Serif",
+     "body": "IBM Plex Sans",
+     "mono": "IBM Plex Mono"
+    },
+    "radius": "4px",
+    "swatches": {
+     "light": [
+      "#f7f3eb",
+      "#fcf9f3",
+      "#e8e4dc",
+      "#267b4c",
+      "#1f1a10"
+     ],
+     "dark": [
+      "#120f08",
+      "#1a1710",
+      "#221f19",
+      "#6ebf8c",
+      "#f1eee7"
+     ]
+    },
+    "contrast": {
+     "light_text": 15.64,
+     "dark_text": 16.51,
+     "light_primary": 5.22,
+     "dark_primary": 8.93
+    },
+    "why": "fits: finance, budget",
+    "score": 4.21,
+    "hits": [
+     "finance",
+     "budget"
+    ]
+   },
+   {
+    "name": "sage-ledger",
+    "title": "Sage Ledger",
+    "source": "vitruvius",
+    "genre": "modern-minimal",
+    "character": "Calm back office: sage neutrals, one family, figures aligned, accent only on the settled state.",
+    "dark_first": false,
+    "keywords": [
+     "saas",
+     "invoicing",
+     "b2b",
+     "subscriptions",
+     "billing",
+     "team",
+     "dashboard",
+     "workflow"
+    ],
+    "fonts": {
+     "heading": "Albert Sans",
+     "body": "Albert Sans",
+     "mono": "Red Hat Mono"
+    },
+    "radius": "8px",
+    "swatches": {
+     "light": [
+      "#f3fbf4",
+      "#fbfffb",
+      "#e4ece5",
+      "#407754",
+      "#141d16"
+     ],
+     "dark": [
+      "#0b110c",
+      "#131914",
+      "#1b211c",
+      "#82ba95",
+      "#eaf0eb"
+     ]
+    },
+    "contrast": {
+     "light_text": 16.36,
+     "dark_text": 16.52,
+     "light_primary": 5.27,
+     "dark_primary": 8.85
+    },
+    "why": "fits: team",
+    "score": 2.21,
+    "hits": [
+     "team"
+    ]
+   },
+   {
+    "name": "hallmark-coral",
+    "title": "Coral",
+    "source": "hallmark",
+    "genre": "modern-minimal",
+    "character": "warm grey paper and a felt desk, cotton stationery lit from the left, General Sans throughout with Geist Mono figures, letterpress card controls, coral pressed into the stock for the one settled state",
+    "dark_first": false,
+    "keywords": [
+     "saas",
+     "platform",
+     "billing",
+     "payments",
+     "invoicing",
+     "dashboard",
+     "b2b",
+     "startup"
+    ],
+    "fonts": {
+     "heading": "General Sans",
+     "body": "Newsreader",
+     "mono": "IBM Plex Mono"
+    },
+    "radius": "6px",
+    "swatches": {
+     "light": [
+      "#fcf3ee",
+      "#fffaf6",
+      "#ede4df",
+      "#af3e30",
+      "#221812"
+     ],
+     "dark": [
+      "#140e09",
+      "#1c1611",
+      "#241e1a",
+      "#fb8371",
+      "#f4ede8"
+     ]
+    },
+    "contrast": {
+     "light_text": 15.9,
+     "dark_text": 16.53,
+     "light_primary": 5.91,
+     "dark_primary": 8.08
+    },
+    "why": "fits: team",
+    "score": 2.01,
+    "hits": [
+     "team"
+    ]
+   }
+  ],
+  "source": "keywords",
+  "model": null,
+  "error": null
+ }
+}

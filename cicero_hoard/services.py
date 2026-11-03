@@ -183,6 +183,31 @@ class Services:
     def theme_from_tokens(self, tokens_id: str, mode: str = "light") -> dict[str, Any]:
         return custom_themes.from_tokens(self, tokens_id, mode)
 
+    def design_presets(self, query: Optional[str] = None, source: Optional[str] = None, limit: int = 200) -> dict[str, Any]:
+        return custom_themes.list_presets(self, query=query, source=source, limit=limit)
+
+    def pick_presets(self, brief: str, n: int = 3, use_model: bool = True) -> dict[str, Any]:
+        return custom_themes.pick_presets(self, brief, n=n, use_model=use_model)
+
+    def theme_from_preset(self, name: str, mode: str = "light") -> dict[str, Any]:
+        return custom_themes.from_preset(self, name, mode)
+
+    def design_audit(self, deck_id: str, prepare: bool = False) -> dict[str, Any]:
+        from . import design_audit
+        return design_audit.run(self, deck_id, prepare=prepare)
+
+    def design_audit_latest(self, deck_id: str) -> Optional[dict[str, Any]]:
+        from . import design_audit
+        return design_audit.latest(self, deck_id)
+
+    def vitruvius_prepare(self) -> dict[str, Any]:
+        """Start Vitruvius's Hoard through the Hub when it is down, and switch its design module on."""
+        from . import design_audit
+        probe = self.family_call(design_audit.VITRUVIUS_APP, "software_modules", {}, timeout=15.0)
+        if probe.get("ok"):
+            return {"started": False, "running": True, **design_audit.enable_design(self)}
+        return {**design_audit.start_vitruvius(self)}
+
     def preview_html(self, deck_id: str, slide_id: Optional[str] = None, mode: str = 'stacked',layout: Optional[str] = None) -> str:
         deck = store.deck_view(self, deck_id)
         from .advanced import hydrate

@@ -7,6 +7,7 @@ A deck's ``theme`` column holds either a built-in id or the id of a row here; ``
 from __future__ import annotations
 
 import json
+import re
 from typing import Any
 
 from .errors import CiceroError
@@ -83,7 +84,7 @@ def _hub_result(answer: dict[str, Any], what: str) -> dict[str, Any]:
     """The tool result inside a hub proxy answer, or a CiceroError that says what went wrong."""
     if not answer.get("ok"):
         reason = answer.get("error") or f"status {answer.get('status')}"
-        if answer.get("status") in (404, 502, 503) or "not reachable" in str(reason) or "unreachable" in str(reason):
+        if answer.get("status") in (None, 404, 502, 503) or "not reachable" in str(reason) or "unreachable" in str(reason) or "URLError" in str(reason):
             reason = f"{reason}. Is the design-system app running and linked to the hub?"
         raise CiceroError(f"Could not {what}: {reason}", code="family_unavailable")
     result = answer.get("result")
@@ -123,3 +124,71 @@ def from_tokens(svc: Any, tokens_id: str, mode: str = "light") -> dict[str, Any]
     svc.emit("cicero.theme.created", {"id": theme_id, "name": name, "ref": theme_ref(theme_id), "from": source_ref})
     svc.refs_link(theme_ref(theme_id), source_ref, "derived_from", from_label=name, to_label=str(system.get("name") or tokens_id))
     return {"theme": saved, "created": True, "warnings": warnings, "contrast_issues": contrast_issues(saved)}
+
+
+# ---------------- from a design preset ----------------
+
+def preset_ref(name: str) -> str:
+    return f"hoard://{VITRUVIUS_APP}/preset/{name}"
+
+
+def _preset_row(p: dict[str, Any]) -> dict[str, Any]:
+    keep = ("name", "title", "source", "genre", "character", "dark_first", "keywords", "fonts", "radius", "swatches", "contrast", "why", "score")
+    return {k: p[k] for k in keep if k in p}
+
+
+def list_presets(svc: Any, *, query: str | None = None, source: str | None = None, limit: int = 200) -> dict[str, Any]:
+    """The design presets of the studio (name, title, genre, character, fonts, radius, light/dark swatches)."""
+    args: dict[str, Any] = {"limit": max(1, min(200, int(limit)))}
+    if query:
+        args["query"] = query
+    if source:
+        args["source"] = source
+    result = _hub_result(svc.family_call(VITRUVIUS_APP, "design_preset_list", args), "list design presets")
+    items = [_preset_row(p) for p in result.get("presets") or [] if isinstance(p, dict) and p.get("name")]
+    return {"items": items, "count": len(items), "total": result.get("total", len(items))}
+
+
+def pick_presets(svc: Any, brief: str, *, n: int = 3, use_model: bool = True) -> dict[str, Any]:
+    """Three presets for a brief, one recommended (the studio ranks by keywords and, when a model answers, re-ranks with reasons)."""
+    brief = (brief or "").strip()
+    if len(brief) < 3:
+        raise CiceroError("Write a brief (what the presentation is for) before asking for themes.", code="brief_required")
+    result = _hub_result(svc.family_call(VITRUVIUS_APP, "design_pick_themes", {"brief": brief[:2000], "n": max(1, min(6, int(n))), "use_model": use_model},
+                                         timeout=150.0), "pick themes for the brief")
+    items = [_preset_row(p) for p in result.get("candidates") or [] if isinstance(p, dict) and p.get("name")]
+    return {"brief": brief, "recommended": result.get("recommended"), "items": items, "ranked_by": result.get("source"), "model": result.get("model"),
+            "model_error": result.get("error")}
+
+
+def from_preset(svc: Any, name: str, mode: str = "light") -> dict[str, Any]:
+    """Save a design preset as a Cicero theme. Idempotent: the same preset in the same state gives back the theme it made before."""
+    from .hoard_link import artifacts
+    from .themes import theme_from_preset
+
+    name = (name or "").strip()
+    if not name:
+        raise CiceroError("preset is required.")
+    if mode not in ("light", "dark"):
+        raise CiceroError("mode must be 'light' or 'dark'.")
+    result = _hub_result(svc.family_call(VITRUVIUS_APP, "design_preset_list", {"name": name}), f"read design preset {name!r}")
+    preset = result.get("preset")
+    tokens = preset.get("tokens") if isinstance(preset, dict) else None
+    if not isinstance(tokens, dict) or not isinstance(tokens.get("colors"), dict):
+        raise CiceroError("That preset did not send its tokens; update the design-system app.", code="family_unavailable")
+    source_ref = preset_ref(name)
+    # ``mapping`` names the token-to-theme rules: changing them makes a new theme instead of returning one made by older rules
+    picked = {"mode": mode, "colors": tokens["colors"].get(mode), "fonts": tokens.get("fonts"), "radius": tokens.get("radius"), "mapping": 2}
+    revision = artifacts.revision_for(json.dumps(picked, sort_keys=True))
+    existing = find_by_source(svc, source_ref, revision)
+    if existing:
+        return {"theme": existing, "created": False, "warnings": existing.get("warnings", []), "contrast_issues": contrast_issues(existing), "preset": name}
+    title = str(preset.get("title") or name)
+    label = f"{title} ({'oscuro' if mode == 'dark' else 'claro'})"
+    slug = re.sub(r"[^a-z0-9-]+", "-", name.lower()).strip("-")[:40] or "preset"
+    theme_id = f"vp-{slug}-{mode}-{revision.split(':')[-1][:8]}"
+    theme, warnings = theme_from_preset(tokens, theme_id=theme_id, name=label, mode=mode)
+    saved = save_custom(svc, theme, source_ref=source_ref, revision=revision, warnings=warnings)
+    svc.emit("cicero.theme.created", {"id": theme_id, "name": label, "ref": theme_ref(theme_id), "from": source_ref})
+    svc.refs_link(theme_ref(theme_id), source_ref, "derived_from", from_label=label, to_label=title)
+    return {"theme": saved, "created": True, "warnings": warnings, "contrast_issues": contrast_issues(saved), "preset": name}

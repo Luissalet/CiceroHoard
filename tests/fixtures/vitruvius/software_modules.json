@@ -1,0 +1,33 @@
+{
+ "ok": true,
+ "app": "vitruvius",
+ "tool": "software_modules",
+ "status": 200,
+ "contract": "shared",
+ "result": {
+  "modules": [
+   {
+    "module": "design",
+    "state": "on",
+    "enabled": true,
+    "automatic": false,
+    "active_requests": 0
+   },
+   {
+    "module": "babel",
+    "state": "off",
+    "enabled": false,
+    "automatic": false,
+    "active_requests": 0
+   },
+   {
+    "module": "theseus",
+    "state": "off",
+    "enabled": false,
+    "automatic": false,
+    "active_requests": 0
+   }
+  ],
+  "theseus_status": "Existing capabilities; development incomplete and in progress, resumed by Luis on 20 October 2026."
+ }
+}

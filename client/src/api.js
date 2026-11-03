@@ -128,6 +128,12 @@ export const api = {
   templateClear: (id) => request("POST", `${deckBase(id)}/template`, { body: { clear: true } }),
   designSystems: () => request("GET", "/api/themes/design-systems"),
   themeFromTokens: (tokens_id, mode) => request("POST", "/api/themes/from-tokens", { body: { tokens_id, mode } }),
+  designPresets: (params) => request("GET", "/api/themes/presets", { params }),
+  pickPresets: (deck_id, n = 3) => request("POST", "/api/themes/presets/pick", { body: { deck_id, n } }),
+  themeFromPreset: (preset, mode) => request("POST", "/api/themes/from-preset", { body: { preset, mode } }),
+  designAudit: (id) => request("GET", `${deckBase(id)}/design-audit`),
+  designAuditRun: (id, prepare) => request("POST", `${deckBase(id)}/design-audit`, { body: { prepare: !!prepare } }),
+  vitruviusStart: () => request("POST", "/api/design/vitruvius/start"),
   check: (id) => request("GET", `${deckBase(id)}/check`),
   visualReview: (id, fix) => request("POST", `${deckBase(id)}/visual-review`, { body: { fix: !!fix } }),
 

@@ -3,7 +3,8 @@ import { api } from "../../api.js";
 import { useApp } from "../../App.jsx";
 import { useDeck } from "../../components/deckContext.js";
 import SlideFrame from "../../components/SlideFrame.jsx";
-import { Empty, Section, useAsync } from "../../components/ui.jsx";
+import { Empty, Section, Tabs, panelId, tabId, useAsync } from "../../components/ui.jsx";
+import { StartVitruvius } from "./DesignAudit.jsx";
 
 // Client-side miniature of a title slide in the theme's colours and fonts (the real slide is the iframe below).
 function Mini({ theme, title, subtitle }) {
@@ -86,8 +87,130 @@ function FromDesignSystems({ deckId, setDeck, run, busy, onCreated }) {
   );
 }
 
+// A preset's swatches (background, card, muted, primary, foreground) shaped like a theme for the miniature.
+function swatchTheme(preset, mode) {
+  const s = preset.swatches?.[mode];
+  if (!s || s.length < 5) return null;
+  return { colors: { background: s[0], surface: s[2], text: s[4], muted: s[4], accent: s[3], accent2: s[3] },
+           fonts: { heading: preset.fonts?.heading, body: preset.fonts?.body } };
+}
+
+function PresetCard({ preset, recommended, busy, onUse }) {
+  const { t } = useApp();
+  return (
+    <div className="theme-card" data-preset={preset.name}>
+      <div className="grid grid-cols-2 gap-2">
+        {["light", "dark"].map((mode) => {
+          const th = swatchTheme(preset, mode);
+          return th ? <Mini key={mode} theme={th} title={preset.title || preset.name} subtitle={t(mode === "light" ? "theme_ds_light" : "theme_ds_dark")} /> : <span key={mode} />;
+        })}
+      </div>
+      {["light", "dark"].map((mode) => (
+        <div key={mode} className="mt-1 flex gap-1" aria-hidden="true">
+          {(preset.swatches?.[mode] || []).map((c, i) => <span key={i} title={c} style={{ width: 18, height: 12, background: c, borderRadius: 2, border: "1px solid #8884" }} />)}
+        </div>
+      ))}
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <span className="font-semibold">{preset.title || preset.name}</span>
+        {recommended && <span className="chip chip-accent">{t("theme_vp_recommended")}</span>}
+        {preset.genre && <span className="help">{preset.genre}</span>}
+      </div>
+      {preset.why && <div className="help">{preset.why}</div>}
+      {preset.character && <div className="help" style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{preset.character}</div>}
+      <div className="help">{preset.fonts?.heading} · {preset.fonts?.body} · {preset.radius}</div>
+      <div className="mt-1 flex flex-wrap gap-2">
+        {["light", "dark"].filter((mode) => preset.swatches?.[mode]).map((mode) => (
+          <button key={mode} type="button" className="btn btn-sm" disabled={!!busy} onClick={() => onUse(preset, mode)} data-use={`${preset.name}:${mode}`}>
+            {t(mode === "light" ? "theme_ds_use_light" : "theme_ds_use_dark")}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+const PAGE = 24;
+
+// "From Vitruvius": the design presets of the family design studio, searchable, and three picked for the deck brief.
+function FromPresets({ deckId, setDeck, run, busy, onCreated }) {
+  const { t, notify } = useApp();
+  const presets = useAsync(() => api.designPresets({ limit: 200 }), []);
+  const [query, setQuery] = React.useState("");
+  const [shown, setShown] = React.useState(PAGE);
+  const [picks, setPicks] = React.useState({ busy: false, data: null, error: null });
+  const [last, setLast] = React.useState(null);
+  const all = presets.data?.items || [];
+  const q = query.trim().toLowerCase();
+  const filtered = q ? all.filter((p) => [p.name, p.title, p.genre, p.character, ...(p.keywords || [])].join(" ").toLowerCase().includes(q)) : all;
+
+  const pick = async () => {
+    setPicks({ busy: true, data: null, error: null });
+    try {
+      setPicks({ busy: false, data: await api.pickPresets(deckId, 3), error: null });
+    } catch (error) {
+      setPicks({ busy: false, data: null, error: error.message });
+    }
+  };
+  const use = (preset, mode) => run(t("busy_saving"), async () => {
+    const made = await api.themeFromPreset(preset.name, mode);
+    const res = await api.deckUpdate(deckId, { theme: made.theme.id });
+    setDeck(res.deck || res);
+    setLast({ name: made.theme.name, warnings: made.warnings || [], created: made.created });
+    onCreated();
+    notify(t(made.created ? "theme_ds_created" : "theme_ds_reused", { name: made.theme.name }));
+    return true;
+  });
+  const failed = presets.error || picks.error;
+  const reloadAll = () => { presets.reload(); if (picks.error) pick(); };
+
+  return (
+    <Section title={t("theme_vp_title")} right={<button type="button" className="btn" onClick={presets.reload} disabled={presets.loading}>{t("theme_ds_reload")}</button>}>
+      <p className="help mb-3">{t("theme_vp_help")}</p>
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <button type="button" className="btn btn-primary" disabled={picks.busy || !!busy} onClick={pick} data-action="pick-presets">
+          {picks.busy ? t("theme_vp_picking") : t("theme_vp_pick")}
+        </button>
+        <input type="search" className="field w-full max-w-xs" placeholder={t("theme_vp_search")} aria-label={t("theme_vp_search")} value={query}
+          onChange={(e) => { setQuery(e.target.value); setShown(PAGE); }} />
+      </div>
+      {failed && (
+        <div className="mb-3 flex flex-wrap items-center gap-2" role="alert">
+          <span className="help">{t("theme_vp_unavailable", { reason: (presets.error && presets.error.message) || picks.error })}</span>
+          <StartVitruvius onStarted={reloadAll} />
+        </div>
+      )}
+      {picks.data && (
+        <div className="mb-4" data-picks="">
+          <h4 className="mb-2 text-[13px] font-semibold">{t("theme_vp_picks")}</h4>
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {picks.data.items.map((p) => <PresetCard key={p.name} preset={p} recommended={p.name === picks.data.recommended} busy={busy} onUse={use} />)}
+          </div>
+        </div>
+      )}
+      {presets.loading && !all.length && <p className="help" role="status">{t("theme_vp_loading")}</p>}
+      {!presets.loading && !presets.error && (
+        <p className="help mb-2">{t("theme_vp_all", { n: Math.min(shown, filtered.length), total: filtered.length })}</p>
+      )}
+      {!presets.loading && !presets.error && q && !filtered.length && <p className="help">{t("theme_vp_none")}</p>}
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        {filtered.slice(0, shown).map((p) => <PresetCard key={p.name} preset={p} busy={busy} onUse={use} />)}
+      </div>
+      {filtered.length > shown && (
+        <button type="button" className="btn mt-3" onClick={() => setShown(shown + PAGE)}>{t("theme_vp_more")}</button>
+      )}
+      {last && (
+        <div className="mt-3" role="status">
+          <div className="help">{t(last.created ? "theme_ds_created" : "theme_ds_reused", { name: last.name })}</div>
+          {last.warnings.length > 0 && <ul className="help mt-1 list-disc pl-5">{last.warnings.map((w) => <li key={w}>{w}</li>)}</ul>}
+        </div>
+      )}
+    </Section>
+  );
+}
+
 export default function Theme() {
   const { t } = useApp();
+  const [source, setSource] = React.useState("theme-ds");
   const { deckId, deck, setDeck, run, busy } = useDeck();
   const themes = useAsync(() => api.themes(), []);
   const items = themes.data?.items || [];
@@ -138,12 +261,18 @@ export default function Theme() {
                 <span className="font-semibold">{th.name}</span>
                 {deck.theme === th.id && <span className="chip chip-accent">{t("theme_current")}</span>}
               </div>
-              <div className="help">{th.fonts?.heading} · {th.fonts?.body}{th.custom ? ` · ${t("theme_ds_badge")}` : ""}</div>
+              <div className="help">{th.fonts?.heading} · {th.fonts?.body}{th.custom ? ` · ${t(String(th.source_ref || "").includes("/preset/") ? "theme_vp_badge" : "theme_ds_badge")}` : ""}</div>
             </label>
           ))}
         </div>
       </Section>
-      <FromDesignSystems deckId={deckId} setDeck={setDeck} run={run} busy={busy} onCreated={themes.reload} />
+      <Tabs label={t("theme_choose")} active={source} onChange={setSource}
+        tabs={[{ key: "theme-ds", label: t("theme_tab_ds") }, { key: "theme-presets", label: t("theme_tab_presets") }]} />
+      <div role="tabpanel" id={panelId(source)} aria-labelledby={tabId(source)}>
+        {source === "theme-ds"
+          ? <FromDesignSystems deckId={deckId} setDeck={setDeck} run={run} busy={busy} onCreated={themes.reload} />
+          : <FromPresets deckId={deckId} setDeck={setDeck} run={run} busy={busy} onCreated={themes.reload} />}
+      </div>
       {first && (
         <Section title={t("theme_real")}>
           {deck.template && <p className="help mb-3">{t("template_preview_help")}</p>}

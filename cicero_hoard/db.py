@@ -167,6 +167,11 @@ MIGRATIONS: list[str] = [
     CREATE TABLE visual_benchmarks(id TEXT PRIMARY KEY,deck_id TEXT NOT NULL REFERENCES decks(id) ON DELETE CASCADE,
       state TEXT NOT NULL,created_ts REAL NOT NULL,updated_ts REAL NOT NULL);
     """,
+    # 9: the latest design audit of each deck (the design studio's slop audit mapped to slides).
+    """
+    CREATE TABLE design_audits(deck_id TEXT PRIMARY KEY REFERENCES decks(id) ON DELETE CASCADE,
+      result TEXT NOT NULL,created_ts REAL NOT NULL);
+    """,
 ]
 
 

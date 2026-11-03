@@ -1,0 +1,197 @@
+{
+ "ok": true,
+ "app": "vitruvius",
+ "tool": "design_preset_list",
+ "status": 200,
+ "contract": "shared",
+ "result": {
+  "count": 4,
+  "total": 112,
+  "presets": [
+   {
+    "name": "ledger-ink",
+    "title": "Ledger Ink",
+    "source": "vitruvius",
+    "genre": "editorial",
+    "character": "A bound ledger: warm stock, ruled hairlines, figures in mono, one bookkeeping green for what balances.",
+    "dark_first": false,
+    "keywords": [
+     "finance",
+     "accounting",
+     "ledger",
+     "invoices",
+     "bookkeeping",
+     "tax",
+     "payments",
+     "budget"
+    ],
+    "fonts": {
+     "heading": "IBM Plex Serif",
+     "body": "IBM Plex Sans",
+     "mono": "IBM Plex Mono"
+    },
+    "radius": "4px",
+    "swatches": {
+     "light": [
+      "#f7f3eb",
+      "#fcf9f3",
+      "#e8e4dc",
+      "#267b4c",
+      "#1f1a10"
+     ],
+     "dark": [
+      "#120f08",
+      "#1a1710",
+      "#221f19",
+      "#6ebf8c",
+      "#f1eee7"
+     ]
+    },
+    "contrast": {
+     "light_text": 15.64,
+     "dark_text": 16.51,
+     "light_primary": 5.22,
+     "dark_primary": 8.93
+    }
+   },
+   {
+    "name": "harbor",
+    "title": "Harbor",
+    "source": "vitruvius",
+    "genre": "modern-minimal",
+    "character": "Container yard at dawn: cool steel greys, condensed labels like hull markings, one signal orange for what moves.",
+    "dark_first": false,
+    "keywords": [
+     "logistics",
+     "shipping",
+     "fleet",
+     "tracking",
+     "freight",
+     "warehouse",
+     "port",
+     "delivery"
+    ],
+    "fonts": {
+     "heading": "Barlow Semi Condensed",
+     "body": "Barlow",
+     "mono": "JetBrains Mono"
+    },
+    "radius": "6px",
+    "swatches": {
+     "light": [
+      "#eff8fe",
+      "#f8feff",
+      "#e1e9ef",
+      "#b13c11",
+      "#121c22"
+     ],
+     "dark": [
+      "#0b1317",
+      "#131b1f",
+      "#1c2327",
+      "#fe825c",
+      "#e9f0f4"
+     ]
+    },
+    "contrast": {
+     "light_text": 16.07,
+     "dark_text": 16.28,
+     "light_primary": 5.96,
+     "dark_primary": 8.05
+    }
+   },
+   {
+    "name": "field-notes",
+    "title": "Field Notes",
+    "source": "vitruvius",
+    "genre": "editorial",
+    "character": "Kraft notebook and a red pencil: serif heads, plain sans notes, the red only for corrections and findings.",
+    "dark_first": false,
+    "keywords": [
+     "research",
+     "notebook",
+     "science",
+     "study",
+     "notes",
+     "field",
+     "journal",
+     "observations"
+    ],
+    "fonts": {
+     "heading": "Literata",
+     "body": "Public Sans",
+     "mono": "Fira Code"
+    },
+    "radius": "2px",
+    "swatches": {
+     "light": [
+      "#ebe8df",
+      "#f0eee8",
+      "#dcd9d0",
+      "#af3c3a",
+      "#1e1a10"
+     ],
+     "dark": [
+      "#16140c",
+      "#1e1c14",
+      "#26241e",
+      "#fb817a",
+      "#f1eee7"
+     ]
+    },
+    "contrast": {
+     "light_text": 14.16,
+     "dark_text": 15.91,
+     "light_primary": 5.95,
+     "dark_primary": 8.02
+    }
+   },
+   {
+    "name": "clinic-calm",
+    "title": "Clinic Calm",
+    "source": "vitruvius",
+    "genre": "modern-minimal",
+    "character": "A quiet waiting room: high legibility, soft teal, generous spacing, nothing that blinks.",
+    "dark_first": false,
+    "keywords": [
+     "health",
+     "clinic",
+     "care",
+     "medication",
+     "patients",
+     "appointments",
+     "pharmacy",
+     "wellbeing"
+    ],
+    "fonts": {
+     "heading": "Atkinson Hyperlegible",
+     "body": "Atkinson Hyperlegible",
+     "mono": "IBM Plex Mono"
+    },
+    "radius": "10px",
+    "swatches": {
+     "light": [
+      "#f1fdfd",
+      "#f9ffff",
+      "#e2eeee",
+      "#127a6b",
+      "#101d1e"
+     ],
+     "dark": [
+      "#0a1414",
+      "#121c1c",
+      "#1b2324",
+      "#64bead",
+      "#e8f1f1"
+     ]
+    },
+    "contrast": {
+     "light_text": 16.61,
+     "dark_text": 16.28,
+     "light_primary": 5.22,
+     "dark_primary": 8.95
+    }
+   }
+  ]
+ }
+}

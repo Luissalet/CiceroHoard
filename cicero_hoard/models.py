@@ -526,6 +526,22 @@ class ThemeFromTokensBody(_Body):
     mode: Literal["light", "dark"] = "light"
 
 
+class ThemeFromPresetBody(_Body):
+    preset: str = Field(..., min_length=1, max_length=80)
+    mode: Literal["light", "dark"] = "light"
+
+
+class PresetPickBody(_Body):
+    deck_id: Optional[str] = Field(None, max_length=40)
+    brief: Optional[str] = Field(None, max_length=2000)
+    n: int = Field(3, ge=1, le=6)
+    use_model: bool = True
+
+
+class DesignAuditBody(_Body):
+    prepare: bool = False
+
+
 class SlideImageBody(_Body):
     prompt: Optional[str] = Field(None, max_length=1000)
 

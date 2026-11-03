@@ -1,0 +1,306 @@
+{
+ "ok": true,
+ "app": "vitruvius",
+ "tool": "design_preset_list",
+ "status": 200,
+ "contract": "shared",
+ "result": {
+  "preset": {
+   "name": "ledger-ink",
+   "title": "Ledger Ink",
+   "source": "vitruvius",
+   "genre": "editorial",
+   "character": "A bound ledger: warm stock, ruled hairlines, figures in mono, one bookkeeping green for what balances.",
+   "keywords": [
+    "finance",
+    "accounting",
+    "ledger",
+    "invoices",
+    "bookkeeping",
+    "tax",
+    "payments",
+    "budget"
+   ],
+   "dark_first": false,
+   "tokens": {
+    "colors": {
+     "light": {
+      "background": "#f7f3eb",
+      "foreground": "#1f1a10",
+      "card": "#fcf9f3",
+      "popover": "#fcf9f3",
+      "muted": "#e8e4dc",
+      "muted-foreground": "#5f5a50",
+      "secondary": "#e5dfd3",
+      "accent": "#d5e9db",
+      "border": "#d3cfc7",
+      "input": "#ccc8c0",
+      "primary": "#267b4c",
+      "destructive": "#c9302d",
+      "card-foreground": "#1f1a10",
+      "popover-foreground": "#1f1a10",
+      "secondary-foreground": "#1f1a10",
+      "accent-foreground": "#1f1a10",
+      "primary-foreground": "#ffffff",
+      "destructive-foreground": "#ffffff",
+      "ring": "#267b4c"
+     },
+     "dark": {
+      "background": "#120f08",
+      "foreground": "#f1eee7",
+      "card": "#1a1710",
+      "popover": "#1a1710",
+      "muted": "#221f19",
+      "muted-foreground": "#aeaaa2",
+      "secondary": "#27241b",
+      "accent": "#14261b",
+      "border": "#312d27",
+      "input": "#36322c",
+      "primary": "#6ebf8c",
+      "destructive": "#e9504d",
+      "card-foreground": "#f1eee7",
+      "popover-foreground": "#f1eee7",
+      "secondary-foreground": "#f1eee7",
+      "accent-foreground": "#f1eee7",
+      "primary-foreground": "#0a0a0f",
+      "destructive-foreground": "#0a0a0f",
+      "ring": "#6ebf8c"
+     }
+    },
+    "radius": {
+     "base": "4px",
+     "sm": "2px",
+     "md": "4px",
+     "lg": "6px",
+     "xl": "10px",
+     "pill": "999px"
+    },
+    "fonts": {
+     "heading": "'IBM Plex Serif', ui-serif, Georgia, serif",
+     "body": "'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif",
+     "mono": "'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace",
+     "families": {
+      "heading": "IBM Plex Serif",
+      "body": "IBM Plex Sans",
+      "mono": "IBM Plex Mono"
+     }
+    },
+    "spacing": {
+     "base": "4px",
+     "density": "comfortable",
+     "scale": [
+      "4px",
+      "8px",
+      "12px",
+      "16px",
+      "24px",
+      "32px",
+      "48px",
+      "64px"
+     ]
+    },
+    "motion": {
+     "duration_ms": {
+      "fast": 96,
+      "base": 160,
+      "slow": 256
+     },
+     "easing": "cubic-bezier(0.2, 0, 0, 1)"
+    }
+   },
+   "oklch": {
+    "light": {
+     "background": "oklch(0.965 0.012 85.0)",
+     "foreground": "oklch(0.220 0.019 85.0)",
+     "card": "oklch(0.983 0.008 85.0)",
+     "popover": "oklch(0.983 0.008 85.0)",
+     "muted": "oklch(0.920 0.012 85.0)",
+     "muted-foreground": "oklch(0.470 0.017 85.0)",
+     "secondary": "oklch(0.905 0.018 85.0)",
+     "accent": "oklch(0.915 0.028 155.0)",
+     "border": "oklch(0.855 0.012 85.0)",
+     "input": "oklch(0.835 0.012 85.0)",
+     "primary": "oklch(0.520 0.110 155.0)",
+     "destructive": "oklch(0.550 0.190 27.0)",
+     "card-foreground": "oklch(0.220 0.019 85.0)",
+     "popover-foreground": "oklch(0.220 0.019 85.0)",
+     "secondary-foreground": "oklch(0.220 0.019 85.0)",
+     "accent-foreground": "oklch(0.220 0.019 85.0)",
+     "primary-foreground": "oklch(1.000 0.000 89.9)",
+     "destructive-foreground": "oklch(1.000 0.000 89.9)",
+     "ring": "oklch(0.520 0.110 155.0)"
+    },
+    "dark": {
+     "background": "oklch(0.170 0.014 85.0)",
+     "foreground": "oklch(0.950 0.010 85.0)",
+     "card": "oklch(0.205 0.014 85.0)",
+     "popover": "oklch(0.205 0.014 85.0)",
+     "muted": "oklch(0.240 0.012 85.0)",
+     "muted-foreground": "oklch(0.740 0.012 85.0)",
+     "secondary": "oklch(0.260 0.016 85.0)",
+     "accent": "oklch(0.250 0.033 155.0)",
+     "border": "oklch(0.300 0.012 85.0)",
+     "input": "oklch(0.320 0.012 85.0)",
+     "primary": "oklch(0.740 0.110 155.0)",
+     "destructive": "oklch(0.640 0.190 25.0)",
+     "card-foreground": "oklch(0.950 0.010 85.0)",
+     "popover-foreground": "oklch(0.950 0.010 85.0)",
+     "secondary-foreground": "oklch(0.950 0.010 85.0)",
+     "accent-foreground": "oklch(0.950 0.010 85.0)",
+     "primary-foreground": "oklch(0.147 0.011 285.0)",
+     "destructive-foreground": "oklch(0.147 0.011 285.0)",
+     "ring": "oklch(0.740 0.110 155.0)"
+    }
+   },
+   "hue": {
+    "paper": 85,
+    "accent": 155
+   },
+   "contrast": {
+    "light_text": 15.64,
+    "dark_text": 16.51,
+    "light_primary": 5.22,
+    "dark_primary": 8.93
+   }
+  },
+  "registry_item": {
+   "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+   "name": "ledger-ink",
+   "type": "registry:theme",
+   "title": "Ledger Ink",
+   "description": "A bound ledger: warm stock, ruled hairlines, figures in mono, one bookkeeping green for what balances.",
+   "cssVars": {
+    "theme": {
+     "font-sans": "'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif",
+     "font-heading": "'IBM Plex Serif', ui-serif, Georgia, serif",
+     "font-mono": "'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace",
+     "radius": "0.25rem"
+    },
+    "light": {
+     "background": "oklch(0.965 0.012 85.0)",
+     "foreground": "oklch(0.220 0.019 85.0)",
+     "card": "oklch(0.983 0.008 85.0)",
+     "popover": "oklch(0.983 0.008 85.0)",
+     "muted": "oklch(0.920 0.012 85.0)",
+     "muted-foreground": "oklch(0.470 0.017 85.0)",
+     "secondary": "oklch(0.905 0.018 85.0)",
+     "accent": "oklch(0.915 0.028 155.0)",
+     "border": "oklch(0.855 0.012 85.0)",
+     "input": "oklch(0.835 0.012 85.0)",
+     "primary": "oklch(0.520 0.110 155.0)",
+     "destructive": "oklch(0.550 0.190 27.0)",
+     "card-foreground": "oklch(0.220 0.019 85.0)",
+     "popover-foreground": "oklch(0.220 0.019 85.0)",
+     "secondary-foreground": "oklch(0.220 0.019 85.0)",
+     "accent-foreground": "oklch(0.220 0.019 85.0)",
+     "primary-foreground": "oklch(1.000 0.000 89.9)",
+     "destructive-foreground": "oklch(1.000 0.000 89.9)",
+     "ring": "oklch(0.520 0.110 155.0)"
+    },
+    "dark": {
+     "background": "oklch(0.170 0.014 85.0)",
+     "foreground": "oklch(0.950 0.010 85.0)",
+     "card": "oklch(0.205 0.014 85.0)",
+     "popover": "oklch(0.205 0.014 85.0)",
+     "muted": "oklch(0.240 0.012 85.0)",
+     "muted-foreground": "oklch(0.740 0.012 85.0)",
+     "secondary": "oklch(0.260 0.016 85.0)",
+     "accent": "oklch(0.250 0.033 155.0)",
+     "border": "oklch(0.300 0.012 85.0)",
+     "input": "oklch(0.320 0.012 85.0)",
+     "primary": "oklch(0.740 0.110 155.0)",
+     "destructive": "oklch(0.640 0.190 25.0)",
+     "card-foreground": "oklch(0.950 0.010 85.0)",
+     "popover-foreground": "oklch(0.950 0.010 85.0)",
+     "secondary-foreground": "oklch(0.950 0.010 85.0)",
+     "accent-foreground": "oklch(0.950 0.010 85.0)",
+     "primary-foreground": "oklch(0.147 0.011 285.0)",
+     "destructive-foreground": "oklch(0.147 0.011 285.0)",
+     "ring": "oklch(0.740 0.110 155.0)"
+    }
+   },
+   "meta": {
+    "source": "vitruvius",
+    "genre": "editorial",
+    "keywords": [
+     "finance",
+     "accounting",
+     "ledger",
+     "invoices",
+     "bookkeeping",
+     "tax",
+     "payments",
+     "budget"
+    ],
+    "spacing": {
+     "base": "4px",
+     "density": "comfortable",
+     "scale": [
+      "4px",
+      "8px",
+      "12px",
+      "16px",
+      "24px",
+      "32px",
+      "48px",
+      "64px"
+     ]
+    },
+    "motion": {
+     "duration_ms": {
+      "fast": 96,
+      "base": 160,
+      "slow": 256
+     },
+     "easing": "cubic-bezier(0.2, 0, 0, 1)"
+    },
+    "hex": {
+     "light": {
+      "background": "#f7f3eb",
+      "foreground": "#1f1a10",
+      "card": "#fcf9f3",
+      "popover": "#fcf9f3",
+      "muted": "#e8e4dc",
+      "muted-foreground": "#5f5a50",
+      "secondary": "#e5dfd3",
+      "accent": "#d5e9db",
+      "border": "#d3cfc7",
+      "input": "#ccc8c0",
+      "primary": "#267b4c",
+      "destructive": "#c9302d",
+      "card-foreground": "#1f1a10",
+      "popover-foreground": "#1f1a10",
+      "secondary-foreground": "#1f1a10",
+      "accent-foreground": "#1f1a10",
+      "primary-foreground": "#ffffff",
+      "destructive-foreground": "#ffffff",
+      "ring": "#267b4c"
+     },
+     "dark": {
+      "background": "#120f08",
+      "foreground": "#f1eee7",
+      "card": "#1a1710",
+      "popover": "#1a1710",
+      "muted": "#221f19",
+      "muted-foreground": "#aeaaa2",
+      "secondary": "#27241b",
+      "accent": "#14261b",
+      "border": "#312d27",
+      "input": "#36322c",
+      "primary": "#6ebf8c",
+      "destructive": "#e9504d",
+      "card-foreground": "#f1eee7",
+      "popover-foreground": "#f1eee7",
+      "secondary-foreground": "#f1eee7",
+      "accent-foreground": "#f1eee7",
+      "primary-foreground": "#0a0a0f",
+      "destructive-foreground": "#0a0a0f",
+      "ring": "#6ebf8c"
+     }
+    },
+    "dark_first": false
+   }
+  },
+  "registry_url": "/api/design/registry/ledger-ink.json"
+ }
+}

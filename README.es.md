@@ -79,6 +79,21 @@ construidas con el mismo código, de modo que no pueden discrepar.
   colores, tipografías y radio de esquinas, los colores que no se leerían se acercan al blanco o al negro hasta llegar a
   4,5:1 (los cambios se listan) y una tipografía que no trae Windows se sustituye por la más parecida que sí. Las
   tarjetas de un tema con radio se dibujan con esquinas redondeadas en la vista previa, el HTML y el PPTX.
+  La pestaña "Desde Vitruvius" de la pantalla de tema (`deck_theme_from_preset`) lista los 112 presets de diseño de
+  Vitruvius's Hoard con sus muestras claras y oscuras, con buscador, y "Elegir tres para este encargo" pide al estudio
+  tres presets que encajen con el título, el encargo, el público y el tono (uno recomendado, con el motivo). Al aplicar
+  uno, claro u oscuro, sus tokens pasan a un tema propio: página = background, tarjetas = secondary, texto =
+  foreground, atenuado = muted-foreground, acento = primary, segundo acento = `chart-2` o el primary en el tono de la página,
+  tipografías reducidas a las de Windows y radio = `md`; se aplica el mismo ajuste a 4,5:1 y el tema lo usan la vista
+  previa y las exportaciones PPTX, PDF y HTML.
+- **Revisión de diseño con Vitruvius** (`deck_design_audit`, "Revisar diseño" en la pestaña Revisión): la presentación
+  se renderiza como su HTML apilado (todas las diapositivas, imágenes incrustadas) y se envía a `design_slop_audit` de
+  Vitruvius's Hoard, que la renderiza a ocho anchos, puntúa el aspecto genérico de 0 a 100 y propone arreglos. Cada
+  hallazgo se coloca en su diapositiva (por las cajas que devuelve el estudio o por las palabras que cita) y aparece
+  junto a la revisión de la presentación con el texto del arreglo; los que afectan a toda la presentación o solo al
+  envoltorio HTML se listan aparte. Se guarda la última revisión de cada presentación y se marca como desfasada cuando
+  cambian las diapositivas o el tema. Si Vitruvius no está en marcha, la revisión lo dice y ofrece arrancarlo desde el
+  Hoard Hub (y encender su módulo de diseño); `prepare=true` hace lo mismo desde MCP.
 - **Exportaciones**:
   - PPTX con cuadros de texto reales, párrafos con viñeta, notas del orador y gráficos nativos (editables en el
     paquete ofimático), en 16:9.
@@ -245,6 +260,8 @@ herramientas de la aplicación en marcha y reenvía cada llamada. Si la aplicaci
 | `deck_rehearsal` | planificar turnos y estimar la duración desde las notas; no afirma haber medido un ensayo |
 | `template_inspect`, `deck_template` | inspeccionar un PPTX local, adjuntarlo con asignaciones opcionales por diseño, consultar la plantilla o quitarla con `clear=true` |
 | `theme_from_tokens` | crear un tema desde un sistema de diseño (`tokens_id`, `mode` claro u oscuro, `deck_id` opcional para aplicarlo); sin `tokens_id` lista los sistemas de diseño |
+| `deck_theme_from_preset` | crear un tema desde un preset de diseño de Vitruvius (`preset`, `mode`, `deck_id` opcional para aplicarlo); sin `preset` lista presets (`query`, `source`) o, con `pick=true`, propone tres para el encargo |
+| `deck_design_audit` | revisar el diseño con la auditoría de slop de Vitruvius (`action` run o latest); puntuación, modo, resumen del plan y cada hallazgo en su diapositiva con el arreglo; `prepare=true` arranca el estudio desde el Hub si está parado |
 | `deck_export` | exportar a `pptx`, `pdf`, `html` o `md`; devuelve la ruta del archivo y la URL de descarga |
 | `deck_animations` | animaciones y transiciones nativas del PPTX exportado: leer, fijar, quitar, previsualizar, listar |
 | `deck_visual_review` | renderiza cada diapositiva en el navegador, guarda un PNG de cada una y aplica reglas duras antes de exportar; `fix` pone la letra mínima donde el texto desborda |

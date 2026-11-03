@@ -1,0 +1,371 @@
+{
+ "ok": true,
+ "app": "vitruvius",
+ "tool": "design_slop_audit",
+ "status": 200,
+ "contract": "shared",
+ "result": {
+  "render_id": "37eca19311f7",
+  "title": "slop audit",
+  "url": "",
+  "widths": [
+   320,
+   375,
+   414,
+   768,
+   1024,
+   1280,
+   1440,
+   1920
+  ],
+  "display_width": 1440,
+  "screenshots": [
+   {
+    "width": 320,
+    "h": 900,
+    "file": "320.png"
+   },
+   {
+    "width": 375,
+    "h": 932,
+    "file": "375.png"
+   },
+   {
+    "width": 414,
+    "h": 1020,
+    "file": "414.png"
+   },
+   {
+    "width": 768,
+    "h": 1816,
+    "file": "768.png"
+   },
+   {
+    "width": 1024,
+    "h": 2392,
+    "file": "1024.png"
+   },
+   {
+    "width": 1280,
+    "h": 2968,
+    "file": "1280.png"
+   },
+   {
+    "width": 1440,
+    "h": 3040,
+    "file": "1440.png"
+   },
+   {
+    "width": 1920,
+    "h": 3040,
+    "file": "1920.png"
+   }
+  ],
+  "findings": [
+   {
+    "check_id": "font.generic-only",
+    "area": "typography",
+    "severity": "warn",
+    "title": "Only default system fonts",
+    "detail": "The page only uses Inter/Roboto/Arial/-apple-system, the default the model reaches for.",
+    "evidence": {
+     "fonts_only_generic": true,
+     "purple_blue_gradient_buttons": false,
+     "emoji_icons": false,
+     "section_count": 4
+    },
+    "fix": "Pick a distinctive heading font paired with a readable body font.",
+    "engine": "browser",
+    "scope": "type",
+    "level": "warning",
+    "tier": "reflex",
+    "pack": "core",
+    "pass": "type",
+    "slop": true,
+    "boxes": [],
+    "box_width": 1440
+   },
+   {
+    "check_id": "layout.no-max-width",
+    "area": "layout",
+    "severity": "warn",
+    "title": "No max-width constraint found",
+    "detail": "The document never sets a max-width, so text can stretch full width on large screens.",
+    "evidence": null,
+    "fix": "Constrain the main content column with a max-width (e.g. 72ch or a fixed px value).",
+    "engine": "static",
+    "scope": "layout",
+    "level": "warning",
+    "tier": "reflex",
+    "pack": "core",
+    "pass": "layout",
+    "slop": false,
+    "boxes": [],
+    "box_width": 1440
+   },
+   {
+    "check_id": "type.line-length",
+    "area": "typography",
+    "severity": "warn",
+    "title": "Lines too long to read comfortably",
+    "detail": "3 paragraph(s) exceed ~90 characters per line.",
+    "evidence": 3,
+    "fix": "Constrain paragraph width (max-width: 65-75ch) for readability.",
+    "engine": "browser",
+    "scope": "type",
+    "level": "warning",
+    "tier": "reflex",
+    "pack": "core",
+    "pass": "type",
+    "slop": false,
+    "boxes": [],
+    "box_width": 1440
+   },
+   {
+    "check_id": "slop/pure-black-white",
+    "area": "color",
+    "severity": "error",
+    "title": "Pure black or white outside the tokens",
+    "detail": "3 pure black or white literal(s) outside the token block.",
+    "evidence": [
+     ".slide: background: #000",
+     "html: background: #fff",
+     "body: background: #fff"
+    ],
+    "fix": "Tint toward the anchor hue (chroma 0.005 or more).",
+    "engine": "static",
+    "scope": "color",
+    "level": "error",
+    "tier": "floor",
+    "pack": "slop",
+    "pass": "color",
+    "slop": true,
+    "boxes": [],
+    "box_width": 1440
+   },
+   {
+    "check_id": "craft/title-meta",
+    "area": "content",
+    "severity": "info",
+    "title": "Missing title or meta description",
+    "detail": "Missing meta description.",
+    "evidence": [
+     "meta description"
+    ],
+    "fix": "Add both.",
+    "engine": "static",
+    "scope": "content",
+    "level": "advisory",
+    "tier": "finish",
+    "pack": "craft",
+    "pass": "copy",
+    "slop": false,
+    "boxes": [],
+    "box_width": 1440
+   },
+   {
+    "check_id": "craft/no-text-balance",
+    "area": "typography",
+    "severity": "info",
+    "title": "Display heads without text-wrap: balance",
+    "detail": "4 display heading(s) set without text-wrap: balance.",
+    "evidence": [
+     "h2",
+     "h2",
+     "h2",
+     "h2"
+    ],
+    "fix": "text-wrap: balance on display heads.",
+    "engine": "static",
+    "scope": "type",
+    "level": "advisory",
+    "tier": "finish",
+    "pack": "craft",
+    "pass": "details",
+    "slop": false,
+    "boxes": [
+     [
+      176,
+      342,
+      1088,
+      74
+     ],
+     [
+      152,
+      854,
+      1136,
+      46
+     ],
+     [
+      152,
+      1602,
+      1136,
+      46
+     ],
+     [
+      152,
+      2350,
+      1136,
+      46
+     ]
+    ],
+    "box_width": 1440
+   },
+   {
+    "check_id": "unslop/single-default-sans",
+    "area": "typography",
+    "severity": "warn",
+    "title": "One default sans for everything",
+    "detail": "Every line is set in Segoe Ui: one default sans, no display face. Seen at 320, 375, 414, 768, 1024, 1280, 1440, 1920px.",
+    "evidence": {
+     "items": [
+      "segoe ui"
+     ],
+     "widths": [
+      320,
+      375,
+      414,
+      768,
+      1024,
+      1280,
+      1440,
+      1920
+     ],
+     "box_width": 1440,
+     "boxes": [
+      [
+       176,
+       342,
+       1088,
+       74
+      ]
+     ]
+    },
+    "fix": "A display face and palette drawn from the product's own world.",
+    "engine": "browser",
+    "scope": "type",
+    "level": "warning",
+    "tier": "reflex",
+    "pack": "unslop",
+    "pass": "type",
+    "slop": true,
+    "boxes": [
+     [
+      176,
+      342,
+      1088,
+      74
+     ]
+    ],
+    "box_width": 1440
+   }
+  ],
+  "slop_score": 32,
+  "signs": 3,
+  "mode": "light",
+  "sign_ids": [
+   "font.generic-only",
+   "slop/pure-black-white",
+   "unslop/single-default-sans"
+  ],
+  "plan": {
+   "mode": "light",
+   "summary": "A light polish: 6 changes, no redesign.",
+   "steps": [
+    {
+     "rule": "slop/pure-black-white",
+     "title": "Pure black or white outside the tokens",
+     "detail": "3 pure black or white literal(s) outside the token block.",
+     "fix": "Tint toward the anchor hue (chroma 0.005 or more).",
+     "tier": "floor",
+     "slop": true,
+     "items": [
+      ".slide: background: #000",
+      "html: background: #fff",
+      "body: background: #fff"
+     ],
+     "widths": null
+    },
+    {
+     "rule": "font.generic-only",
+     "title": "Only default system fonts",
+     "detail": "The page only uses Inter/Roboto/Arial/-apple-system, the default the model reaches for.",
+     "fix": "Pick a distinctive heading font paired with a readable body font.",
+     "tier": "reflex",
+     "slop": true,
+     "items": [],
+     "widths": null
+    },
+    {
+     "rule": "unslop/single-default-sans",
+     "title": "One default sans for everything",
+     "detail": "Every line is set in Segoe Ui: one default sans, no display face. Seen at 320, 375, 414, 768, 1024, 1280, 1440, 1920px.",
+     "fix": "A display face and palette drawn from the product's own world.",
+     "tier": "reflex",
+     "slop": true,
+     "items": [
+      "segoe ui"
+     ],
+     "widths": [
+      320,
+      375,
+      414,
+      768,
+      1024,
+      1280,
+      1440,
+      1920
+     ]
+    },
+    {
+     "rule": "layout.no-max-width",
+     "title": "No max-width constraint found",
+     "detail": "The document never sets a max-width, so text can stretch full width on large screens.",
+     "fix": "Constrain the main content column with a max-width (e.g. 72ch or a fixed px value).",
+     "tier": "reflex",
+     "slop": false,
+     "items": [],
+     "widths": null
+    },
+    {
+     "rule": "type.line-length",
+     "title": "Lines too long to read comfortably",
+     "detail": "3 paragraph(s) exceed ~90 characters per line.",
+     "fix": "Constrain paragraph width (max-width: 65-75ch) for readability.",
+     "tier": "reflex",
+     "slop": false,
+     "items": [],
+     "widths": null
+    },
+    {
+     "rule": "craft/title-meta",
+     "title": "Missing title or meta description",
+     "detail": "Missing meta description.",
+     "fix": "Add both.",
+     "tier": "finish",
+     "slop": false,
+     "items": [
+      "meta description"
+     ],
+     "widths": null
+    }
+   ],
+   "passes": []
+  },
+  "rules_run": 150,
+  "by_pass": {
+   "spacing": 0,
+   "color": 1,
+   "icons": 0,
+   "copy": 1,
+   "type": 3,
+   "layout": 1,
+   "details": 1,
+   "visuals": 0,
+   "motion": 0
+  },
+  "created_ts": 1793722245.7764206,
+  "ms": 0,
+  "credit": "Sign list and method: unslop by Damir Sokolovsky (CC BY 4.0)."
+ }
+}

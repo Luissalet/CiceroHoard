@@ -244,3 +244,67 @@ def theme_from_roles(roles: dict[str, Any], *, theme_id: str, name: str, mode: s
     theme = clean_custom_theme(raw)
     theme, fixes = fit_contrast(theme)
     return theme, warnings + fixes
+
+
+def rotate_hue(value: str, degrees: float) -> str:
+    """The same colour with its hue turned by ``degrees`` (lightness and saturation kept)."""
+    import colorsys
+
+    r, g, b = (c / 255 for c in hex_to_rgb(value))
+    h, l, s = colorsys.rgb_to_hls(r, g, b)
+    r2, g2, b2 = colorsys.hls_to_rgb((h + degrees / 360) % 1.0, l, s)
+    return rgb_to_hex((r2 * 255, g2 * 255, b2 * 255))
+
+
+def paper_accent(primary: str, background: Any) -> str:
+    """A second accent for a preset that has none: the primary's lightness and saturation in the page's own hue (warm paper
+    gives an ochre, cool paper a slate blue), so it belongs to the preset. A neutral grey page has no hue to borrow; the
+    primary is then turned 150 degrees round the colour wheel."""
+    import colorsys
+
+    if isinstance(background, str) and HEX6.match(background):
+        rgb = [c / 255 for c in hex_to_rgb(background)]
+        if max(rgb) - min(rgb) >= 0.02:
+            hue = colorsys.rgb_to_hls(*rgb)[0]
+            _, light, sat = colorsys.rgb_to_hls(*(c / 255 for c in hex_to_rgb(primary)))
+            r, g, b = colorsys.hls_to_rgb(hue, light, sat)
+            candidate = rgb_to_hex((r * 255, g * 255, b * 255))
+            if candidate != primary.lower():
+                return candidate
+    return rotate_hue(primary, 150)
+
+
+def theme_from_preset(tokens: dict[str, Any], *, theme_id: str, name: str, mode: str = "light") -> tuple[dict[str, Any], list[str]]:
+    """Map a design preset's tokens (shadcn colour names, see Vitruvius's ``design_preset_list``) to a Cicero theme.
+
+    Colours: page = background, card = secondary (or muted, or card), text = foreground, muted = muted-foreground,
+    accent = primary, accent2 = chart-2 when the preset has one, otherwise :func:`paper_accent`.
+    Fonts: the heading and body stacks reduced to a Windows font. Radius: ``md`` (or ``base``). The contrast check runs as for
+    design systems. Returns the theme and the warnings.
+    """
+    if mode not in ("light", "dark"):
+        raise CiceroError("mode must be 'light' or 'dark'.")
+    palette = ((tokens.get("colors") or {}).get(mode))
+    if not isinstance(palette, dict):
+        raise CiceroError(f"The preset has no {mode} colours.")
+    warnings: list[str] = []
+    fonts = tokens.get("fonts") or {}
+    heading, warn_h = pick_font(fonts.get("heading", ""))
+    body, warn_b = pick_font(fonts.get("body", ""))
+    warnings += [w for w in (warn_h, warn_b) if w]
+    primary = palette.get("primary") or palette.get("ring")
+    accent2 = palette.get("chart-2")
+    if not (isinstance(accent2, str) and HEX6.match(accent2)) and isinstance(primary, str) and HEX6.match(primary):
+        accent2 = paper_accent(primary, palette.get("background"))
+        warnings.append(f"accent2 {accent2} derived from the primary colour in the page's hue (the preset has no second accent)")
+    radius = tokens.get("radius") or {}
+    raw = {"id": theme_id, "name": name,
+           "colors": {"background": palette.get("background"),
+                      "surface": palette.get("secondary") or palette.get("muted") or palette.get("card"),
+                      "text": palette.get("foreground"), "muted": palette.get("muted-foreground") or palette.get("foreground"),
+                      "accent": primary, "accent2": accent2},
+           "fonts": {"heading": heading, "body": body},
+           "radius": (radius.get("md") or radius.get("base") or 0) if isinstance(radius, dict) else radius}
+    theme = clean_custom_theme(raw)
+    theme, fixes = fit_contrast(theme)
+    return theme, warnings + fixes

@@ -5,20 +5,26 @@ import { useDeck } from "../../components/deckContext.js";
 import { Empty, useAsync } from "../../components/ui.jsx";
 import { approvedCount } from "../../format.js";
 import VisualReview from "./VisualReview.jsx";
+import DesignAudit, { AuditIssue } from "./DesignAudit.jsx";
 
 export default function Review() {
   const { t } = useApp();
   const { deckId, deck, run, busy, reload } = useDeck();
   const check = useAsync(() => api.check(deckId), [deckId, deck.updated_at]);
+  const saved = useAsync(() => api.designAudit(deckId), [deckId, deck.updated_at, deck.theme]);
+  const [fresh, setFresh] = React.useState(null);
+  React.useEffect(() => setFresh(null), [deckId, saved.data]);
+  const audit = fresh || saved.data?.audit || null;
   const slides = (deck.slides || []).slice().sort((a, b) => a.position - b.position);
   const issues = check.data?.issues || [];
+  const design = (audit?.issues || []).filter((i) => i.scope !== "page");
   const pending = slides.length - approvedCount(deck);
 
   const groups = [];
-  const general = issues.filter((i) => !i.slide_id);
+  const general = [...issues.filter((i) => !i.slide_id), ...design.filter((i) => !i.slide_id)];
   if (general.length) groups.push({ key: "deck", title: t("review_general"), issues: general });
   slides.forEach((s, n) => {
-    const own = issues.filter((i) => i.slide_id === s.id);
+    const own = [...issues.filter((i) => i.slide_id === s.id), ...design.filter((i) => i.slide_id === s.id)];
     if (own.length) groups.push({ key: s.id, slide: s, n: n + 1, title: s.title || t("untitled"), issues: own });
   });
   const warnings = issues.filter((i) => i.severity === "warning").length;
@@ -38,6 +44,7 @@ export default function Review() {
           <span className="help" role="status">{t("review_summary", { w: warnings, i: issues.length - warnings })}</span>
         )}
       </div>
+      <DesignAudit deckId={deckId} audit={audit} setAudit={setFresh} loading={saved.loading} />
       {check.error && <Empty>{check.error.message}</Empty>}
       {check.loading && !check.data && <div className="help" role="status">{t("loading")}</div>}
       {!check.loading && !check.error && issues.length === 0 && <Empty>{t("review_clean")}</Empty>}
@@ -49,7 +56,7 @@ export default function Review() {
               {g.slide && <button type="button" className="btn btn-sm" onClick={() => goReplace(`deck/${deckId}/slides?slide=${encodeURIComponent(g.slide.id)}`)}>{t("review_go")}</button>}
             </div>
             <ul className="space-y-1.5">
-              {g.issues.map((issue, n) => (
+              {g.issues.map((issue, n) => issue.source === "design" ? <AuditIssue key={n} issue={issue} /> : (
                 <li key={n} className="flex items-start gap-2 text-[13px]">
                   <span className={issue.severity === "warning" ? "chip chip-amber" : "chip"}>{t(`severity_${issue.severity}`)}</span>
                   <span className="min-w-0 [overflow-wrap:anywhere]">{issue.message}</span>
