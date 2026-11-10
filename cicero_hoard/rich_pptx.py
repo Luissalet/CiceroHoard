@@ -152,7 +152,8 @@ def add_chart(slide,box,theme,lang):
             else:
                 s.format.fill.fore_color.rgb=_rgb(palette[0 if i<4 else 1]);s.invert_if_negative=False
         if kind in ('scatter','dot'):s.format.line.fill.background()
-        if kind=='bar_horizontal' and b.get('highlight'):
+        # Highlighted categories keep the series colour and the rest turn grey, as in the preview (vertical bars too).
+        if kind in ('bar','bar_horizontal') and b.get('highlight'):
             for j,point in enumerate(s.points):
                 point.format.fill.solid();point.format.fill.fore_color.rgb=_rgb(color if j in b['highlight'] else '#CFD9E0')
     observed=[v for s in series for v in s['values'] if v is not None]
