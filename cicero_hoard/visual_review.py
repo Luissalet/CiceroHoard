@@ -82,10 +82,13 @@ _PROBE = r"""
         while ((tn = walker.nextNode())) { if (!tn.textContent.trim()) continue; range.selectNodeContents(tn);
           for (const q of range.getClientRects()) { ink.top = Math.min(ink.top, q.top); ink.bottom = Math.max(ink.bottom, q.bottom); ink.right = Math.max(ink.right, q.right); } }
         ink.height = ink.bottom > ink.top ? ink.bottom - ink.top : 0;
-        const tol = Math.max(4, 0.12 * parseFloat(getComputedStyle(el.querySelector('h2,p,li') || el).fontSize));
+        const fs = parseFloat(getComputedStyle(el.querySelector('h2,p,li') || el).fontSize);
+        const tol = Math.max(4, 0.12 * fs);
+        // a wrapped line's rectangle keeps the space it broke at, which may hang past the right edge: not overflow
+        const wideTol = Math.max(tol, 0.35 * fs);
         const over = Math.max(ink.bottom - box.bottom, box.top - ink.top, 0) * sy;
         const wide = Math.max(ink.right - box.right, 0) * sx;
-        if (ink.height > 0 && (over > tol || wide > tol)) found.push({rule: 'text_overflow', where: label,
+        if (ink.height > 0 && (over > tol || wide > wideTol)) found.push({rule: 'text_overflow', where: label,
           detail: `needs ${Math.round(ink.height * sy)}px, has ${Math.round(box.height * sy)}px`, need: Math.round(ink.height * sy), have: Math.round(box.height * sy)});
       }
       if (isImg && (!el.complete || el.naturalWidth === 0)) found.push({rule: 'broken_image', where: el.getAttribute('alt') || 'picture', detail: 'did not load'});

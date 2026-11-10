@@ -224,7 +224,9 @@ def box_html(box: Box, theme: dict[str, Any], lang: str, assets: AssetLookup, sr
         rows=[box.data['headers'],*box.data['rows']];head=rows[0]
         body=''.join(('<tr style="background:var(--surface)" >' if i in (box.data.get('highlight_rows') or []) else '<tr>')+''.join(f'<td>{esc(cell)}</td>' for cell in row)+'</tr>' for i,row in enumerate(rows[1:]))
         size=max(13,min(box.data.get('font_size') or 24,box.h/len(rows)*.46))
-        return f'<div class="b" style="{geo}"><table class="visual-table" style="font-size:{size}px"><thead><tr>'+''.join(f'<th>{esc(cell)}</th>' for cell in head)+f'</tr></thead><tbody>{body}</tbody></table></div>'
+        # Cell padding gives way before the rows outgrow their box (a compact table keeps the height the layout gave it).
+        pad=max(3,min(12,(box.h/len(rows)-size*1.3)/2))
+        return f'<div class="b" style="{geo}"><table class="visual-table" style="font-size:{size}px;--cell-pad:{pad:.1f}px"><thead><tr>'+''.join(f'<th>{esc(cell)}</th>' for cell in head)+f'</tr></thead><tbody>{body}</tbody></table></div>'
     if box.kind in ("rect","rule"):
         radius = f";border-radius:{int(theme['radius'])}px" if theme.get("radius") and is_card(box) else ""
         return f'<div class="b" style="{geo};background:var(--{box.fill or "surface"}){radius}"></div>'
@@ -312,8 +314,8 @@ body{font-family:"Segoe UI",Arial,sans-serif;background:#1c1f26;min-height:100vh
 .t h2{font-weight:inherit}
 .t p,.t h2,.t li{white-space:pre-wrap}
 .visual-table{border-collapse:collapse;width:100%;height:100%;font-family:var(--f-b);color:var(--text);table-layout:fixed}
-.visual-table th{text-align:left;background:var(--accent);color:var(--on-accent,white);padding:12px}
-.visual-table td{padding:12px;border-bottom:1px solid var(--muted);overflow-wrap:anywhere}
+.visual-table th{text-align:left;background:var(--accent);color:var(--on-accent,white);padding:var(--cell-pad,12px) 12px}
+.visual-table td{padding:var(--cell-pad,12px) 12px;border-bottom:1px solid var(--muted);overflow-wrap:anywhere}
 .fragment{opacity:1;visibility:visible}
 .media-poster{display:none}
 @media(prefers-reduced-motion:reduce){.fragment{transition:none!important;animation:none!important}}

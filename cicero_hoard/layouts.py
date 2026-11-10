@@ -21,7 +21,7 @@ GAP = 22
 BODY_LINE = 1.3
 HEAD_LINE = 1.15
 # Body text starts at this size and only shrinks when a slide is full: a short slide reads from the back of the room.
-BODY_MAX = 34
+BODY_MAX = 32
 SAFETY = 1.05  # estimated widths are inflated a little so that a fallback font does not wrap unexpectedly
 
 COLOR_KEYS = ("background", "surface", "text", "muted", "accent", "accent2")
@@ -225,7 +225,8 @@ def layout_block(block: dict[str, Any], x: float, y: float, w: float, size: int,
         return [Box(kind,x,y,w,region_h,data=block)],region_h
     if kind in ('diagram','table','metrics','timeline'):
         from .visual_layout import layout_visual
-        return layout_visual(block,x,y,w,region_h,ctx)
+        # Tables and metrics shrink with the text around them, so a slide that stacks a table, metrics and a sentence fits.
+        return layout_visual(block,x,y,w,region_h,ctx,scale=min(1.0,size/BODY_MAX) if n_blocks>1 else 1.0)
     if kind == "bullets":
         items = [i for i in block.get("items", []) if i]
         if not items:
@@ -307,7 +308,8 @@ def layout_block(block: dict[str, Any], x: float, y: float, w: float, size: int,
                 paras.append(Para(title, size * 0.95, bold=True, color="accent", font="heading", space_after=round(size * 0.5), line=HEAD_LINE))
             paras += _bullet_paras(block.get(side, []), size)
             cols.append(paras)
-            heights.append(paras_height(paras, cw - 2 * pad, ctx))
+            # A little room over the estimate: browsers round each line box up, and a card must not clip its last line.
+            heights.append(paras_height(paras, cw - 2 * pad, ctx) * 1.04)
         total = max(heights + [0.0]) + 2 * pad
         if total <= 2 * pad:
             return [], 0.0
@@ -425,7 +427,7 @@ def _first_blocks_text(blocks: list[dict[str, Any]]) -> str:
             parts.append(" · ".join(b.get("items", [])))
         elif b.get("type") == "quote" and b.get("text"):
             parts.append(b["text"])
-    return "   ".join(p for p in parts if p)
+    return " · ".join(p for p in parts if p)
 
 
 def build_plan(slide: dict[str, Any], *, deck_title: str, theme: dict[str, Any], number: int, total: int,
@@ -501,7 +503,8 @@ def build_plan(slide: dict[str, Any], *, deck_title: str, theme: dict[str, Any],
                 boxes += got
     else:  # bullets, two_column, image_text, chart (and anything unknown)
         if title:
-            boxes.append(title_box(title, MARGIN_X, 40, 1136, 88, ctx, hi=40, lo=22))
+            # The title outranks the body: 46 px against at most 32 px of body text.
+            boxes.append(title_box(title, MARGIN_X, 40, 1136, 88, ctx, hi=46, lo=22))
             boxes.append(Box("rect", MARGIN_X, 138, 72, 5, fill="accent"))
         top = 168
         if subtitle:

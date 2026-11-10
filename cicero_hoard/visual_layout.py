@@ -1,12 +1,19 @@
 """Content-driven diagrams, editable tables and flat metric compositions."""
-from .layouts import Box,Para,fit_size
+from .layouts import Box,Para,fit_size,paras_height
 from .visuals import graph_layout
 
 
-def layout_visual(block,x,y,w,h,ctx):
+def metric_columns(count,w):
+    """Columns for a row of metrics: up to four side by side, then balanced rows (five as 3+2, six as 3+3)."""
+    fit=max(1,int(w//230))
+    if count<=4:return max(1,min(count,fit))
+    return max(1,min(3 if count in (5,6,9) else 4,fit))
+
+
+def layout_visual(block,x,y,w,h,ctx,scale=1.0):
     if block.get('title'):
         untitled={k:v for k,v in block.items() if k!='title'}
-        boxes,used=layout_visual(untitled,x,y+48,w,max(1,h-48),ctx)
+        boxes,used=layout_visual(untitled,x,y+48,w,max(1,h-48),ctx,scale)
         return [Box('text',x,y,w,40,paras=[Para(block['title'],26,bold=True)],object_id='heading'),*boxes],used+48
     kind=block['type']
     if kind=='timeline':
@@ -31,27 +38,48 @@ def layout_visual(block,x,y,w,h,ctx):
         return boxes,h
     if kind=='table':
         if h/(len(block['rows'])+1)<32:ctx.overflow_where.append('table density: split the rows across slides')
-        rowh=max(56,(block.get('font_size') or 24)*1.5+16)
+        rowh=max(56,(block.get('font_size') or 24)*1.5+16) if block.get('font_size') or scale>=1 else max(36,round(56*scale))
         return [Box('table',x,y,w,min(h,rowh*(len(block['rows'])+1)),data=block)],min(h,rowh*(len(block['rows'])+1))
     if kind=='metrics':
-        items=block['items'];columns=min(3,len(items),max(1,int(w//190)));rows=(len(items)+columns-1)//columns
-        cellw=w/columns;cellh=min(h/rows,220);boxes=[]
-        for i,item in enumerate(items):
-            left=x+(i%columns)*cellw;top=y+(i//columns)*cellh
+        items=block['items'];columns=metric_columns(len(items),w);rows=(len(items)+columns-1)//columns
+        cellw=w/columns;limit=min(h/rows,220);boxes=[];inner=cellw-28
+        k=max(.6,min(1.0,scale));gap=max(6,round(12*k))
+        vhi=block.get('font_size') or max(28,round(60*k));lhi=max(16,round(26*k));dhi=max(13,round(19*k))
+        # One value size per row of metrics, so figures side by side read as a set.
+        cells=[]
+        for item in items:
+            label=item.get('label') or ''
+            if str(label).strip().casefold()==str(item.get('value') or '').strip().casefold():label=''  # «Calidad / Calidad»
+            cells.append((item,label))
+        def heights(vs,ls,ds):
+            out=[]
+            for item,label in cells:
+                hv=vs*1.25;hl=paras_height([Para(label,ls,bold=True,line=1.3)],inner,ctx) if label else 0
+                hd=paras_height([Para(item['detail'],ds,line=1.3)],inner,ctx) if item.get('detail') else 0
+                out.append((hv,hl,hd,hv+(gap+hl if hl else 0)+(gap+hd if hd else 0)))
+            return out
+        vs=vhi
+        while vs>20 and any(fit_size(lambda n:[Para(str(it['value']),n,bold=True,font='heading',line=1.25)],inner,vs*1.25,vs,vs,ctx)[1] for it,_ in cells):vs-=2
+        ls,ds=lhi,dhi
+        while True:
+            hs=heights(vs,ls,ds);need=max(r[3] for r in hs)
+            if need<=limit or (ls<=16 and ds<=13 and vs<=max(20,round(vhi*.6))):break
+            if ls>16:ls-=1
+            if ds>13:ds-=1
+            if need>limit and ls<=16 and ds<=13:vs=max(20,vs-2)
+        cellh=min(limit,max(r[3] for r in hs))
+        if max(r[3] for r in hs)>limit+1:ctx.overflow_where.append('metric text: '+str(cells[0][1] or cells[0][0].get('value')))
+        for i,((item,label),(hv,hl,hd,_)) in enumerate(zip(cells,hs)):
+            left=x+(i%columns)*cellw;top=y+(i//columns)*(cellh+(gap*2 if rows>1 else 0))
             build=item.get('build',block.get('build'))
             color='accent' if item.get('emphasis') else 'text'
-            valueh=min(84,cellh*.48);labelh=min(64,cellh*.34);gap=min(12,cellh*.04)
-            vs,vo=fit_size(lambda n:[Para(item['value'],n,bold=True,font='heading',line=1.35)],cellw-28,valueh,block.get('font_size') or 60,20,ctx)
-            ls,lo=fit_size(lambda n:[Para(item['label'],n,bold=True,line=1.35)],cellw-28,labelh,26,18,ctx)
-            if vo or lo:ctx.overflow_where.append('metric text: '+item['label'])
-            boxes.extend([Box('text',left,top,cellw-28,valueh,paras=[Para(item['value'],vs,bold=True,color=color,font='heading',line=1.35)],build=build),
-                Box('text',left,top+valueh+gap,cellw-28,labelh,paras=[Para(item['label'],ls,bold=True,line=1.35)],build=build)])
+            boxes.append(Box('text',left,top,inner,hv,paras=[Para(str(item['value']),vs,bold=True,color=color,font='heading',line=1.25)],build=build))
+            cy=top+hv
+            if label:
+                boxes.append(Box('text',left,cy+gap,inner,hl,paras=[Para(label,ls,bold=True,line=1.3)],build=build));cy+=gap+hl
             if item.get('detail'):
-                detailh=max(1,cellh-valueh-labelh-2*gap)
-                ds,do=fit_size(lambda n:[Para(item['detail'],n)],cellw-28,detailh,19,14,ctx)
-                if do:ctx.overflow_where.append('metric detail: '+item['label'])
-                boxes.append(Box('text',left,top+valueh+labelh+2*gap,cellw-28,detailh,paras=[Para(item['detail'],ds,color='muted')],build=build))
-        return boxes,cellh*rows
+                boxes.append(Box('text',left,cy+gap,inner,hd,paras=[Para(item['detail'],ds,color='muted',line=1.3)],build=build))
+        return boxes,cellh*rows+(gap*2*(rows-1))
     layout=graph_layout(block,w,h);boxes=[];scale=layout['scale']
     nodes={node['id']:node for node in layout['nodes']}
     staged=block.get('effect')=='stages'
