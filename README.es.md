@@ -35,7 +35,7 @@ se estiran en vertical.
 `deck_media_control` controla la reproduccion de la diapositiva activa.
 `dataset_link`, `dataset_links`, `dataset_bind` y `dataset_link_control` ofrecen actualizacion automatica durable,
 snapshots inmutables, recetas visuales y recuperacion del ultimo estado valido. Las mismas funciones estan en el editor.
-El catalogo publico contiene 77 herramientas, incluidas las figuras con fuente y la numeración/progreso. Contratos y diferencias de formato: [multimedia y datos](docs/LIVE_MEDIA.md).
+El catalogo publico contiene 79 herramientas, incluidas las figuras con fuente y la numeración/progreso. Contratos y diferencias de formato: [multimedia y datos](docs/LIVE_MEDIA.md).
 
 `deck_design` ejecuta un ciclo de crear/renderizar/corregir con el modelo global configurado, enviando imagenes reales en modo vision. La revision externa queda vinculada a version, variante y hash de PNG. Permite continuar, cancelar y deshacer los cambios propios.
 `scene_model_import` incorpora GLB/glTF/ZIP completos con texturas, materiales, iluminacion y clips, tambien offline.
@@ -57,6 +57,14 @@ Un título puede ser un rótulo («Resultados del trimestre») o la conclusión 
 - **Qué no hace.** No distingue un rótulo de una conclusión leyendo el significado: mira si el título tiene verbo conjugado, una cifra con signo o un porcentaje, y si es una pregunta (lista de formas verbales en español e inglés; un título muy corto o sin verbo es un rótulo). No comprueba causas: si el modelo escribe un «por…» que la diapositiva no sostiene con palabras, solo las cifras lo delatan, así que conviene leer las propuestas antes de aplicarlas. No reescribe el contenido ni las notas.
 
 Herramientas: `titles_overview`, `titles_propose`, `titles_apply`, `titles_restore`, `titles_mode`. Rutas: `GET /api/decks/{id}/titles` y `POST /api/decks/{id}/titles/propose|apply|restore|mode`.
+
+## Importar un PPTX y rehacerlo
+
+**Importar PPTX** (lista de presentaciones) crea una presentación editable a partir de un `.pptx`: título y subtítulo, el resto del texto como viñetas, tablas, gráficos de columnas, barras, líneas y circulares con sus datos, imágenes y notas del orador. Cada diapositiva recibe un diseño de Cicero y el tema que elijas; el aspecto original no se copia (para conservarlo está la plantilla PPTX). El archivo y los datos de sus gráficos quedan como fuentes, así que la revisión comprueba las cifras. Las cajas de texto sueltas (por ejemplo, cifras dibujadas como texto) llegan como viñetas y los pies de página en letra pequeña se descartan. No se leen posiciones, animaciones, vídeo ni gráficos de otros tipos (dispersión, combinados). Herramienta `deck_import_pptx`; ruta `POST /api/import/pptx` (multipart `file`, o JSON `{path}`).
+
+## Ensayos medidos
+
+La consola del orador mide cuánto tiempo pasa cada diapositiva en pantalla mientras corre el reloj (pausado no cuenta) y lo muestra como «En esta diapositiva». **Guardar ensayo** conserva esos tiempos; la pestaña **Ensayo** los pone junto al plan hecho con las notas: tiempo asignado, medido y diferencia por diapositiva, las que más se pasan y el total frente al límite. Se guardan los 20 últimos por presentación. Herramienta `deck_rehearsal_runs` (`list`, `save`, `delete`); rutas `GET|POST /api/decks/{id}/rehearsal/runs` y `DELETE /api/decks/{id}/rehearsal/runs/{run}`.
 
 ## Qué hace
 
@@ -428,4 +436,4 @@ El original vectorial se edita en VectorCraft. El PPTX contiene el SVG como imag
 
 ## Asistente compartido de Faustus
 
-El botón Faustus monta el panel común servido por Faustus. Conversaciones, modelo, streaming, recuperación y memoria del proyecto viven allí. Cicero aporta su espacio de datos, presentación, diapositiva y revisión, selección y borrador sin guardar. Mantiene sus 77 herramientas de dominio y las revisiones para deshacer. Se conservan presentaciones, notas, fuentes y cambios manuales sin guardar. La conexión utiliza CICERO_FAUSTUS_URL o backend.json. Requiere Faustus disponible con el contrato común; no crea otro chat ni otro modelo privado.
+El botón Faustus monta el panel común servido por Faustus. Conversaciones, modelo, streaming, recuperación y memoria del proyecto viven allí. Cicero aporta su espacio de datos, presentación, diapositiva y revisión, selección y borrador sin guardar. Mantiene sus 79 herramientas de dominio y las revisiones para deshacer. Se conservan presentaciones, notas, fuentes y cambios manuales sin guardar. La conexión utiliza CICERO_FAUSTUS_URL o backend.json. Requiere Faustus disponible con el contrato común; no crea otro chat ni otro modelo privado.

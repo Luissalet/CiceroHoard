@@ -1,12 +1,12 @@
 import React,{useEffect,useState} from 'react';
-import {ArrowLeft,ChevronLeft,ChevronRight,ExternalLink,Pause,Play,RotateCcw,MonitorOff,VolumeX,Volume2} from 'lucide-react';
+import {ArrowLeft,ChevronLeft,ChevronRight,ExternalLink,Pause,Play,RotateCcw,MonitorOff,VolumeX,Volume2,Save} from 'lucide-react';
 import {api} from '../api.js';
 import {useApp} from '../App.jsx';
 import './presenter.css';
 
 const time=(seconds)=>{const s=Math.max(0,Math.floor(Math.abs(seconds)));return `${seconds<0?'-':''}${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`};
 export default function Presenter({deckId}){
- const {t}=useApp();const [room,setRoom]=useState(null),[notes,setNotes]=useState([]),[error,setError]=useState(''),[busy,setBusy]=useState(false);
+ const {t,notify}=useApp();const [room,setRoom]=useState(null),[notes,setNotes]=useState([]),[error,setError]=useState(''),[busy,setBusy]=useState(false);
  const [mediaIndex,setMediaIndex]=useState(0),[seek,setSeek]=useState(''),[volume,setVolume]=useState(1);
  useEffect(()=>{setMediaIndex(0);setSeek('')},[room?.slide_index]);
  useEffect(()=>{
@@ -24,6 +24,7 @@ export default function Presenter({deckId}){
    // A fresh route mounts a new poller and audience frame for the replacement session.
    window.location.reload();
  }catch(e){setError(e.message);setBusy(false)}};
+ const saveRun=async()=>{setBusy(true);try{await api.rehearsalRunSave(deckId,{});setError('');notify(t('live_saved_run'))}catch(e){setError(e.message)}finally{setBusy(false)}};
  const current=room?.slides[room.slide_index],next=room?.slides[room.slide_index+1];
  const mediaCommand=async(action,value)=>{setBusy(true);try{await api.mediaControl(deckId,{action,media_index:mediaIndex,...(value==null?{}:{value})});setError('')}catch(e){setError(e.message)}finally{setBusy(false)}};
  const button=(Icon,label,action,extra={})=><button type="button" className="btn btn-icon" title={label} aria-label={label} disabled={busy||!room} onClick={()=>command(action,extra)}><Icon size={20}/></button>;
@@ -42,7 +43,9 @@ export default function Presenter({deckId}){
       <span className="num presenter-stage">{room.fragment_index+1}/{current.steps}</span>
       <button type="button" className={`btn btn-icon ${room.blackout?'btn-active':''}`} title={t('blackout')} aria-label={t('blackout')} aria-pressed={room.blackout} disabled={busy} onClick={()=>command('blackout',{blackout:!room.blackout})}><MonitorOff size={20}/></button>
     </div><div className="presenter-clock"><output className={room.remaining_seconds<0?'overtime':''} aria-label={t('remaining')}>{time(room.remaining_seconds)}</output>
-      <span className="num">{time(room.elapsed_seconds)}</span>{button(room.running?Pause:Play,t(room.running?'pause_timer':'start_timer'),room.running?'pause':'resume')}{button(RotateCcw,t('reset_timer'),'reset')}
+      <span className="num">{time(room.elapsed_seconds)}</span>
+      <span className="num presenter-stage">{t('live_slide_time')}: {time(room.current_slide_seconds||0)}</span>{button(room.running?Pause:Play,t(room.running?'pause_timer':'start_timer'),room.running?'pause':'resume')}{button(RotateCcw,t('reset_timer'),'reset')}
+      <button type="button" className="btn" disabled={busy||!room||room.elapsed_seconds<1} onClick={saveRun}><Save size={16}/>{t('live_save_run')}</button>
       <label>{t('target_minutes')}<input className="field" type="number" min="0.5" max="240" step="0.5" defaultValue={room.target_seconds/60} onBlur={e=>{const v=Number(e.target.value);if(v>=.5&&v<=240)command('target',{target_seconds:Math.round(v*60)})}}/></label>
       <label>{t('main_slides')}<input className="field" type="number" min="1" max={room.slides.length} defaultValue={room.main_slide_count} onBlur={e=>{const v=Number(e.target.value);if(Number.isInteger(v)&&v>=1&&v<=room.slides.length)command('main',{main_slide_count:v})}}/></label>
     </div></div>

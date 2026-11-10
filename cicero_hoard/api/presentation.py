@@ -16,6 +16,19 @@ def rehearsal_download(request:Request,deck_id:str):
     plan = tool(request,'deck_rehearsal',**{**dict(request.query_params),'deck_id':deck_id})
     return PlainTextResponse(plan['text'],headers={'Content-Disposition':'attachment; filename="rehearsal.txt"'})
 
+@router.get('/decks/{deck_id}/rehearsal/runs')
+def rehearsal_runs(request:Request,deck_id:str,words_per_minute:int=130,pause_seconds:int=10):
+    return tool(request,'deck_rehearsal_runs',deck_id=deck_id,action='list',words_per_minute=words_per_minute,pause_seconds=pause_seconds)
+
+@router.post('/decks/{deck_id}/rehearsal/runs')
+async def rehearsal_run_save(request:Request,deck_id:str):
+    body=await request.json() if (await request.body()) else {}
+    return tool(request,'deck_rehearsal_runs',**{**body,'deck_id':deck_id,'action':'save'})
+
+@router.delete('/decks/{deck_id}/rehearsal/runs/{run_id}')
+def rehearsal_run_delete(request:Request,deck_id:str,run_id:str):
+    return tool(request,'deck_rehearsal_runs',deck_id=deck_id,action='delete',run_id=run_id)
+
 @router.post('/decks/{deck_id}/live')
 async def start(request:Request,deck_id:str):
     return tool(request,'deck_live_start',**{**await request.json(),'deck_id':deck_id})

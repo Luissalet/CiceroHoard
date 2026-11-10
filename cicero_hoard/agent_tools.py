@@ -899,6 +899,24 @@ or some slides, or your own wording in `titles`), titles_restore puts the labels
 conclusion with a figure or a cause the slide does not hold: such a title is refused. Show the proposals to the user before applying them
 to a deck they have edited."""
 
+from . import rehearsal_runs, pptx_import
+TOOLS.extend([
+    Tool("deck_import_pptx",
+         "Make a new editable deck from an existing PPTX, to re-theme and rework it. Importar PPTX.\n"
+         "Reads each slide's title, subtitle, text (as bullets), tables, column/bar/line/pie charts with their data, pictures and speaker notes;\n"
+         "picks a Cicero layout per slide and applies `theme` (the original look is not copied: use deck_template for that). The file and its\n"
+         "chart data become sources, so deck_check can verify the figures. Then deck_theme, slide_regenerate, titles_apply, deck_export.\n"
+         "Sinónimos: rehacer una presentación, cambiar el tema de un pptx, pasar un pptx a otro estilo, importar diapositivas.",
+         pptx_import.ImportArgs, _ann(False, False, False), pptx_import.run, capped=False, timeout_s=180),
+    Tool("deck_rehearsal_runs",
+         "Measured rehearsals: time each slide stayed on screen while the presenter timer ran. Ensayos cronometrados.\n"
+         "action=save keeps the timings of the deck's live session now (deck_live_start, then deck_live_control resume/next...); list returns\n"
+         "every kept run with the plan from the notes beside it: per slide the planned slot, the measured seconds and the difference, the\n"
+         "slides furthest over their slot and the total against the limit; delete forgets one run. Runs never change the slides.\n"
+         "Sinónimos: tiempos reales por diapositiva, ensayo medido, cronometrar el ensayo, cuánto tardo en cada diapositiva.",
+         rehearsal_runs.RunsArgs, _ann(False, False, False), rehearsal_runs.run, capped=False),
+])
+
 TOOLS_BY_NAME = {t.name: t for t in TOOLS}
 
 

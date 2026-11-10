@@ -29,7 +29,7 @@ Use `media_import` and `media_get` for local or HTTP(S) audio/video, then add ty
 `deck_media_control` operates playback on the current live slide.
 `dataset_link`, `dataset_links`, `dataset_bind` and `dataset_link_control` provide durable automatic local/URL
 data refresh, immutable snapshots, typed visual recipes and last-good recovery. The editor exposes the same features.
-The public catalogue now contains 77 tools, including portable figures and numbering/progress. See [live media](docs/LIVE_MEDIA.md) and [advanced authoring](docs/ADVANCED_AUTHORING.md) for contracts and format differences.
+The public catalogue now contains 79 tools, including portable figures and numbering/progress. See [live media](docs/LIVE_MEDIA.md) and [advanced authoring](docs/ADVANCED_AUTHORING.md) for contracts and format differences.
 
 `deck_design` runs a model-driven create/render/correct loop using the configured global model, with real image content in vision mode. External image feedback is bound to a source revision, variant and PNG hash; runs support resumption, cancellation and selective undo.
 `scene_model_import` packages local GLB/glTF/ZIP resources offline, retaining textures, materials, lights and clips.
@@ -51,6 +51,14 @@ A title can be a label ("Quarterly results") or the conclusion of the slide ("Sa
 - **What it does not do.** It does not tell a label from a conclusion by meaning: it looks for a conjugated verb, a signed figure or a percentage, and for a question (a list of verb forms in Spanish and English; a very short title or one without a verb is a label). It does not verify causes: if the model writes a "because…" the slide does not support in words, only figures give it away, so read the proposals before applying them. It does not rewrite the content or the notes.
 
 Tools: `titles_overview`, `titles_propose`, `titles_apply`, `titles_restore`, `titles_mode`. Routes: `GET /api/decks/{id}/titles` and `POST /api/decks/{id}/titles/propose|apply|restore|mode`.
+
+## Import a PPTX and rework it
+
+**Import PPTX** (deck list) makes an editable deck from a `.pptx`: title and subtitle, the remaining text as bullets, tables, column, bar, line and pie charts with their data, pictures and speaker notes. Each slide gets a Cicero layout and the theme you choose; the original look is not copied (the PPTX template keeps it). The file and its chart data become sources, so the review checks the figures. Loose text boxes (figures drawn as text, for instance) arrive as bullets and small footer text is dropped. Positions, animations, video and other chart kinds (scatter, combo) are not read. Tool `deck_import_pptx`; route `POST /api/import/pptx` (multipart `file`, or JSON `{path}`).
+
+## Measured rehearsals
+
+The presenter console measures how long each slide stays on screen while the timer runs (paused time does not count) and shows it as "On this slide". **Save rehearsal** keeps those times; the **Rehearsal** tab puts them next to the plan made from the notes: allocated, measured and difference per slide, the slides furthest over and the total against the limit. The last 20 per deck are kept. Tool `deck_rehearsal_runs` (`list`, `save`, `delete`); routes `GET|POST /api/decks/{id}/rehearsal/runs` and `DELETE /api/decks/{id}/rehearsal/runs/{run}`.
 
 ## What it does
 
@@ -407,4 +415,4 @@ The vector source is editable in VectorCraft. PPTX embeds the SVG as a picture w
 
 ## Shared Faustus assistant
 
-The Faustus button mounts the common panel served by the configured Faustus service. Conversation storage, model choice, streaming, recovery and project memory live in Faustus. Cicero supplies its data-space identity, deck, selected slide/revision, editor selection and unsaved slide draft. Its 77 native domain tools and slide revisions remain available. Existing decks, notes, sources and manual unsaved edits are preserved. Configure CICERO_FAUSTUS_URL or the existing backend.json Faustus connection. This requires a reachable Faustus service with the shared copilot contract; no private chat/model fallback is created.
+The Faustus button mounts the common panel served by the configured Faustus service. Conversation storage, model choice, streaming, recovery and project memory live in Faustus. Cicero supplies its data-space identity, deck, selected slide/revision, editor selection and unsaved slide draft. Its 79 native domain tools and slide revisions remain available. Existing decks, notes, sources and manual unsaved edits are preserved. Configure CICERO_FAUSTUS_URL or the existing backend.json Faustus connection. This requires a reachable Faustus service with the shared copilot contract; no private chat/model fallback is created.

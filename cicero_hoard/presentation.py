@@ -39,11 +39,28 @@ class Sessions:
         if deck_id not in self.rooms:raise CiceroError('Start a live presentation session first.')
         return self.rooms[deck_id]
 
+    def tick(self,room):
+        """Add the time since the last mark to the slide on screen, while the timer runs: a measured rehearsal."""
+        now=self.clock()
+        if room['running']:
+            sid=room['slides'][room['slide_index']]['id']
+            room['dwell'][sid]=room['dwell'].get(sid,0)+max(0,now-room['mark'])
+        room['mark']=now
+
+    def dwell(self,room):
+        out=dict(room['dwell'])
+        if room['running']:
+            sid=room['slides'][room['slide_index']]['id']
+            out[sid]=out.get(sid,0)+max(0,self.clock()-room['mark'])
+        return {k:round(v,1) for k,v in out.items()}
+
     def public(self,room):
         elapsed=room['elapsed']+(max(0,self.clock()-room['resumed']) if room['running'] else 0)
+        dwell=self.dwell(room)
         return {k:room[k] for k in ('session_id','deck_id','version','slide_index','fragment_index','blackout','running','target_seconds','main_slide_count','slides','content_version','media_command')}|{
             'elapsed_seconds':round(elapsed,2),'remaining_seconds':round(room['target_seconds']-elapsed,2),
-            'return_depth':len(room['navigation_stack'])}
+            'return_depth':len(room['navigation_stack']),'slide_seconds':dwell,
+            'current_slide_seconds':dwell.get(room['slides'][room['slide_index']]['id'],0)}
 
 def start(svc,args):
     deck=store.deck_view(svc,args.deck_id)
@@ -62,7 +79,8 @@ def start(svc,args):
                              for b in slide['blocks'] if b['type'] in ('audio','video')]})
             sessions.rooms[args.deck_id]={'session_id':uuid.uuid4().hex,'deck_id':args.deck_id,'version':1,'slide_index':0,'fragment_index':-1,
                 'blackout':False,'running':False,'elapsed':0,'resumed':sessions.clock(),'target_seconds':args.target_seconds,
-                'main_slide_count':args.main_slide_count or len(slides),'slides':slides,'content_version':1,'media_command':None,'navigation_stack':[]}
+                'main_slide_count':args.main_slide_count or len(slides),'slides':slides,'content_version':1,'media_command':None,'navigation_stack':[],
+                'dwell':{},'mark':sessions.clock()}
         room=sessions.rooms[args.deck_id]
         return sessions.public(room)|{
             'presenter_url':svc.base_url()+f"/#/presenter/{args.deck_id}",
@@ -83,6 +101,7 @@ def control(svc,args):
         if args.expected_version is not None and args.expected_version!=room['version']:raise RevisionConflict('Presentation state changed. Read the current version.')
         if args.action=='sync' and args.slide_index==room['slide_index'] and args.fragment_index==room['fragment_index']:
             return sessions.public(room)
+        sessions.tick(room)
         slide=room['slide_index'];fragment=room['fragment_index'];steps=room['slides'][slide]['steps']
         if args.action=='next':
             if fragment<steps-1:fragment+=1
@@ -104,7 +123,7 @@ def control(svc,args):
         elif args.action in ('pause','resume','reset'):
             if room['running']:room['elapsed']+=max(0,sessions.clock()-room['resumed'])
             room['running']=args.action=='resume';room['resumed']=sessions.clock()
-            if args.action=='reset':room['elapsed']=0
+            if args.action=='reset':room['elapsed']=0;room['dwell']={}
         elif args.action=='target':
             if args.target_seconds is None:raise CiceroError('Supply target_seconds.')
             room['target_seconds']=args.target_seconds

@@ -3,6 +3,7 @@ import { api } from '../../api.js';
 import { goReplace, useApp } from '../../App.jsx';
 import { useDeck } from '../../components/deckContext.js';
 import { Empty } from '../../components/ui.jsx';
+import MeasuredRuns from './MeasuredRuns.jsx';
 
 function clock(seconds) {
   const amount = Math.abs(seconds);
@@ -95,5 +96,6 @@ export default function Rehearsal() {
         <ul className="mt-3 space-y-2">{plan.support.map(item => <li key={item.slide_id} className="flex flex-wrap justify-between gap-2"><span>{item.position}. {item.title}</span><button type="button" className="btn btn-sm" onClick={() => edit(item.slide_id)}>{t('rehearsal_edit_notes')}</button></li>)}</ul>
       </section>}
     </>}
+    <MeasuredRuns deckId={deckId} pace={Number(options.words_per_minute) || 130} pause={Number(options.pause_seconds) || 0} version={deck.updated_at}/>
   </section>;
 }

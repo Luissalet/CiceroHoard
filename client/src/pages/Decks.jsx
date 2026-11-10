@@ -11,6 +11,8 @@ export default function Decks() {
   const [creating, setCreating] = useState(false);
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
+  const [importing, setImporting] = useState(false);
+  const [pptx, setPptx] = useState({ file: null, title: "", theme: "" });
   const list = useAsync(() => api.decks(), []);
   const themes = useAsync(() => api.themes(), []);
   const settings = useAsync(() => api.settings().catch(() => null), []);
@@ -35,15 +37,56 @@ export default function Decks() {
     }
   };
 
+  const importPptx = async (event) => {
+    event.preventDefault();
+    if (!pptx.file) { notify(t("import_pptx_choose")); return; }
+    setBusy(true);
+    try {
+      const res = await api.importPptx(pptx.file, { title: pptx.title.trim(), theme: pptx.theme, language: defaultLanguage });
+      notify(t("import_pptx_done", { n: res.imported_slides, c: res.charts, t: res.tables, i: res.images }));
+      refresh();
+      go(`deck/${res.deck_id}/slides`);
+    } catch (e) {
+      notify(e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const items = list.data?.items || [];
   const themeItems = themes.data?.items || [];
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-[22px] font-semibold">{t("decks_title")}</h1>
-        <button type="button" className="btn btn-primary" aria-expanded={creating} onClick={() => setCreating((v) => !v)}>{t("deck_new")}</button>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" className="btn" aria-expanded={importing} onClick={() => { setImporting((v) => !v); setCreating(false); }}>{t("import_pptx")}</button>
+          <button type="button" className="btn btn-primary" aria-expanded={creating} onClick={() => { setCreating((v) => !v); setImporting(false); }}>{t("deck_new")}</button>
+        </div>
       </div>
       <p className="help max-w-3xl">{t("decks_intro")}</p>
+      {importing && (
+        <form className="panel grid gap-3 md:grid-cols-2" onSubmit={importPptx} aria-label={t("import_pptx")}>
+          <p className="help md:col-span-2">{t("import_pptx_help")}</p>
+          <Field label={t("import_pptx_file")}>
+            <input className="field" type="file" required accept=".pptx,application/vnd.openxmlformats-officedocument.presentationml.presentation"
+              onChange={(e) => setPptx({ ...pptx, file: e.target.files?.[0] || null })} />
+          </Field>
+          <Field label={t("import_pptx_title")}><input className="field" maxLength={200} value={pptx.title} onChange={(e) => setPptx({ ...pptx, title: e.target.value })} /></Field>
+          <div className="md:col-span-2">
+            <Field label={t("deck_theme")}>
+              <select className="field" value={pptx.theme} onChange={(e) => setPptx({ ...pptx, theme: e.target.value })}>
+                <option value="">{t("theme_default")}</option>
+                {(themes.data?.items || []).map((th) => <option key={th.id} value={th.id}>{th.name}</option>)}
+              </select>
+            </Field>
+          </div>
+          <div className="flex gap-2 md:col-span-2">
+            <button className="btn btn-primary" type="submit" disabled={busy}>{busy ? t("import_pptx_busy") : t("import_pptx_run")}</button>
+            <button className="btn" type="button" onClick={() => setImporting(false)}>{t("cancel")}</button>
+          </div>
+        </form>
+      )}
       {creating && (
         <form className="panel grid gap-3 md:grid-cols-2" onSubmit={create}>
           <div className="md:col-span-2"><Field label={t("deck_title")}><input className="field" required maxLength={200} value={form.title} onChange={set("title")} autoFocus /></Field></div>

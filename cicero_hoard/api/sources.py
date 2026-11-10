@@ -60,3 +60,23 @@ def sources_get(request: Request, deck_id: str, source_id: int, offset: int = 0,
 @router.delete("/decks/{deck_id}/sources/{source_id}")
 def sources_delete(request: Request, deck_id: str, source_id: int):
     return store.remove_source(services(request), deck_id, source_id)
+
+
+@router.post("/import/pptx", status_code=201)
+async def import_pptx(request: Request):
+    """A new deck from an existing PPTX: multipart ``file`` (with optional ``title``, ``theme``, ``language`` fields) or JSON ``{path, ...}``."""
+    from .. import pptx_import
+    svc = services(request)
+    if request.headers.get("content-type", "").lower().startswith("multipart/"):
+        data, filename, fields = await read_upload(request, svc.config.max_upload_bytes)
+        if not filename.lower().endswith(".pptx"):
+            raise CiceroError("Choose a .pptx presentation.")
+        res = await run_in_threadpool(pptx_import.import_bytes, svc, data, filename, title=fields.get("title") or None,
+                                      theme=fields.get("theme") or None, language=fields.get("language") or None)
+        deck = res.pop("deck")
+        return {**res, "deck_id": deck["id"], "title": deck["title"], "deck": deck}
+    try:
+        body = await request.json()
+    except ValueError as error:
+        raise CiceroError("Send a multipart file or JSON {path}.") from error
+    return await run_in_threadpool(tool, request, "deck_import_pptx", **(body or {}))

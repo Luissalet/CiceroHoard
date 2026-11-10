@@ -1009,7 +1009,7 @@ Object.assign(DICT.en,{
 
 Object.assign(DICT.es, {
   tab_rehearsal:'Ensayo', rehearsal_title:'Preparar el ensayo',
-  rehearsal_help:'Planifica el tiempo a partir de las notas del orador. Es una estimación: no se ha medido tu exposición.',
+  rehearsal_help:'Planifica el tiempo a partir de las notas del orador. Es una estimación; los ensayos medidos en la consola del orador aparecen debajo.',
   rehearsal_pace:'Palabras por minuto', rehearsal_pauses:'Pausa por diapositiva (s)', rehearsal_main:'Diapositivas principales',
   rehearsal_reserve_percent:'Margen reservado (%)', rehearsal_calculate:'Calcular plan', rehearsal_calculating:'Calculando el plan de ensayo…',
   rehearsal_copy:'Copiar plan y notas', rehearsal_download:'Descargar texto', rehearsal_copied:'Plan y notas copiados.',
@@ -1029,7 +1029,7 @@ Object.assign(DICT.es, {
 });
 Object.assign(DICT.en, {
   tab_rehearsal:'Rehearsal', rehearsal_title:'Prepare the rehearsal',
-  rehearsal_help:'Plan the timing from speaker notes. This is an estimate: your delivery has not been measured.',
+  rehearsal_help:'Plan the timing from speaker notes. This is an estimate; rehearsals measured in the presenter console appear below.',
   rehearsal_pace:'Words per minute', rehearsal_pauses:'Pause per slide (s)', rehearsal_main:'Main slides',
   rehearsal_reserve_percent:'Reserved margin (%)', rehearsal_calculate:'Calculate plan', rehearsal_calculating:'Calculating the rehearsal plan…',
   rehearsal_copy:'Copy plan and notes', rehearsal_download:'Download text', rehearsal_copied:'Plan and notes copied.',
@@ -1069,6 +1069,29 @@ Object.assign(DICT.en, {
   data_sort_missing:'Missing or empty values stay at the end.', data_derived_title:'Derived dataset name (optional)',
   data_filter_retry:'Retry creation', data_saved_source:'Saved source #{id}', data_derived_origin:'Derived from source #{id}',
   data_saved_transform:'Saved transformation', data_preview_first:'First rows: {n} of {total}', data_row:'row', data_empty_visual:'This dataset has no rows to insert as a visual.',
+});
+
+Object.assign(DICT.es, {
+  import_pptx:'Importar PPTX', import_pptx_help:'Crea una presentación editable a partir de un archivo .pptx: títulos, texto, tablas, gráficos con sus datos, imágenes y notas del orador. Se aplica el tema que elijas; el aspecto original no se copia.',
+  import_pptx_file:'Archivo .pptx', import_pptx_title:'Título (opcional)', import_pptx_run:'Importar', import_pptx_busy:'Importando…',
+  import_pptx_done:'Importadas {n} diapositivas ({c} gráficos, {t} tablas, {i} imágenes).', import_pptx_choose:'Elige un archivo .pptx.',
+  live_slide_time:'En esta diapositiva', live_save_run:'Guardar ensayo', live_saved_run:'Ensayo guardado. Lo verás en la pestaña Ensayo.',
+  runs_title:'Ensayos medidos', runs_help:'Tiempo que cada diapositiva estuvo en pantalla mientras corría el reloj de la consola del orador, junto al tiempo asignado por el plan. Guarda un ensayo desde la consola con «Guardar ensayo».',
+  runs_empty:'Aún no hay ensayos guardados. Abre la consola del orador, inicia el reloj, recorre las diapositivas y pulsa «Guardar ensayo».',
+  runs_total:'Duración', runs_over:'Sobre el límite', runs_under:'Bajo el límite', runs_slide:'Diapositiva', runs_planned:'Plan', runs_measured:'Medido',
+  runs_delta:'Diferencia', runs_skipped:'No mostrada', runs_delete:'Borrar ensayo', runs_deleted:'Ensayo borrado.', runs_worst:'Más lejos de su tiempo: {list}',
+  runs_delete_confirm:'¿Borrar el ensayo «{name}»? No se puede deshacer.',
+});
+Object.assign(DICT.en, {
+  import_pptx:'Import PPTX', import_pptx_help:'Create an editable presentation from a .pptx file: titles, text, tables, charts with their data, pictures and speaker notes. The theme you choose is applied; the original look is not copied.',
+  import_pptx_file:'.pptx file', import_pptx_title:'Title (optional)', import_pptx_run:'Import', import_pptx_busy:'Importing…',
+  import_pptx_done:'Imported {n} slides ({c} charts, {t} tables, {i} pictures).', import_pptx_choose:'Choose a .pptx file.',
+  live_slide_time:'On this slide', live_save_run:'Save rehearsal', live_saved_run:'Rehearsal saved. It is in the Rehearsal tab.',
+  runs_title:'Measured rehearsals', runs_help:'Time each slide stayed on screen while the presenter console timer ran, next to the time the plan gives it. Save a rehearsal from the console with “Save rehearsal”.',
+  runs_empty:'No rehearsals saved yet. Open the presenter console, start the timer, go through the slides and select “Save rehearsal”.',
+  runs_total:'Duration', runs_over:'Over the limit', runs_under:'Under the limit', runs_slide:'Slide', runs_planned:'Plan', runs_measured:'Measured',
+  runs_delta:'Difference', runs_skipped:'Not shown', runs_delete:'Delete rehearsal', runs_deleted:'Rehearsal deleted.', runs_worst:'Furthest over their time: {list}',
+  runs_delete_confirm:'Delete the rehearsal “{name}”? This cannot be undone.',
 });
 
 export function makeT(lang) {
