@@ -138,6 +138,10 @@ def chart_facts(block: dict[str, Any], lang: str, fallback_name: str = "") -> li
     m = MSG.get(lang, MSG["es"])
     kind = block.get("chart") or "bar"
     facts: list[dict[str, Any]] = []
+    unit = str(block.get("unit") or "").strip()
+
+    def val(x: float) -> str:  # a value as the chart labels it: with its unit, never a bare "4,1" for 4,1 M€
+        return _fmt(x, lang) + (("" if unit in ("%",) and lang == "en" else " ") + unit if unit else "")
     for name, points in _series(block)[:3]:
         label = name or (block.get("title") or "").strip() or fallback_name or m["default_name"]
         values = [v for _, v in points]
@@ -156,16 +160,16 @@ def chart_facts(block: dict[str, Any], lang: str, fallback_name: str = "") -> li
         if ordered:
             numbers = {a, b, abs(b - a)}
             if a == b:
-                facts.append({"kind": "flat", "text": m["flat"].format(name=label, a=_fmt(a, lang), c0=c0, c1=c1), "numbers": numbers})
+                facts.append({"kind": "flat", "text": m["flat"].format(name=label, a=val(a), c0=c0, c1=c1), "numbers": numbers})
             elif a != 0:
                 pct = round((b - a) / abs(a) * 100, 1)
                 numbers |= {abs(pct), float(round(abs(pct))), pct, float(round(pct))}
                 facts.append({"kind": "rise" if b > a else "fall",
-                              "text": m["rise" if b > a else "fall"].format(name=label, a=_fmt(a, lang), b=_fmt(b, lang), c0=c0, c1=c1, pct=_signed(pct, lang)),
+                              "text": m["rise" if b > a else "fall"].format(name=label, a=val(a), b=val(b), c0=c0, c1=c1, pct=_signed(pct, lang)),
                               "numbers": numbers})
         else:
             cat, top = max(points, key=lambda p: p[1])
-            facts.append({"kind": "leader", "text": m["leader"].format(cat=cat, name=_lc(label), v=_fmt(top, lang)), "numbers": {top}})
+            facts.append({"kind": "leader", "text": m["leader"].format(cat=cat, name=_lc(label), v=val(top)), "numbers": {top}})
     return facts
 
 
@@ -212,8 +216,10 @@ def rule_proposal(slide: dict[str, Any], lang: str = "es") -> Optional[str]:
     if ev["facts"]:
         return _tidy(ev["facts"][0]["text"])[:MAX_TITLE_CHARS]
     for b in slide.get("blocks") or []:
-        if b.get("type") == "metrics" and b.get("items"):
-            item = next((i for i in b["items"] if i.get("emphasis")), b["items"][0])
+        # A metric states a conclusion only when its value is a figure: «Calidad se sitúa en Calidad» says nothing.
+        figures = [i for i in (b.get("items") or []) if b.get("type") == "metrics" and re.search(r"\d", str(i.get("value") or ""))]
+        if figures:
+            item = next((i for i in figures if i.get("emphasis")), figures[0])
             return _tidy(m["metric"].format(label=item["label"], value=item["value"]))[:MAX_TITLE_CHARS]
     current = _fold(slide.get("title") or "")
     for part in ev["text"]:

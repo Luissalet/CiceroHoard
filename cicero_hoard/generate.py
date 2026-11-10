@@ -291,6 +291,17 @@ def finish_slide(draft: GeneratedSlide, *, strict: bool, source_ids: set[int], r
             if reference is None or chart_values_unsourced(data, reference):
                 warnings.append(f"Slide \"{clip(draft.title, 40)}\": a chart was dropped because its values are not in the sources.")
                 continue
+        if t == "metrics" and data.get("items") and not any(re.search(r"\d", str(i.get("value") or "")) for i in data["items"]):
+            # Metrics without a single figure («Calidad», «Clientes») are a list of topics: show them as one.
+            items = []
+            for i in data["items"]:
+                head = str(i.get("label") or i.get("value") or "").strip()
+                if str(i.get("value") or "").strip().casefold() not in ("", head.casefold()):
+                    head = f"{str(i['value']).strip()} · {head}"
+                items.append(shorten(f"{head}: {i['detail']}" if i.get("detail") else head, MAX_BULLET_CHARS))
+            data = {k: v for k, v in data.items() if k in ("build", "effect", "id")} | {"type": "bullets", "items": items[:MAX_BULLETS]}
+            t = "bullets"
+            warnings.append(f"Slide \"{clip(draft.title, 40)}\": metrics without figures became a list.")
         if t in ('metrics','diagram','table','timeline') and unsourced(' '.join(slide_text_parts({'blocks':[data]})),reference or set()):
             warnings.append(f'Slide "{clip(draft.title,40)}": a visual was dropped because its figures are not in the sources.')
             continue
