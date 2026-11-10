@@ -7,7 +7,7 @@ export function chartOptions(req){
  const limits=b.zero_baseline===false?[Math.min(...values),Math.max(...values)]:[Math.min(0,...values),Math.max(0,...values)];
  const option={animation:false,color:colors,backgroundColor:p.background,
  textStyle:{fontFamily:req.font,fontSize:18,color:p.text},aria:{enabled:true},
- grid:{left:horizontal?150:80,right:70,top:series.length>1&&b.show_legend!==false?65:26,bottom:70,containLabel:true},
+ grid:{left:horizontal?150:80,right:70,top:(series.length>1&&b.show_legend!==false?65:26)+(!horizontal&&(b.y_label||b.unit)?28:0),bottom:70,containLabel:true},
  legend:{show:b.show_legend??(series.length>1),top:2,textStyle:{fontSize:18,color:p.text}},
  tooltip:{trigger:'axis'},xAxis:{type:horizontal?'value':'category',data:horizontal?undefined:cats,
  name:horizontal?(b.unit||''):(b.x_label||''),nameLocation:'middle',nameGap:44,
