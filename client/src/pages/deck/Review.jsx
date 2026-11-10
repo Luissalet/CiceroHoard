@@ -6,6 +6,7 @@ import { Empty, useAsync } from "../../components/ui.jsx";
 import { approvedCount } from "../../format.js";
 import VisualReview from "./VisualReview.jsx";
 import DesignAudit, { AuditIssue } from "./DesignAudit.jsx";
+import ConclusionTitles from "./ConclusionTitles.jsx";
 
 export default function Review() {
   const { t, lang } = useApp();
@@ -44,6 +45,7 @@ export default function Review() {
           <span className="help" role="status">{t("review_summary", { w: warnings, i: issues.length - warnings })}</span>
         )}
       </div>
+      <ConclusionTitles onChanged={check.reload} />
       <DesignAudit deckId={deckId} audit={audit} setAudit={setFresh} loading={saved.loading} />
       {check.error && <Empty>{check.error.message}</Empty>}
       {check.loading && !check.data && <div className="help" role="status">{t("loading")}</div>}

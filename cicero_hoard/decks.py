@@ -114,7 +114,8 @@ def deck_view(svc: Any, deck_id: str) -> dict[str, Any]:
         setting = transitions.get('slides', {}).get(slide['id'], transitions.get('default'))
         if setting:
             slide['transition'] = setting
-    return view
+    from . import titles  # label or conclusion titles: the deck's mode and each slide's own (see titles.py)
+    return titles.annotate(svc, view)
 
 
 def create_deck(svc: Any, data: DeckCreate) -> dict[str, Any]:
@@ -157,6 +158,7 @@ def delete_deck(svc: Any, deck_id: str, confirm: bool) -> dict[str, Any]:
     exports = svc.db.query("SELECT id FROM exports WHERE deck_id = ?", (deck_id,))
     with svc.db.transaction() as conn:
         conn.execute("DELETE FROM decks WHERE id = ?", (deck_id,))
+        conn.execute("DELETE FROM settings WHERE key = ?", ("titles:" + deck_id,))
     for a in assets:
         (svc.config.assets_dir / f"{a['id']}.{a['ext']}").unlink(missing_ok=True)
         if a["ext"] == "svg":

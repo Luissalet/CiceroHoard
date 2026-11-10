@@ -34,11 +34,13 @@ REQUIRED.add('deck_chrome')
 REQUIRED.update({'deck_visual_lab','deck_poll','slide_collaborate','dataset_connect','deck_design','deck_benchmark','scene_model_import'})
 READ_ONLY.update({'media_get','dataset_links'})
 REQUIRED.update({'deck_design_audit','deck_theme_from_preset','theme_delete'})
+REQUIRED.update({'titles_overview','titles_propose','titles_apply','titles_restore','titles_mode'})
+READ_ONLY.add('titles_overview')
 
 
 def test_catalogue_has_every_tool_once():
     names = [t.name for t in at.TOOLS]
-    assert set(names) == REQUIRED and len(names) == len(set(names)) == 72
+    assert set(names) == REQUIRED and len(names) == len(set(names)) == 77
 
 
 def test_large_authored_batch_keeps_all_ids_in_its_receipt(services):

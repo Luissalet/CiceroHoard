@@ -136,6 +136,11 @@ export const api = {
   designAuditRun: (id, prepare, lang) => request("POST", `${deckBase(id)}/design-audit`, { body: { prepare: !!prepare, lang } }),
   vitruviusStart: () => request("POST", "/api/design/vitruvius/start"),
   check: (id) => request("GET", `${deckBase(id)}/check`),
+  titles: (id) => request("GET", `${deckBase(id)}/titles`),
+  titlesPropose: (id, body = {}) => request("POST", `${deckBase(id)}/titles/propose`, { body }),
+  titlesApply: (id, body = {}) => request("POST", `${deckBase(id)}/titles/apply`, { body }),
+  titlesRestore: (id, body = {}) => request("POST", `${deckBase(id)}/titles/restore`, { body }),
+  titlesMode: (id, body) => request("POST", `${deckBase(id)}/titles/mode`, { body }),
   visualReview: (id, fix) => request("POST", `${deckBase(id)}/visual-review`, { body: { fix: !!fix } }),
 
   animationsReset: (id) => request("DELETE", `${deckBase(id)}/animations`),

@@ -202,7 +202,7 @@ the source slide. Font overrides use points, whereas frames use CSS pixels.
 | `POST /api/agent/undo` | body `{session, agent?, dry_run?, confirm?, reason?}`; `{undone \| would_undo, conflicts, not_undoable, already_undone, complete, counts}`; `confirm: true` and `reason` are required unless `dry_run`; 404 `session_not_found` |
 | `GET/POST /api/agent/tokens`, `DELETE /api/agent/tokens/{id}` | scoped agent tokens `{agent, profile: read_only \| drafts \| all}` (main token only; a minted token is shown once) |
 
-The 49 tools are listed in `README.md`. The REST routes above and the tools share one implementation.
+The tools are listed in `README.md`. The REST routes above and the tools share one implementation.
 
 ## Visual agent API
 
@@ -319,3 +319,16 @@ answer is 503 `{"error": ...}`.
 `POST /api/decks/{id}/assets` accepts an uploaded `.vfigure` or JSON file in the native `vitruvius.figure/1` format, besides the existing raster formats. `POST /api/decks/{id}/assets/import` accepts a local figure path through `asset_import`. The same preview with different source revisions produces different immutable asset IDs.
 
 `GET /api/assets/{id}/source` returns `{asset_id, figure}` with captured document ID, revision, page ID, native content and origin links. Ordinary images return `figure: null`. Add `?download=true` to download the complete portable figure including its PNG; unavailable figure sources return 404. MCP `figure_get(asset_id, include_preview=false)` reads the same stored snapshot without contacting its origin.
+
+## Conclusion titles
+
+`GET /api/decks/{id}/titles` returns `{mode, labels, applied, proposals, slides: [{slide_id, position, layout, title, mode, own_mode, exempt, is_label, proposal, proposal_by, label, applied}]}`. The deck view (`GET /api/decks/{id}`) carries the same per slide in `slide.titling` and the deck's `title_mode` (`label` or `conclusion`).
+
+| Route | Body | Result |
+| --- | --- | --- |
+| `POST /api/decks/{id}/titles/propose` | `{slide_ids?, use_model?: true, force?: false}` | `{proposals: [{slide_id, position, title, proposal, by: "model" or "rule"}], skipped: [{slide_id, reason}], generator, model, note?}`. Slides are not changed. |
+| `POST /api/decks/{id}/titles/apply` | `{slide_ids?, titles?: {slide_id: text}, use_model?}` | `{mode, applied: [{slide_id, from, to}], skipped}`. Without `slide_ids` and `titles` it applies to the whole deck and sets its mode to `conclusion`. |
+| `POST /api/decks/{id}/titles/restore` | `{slide_ids?, force?: false}` | `{mode, restored: [{slide_id, from, to}], skipped}`. Without `slide_ids` the deck's mode becomes `label`. |
+| `POST /api/decks/{id}/titles/mode` | `{mode?: "label" or "conclusion", slide_id?}` | The apply or restore result; with `slide_id` and no `mode`, the slide follows the deck again. |
+
+Skip reasons: `exempt_layout` (title, section, closing, quote), `already_a_conclusion`, `kept_as_label`, `no_title`, `nothing_to_conclude`, `invented_figures: <figures>`, `edited_since`, `unchanged`, `too_long`. The figure rule is the one of the deck check (a number with two or more digits, a decimal or a percentage): it must be among the numbers of the slide's text, table, metrics, chart values or notes, or follow from a chart (first-to-last change and its percentage, share of the largest part). `deck_check` issues of kind `label_title` carry `proposal` when there is one. The MCP tools `titles_overview`, `titles_propose`, `titles_apply`, `titles_restore` and `titles_mode` are the same code.

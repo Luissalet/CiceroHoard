@@ -35,7 +35,7 @@ se estiran en vertical.
 `deck_media_control` controla la reproduccion de la diapositiva activa.
 `dataset_link`, `dataset_links`, `dataset_bind` y `dataset_link_control` ofrecen actualizacion automatica durable,
 snapshots inmutables, recetas visuales y recuperacion del ultimo estado valido. Las mismas funciones estan en el editor.
-El catalogo publico contiene 69 herramientas, incluidas las figuras con fuente y la numeración/progreso. Contratos y diferencias de formato: [multimedia y datos](docs/LIVE_MEDIA.md).
+El catalogo publico contiene 77 herramientas, incluidas las figuras con fuente y la numeración/progreso. Contratos y diferencias de formato: [multimedia y datos](docs/LIVE_MEDIA.md).
 
 `deck_design` ejecuta un ciclo de crear/renderizar/corregir con el modelo global configurado, enviando imagenes reales en modo vision. La revision externa queda vinculada a version, variante y hash de PNG. Permite continuar, cancelar y deshacer los cambios propios.
 `scene_model_import` incorpora GLB/glTF/ZIP completos con texturas, materiales, iluminacion y clips, tambien offline.
@@ -46,6 +46,17 @@ objetivo, un público y el material; propone un guion, escribe las diapositivas 
 y aprobar cada diapositiva por separado, aplica un tema y exporta el resultado. Está pensado para que lo usen a la
 vez una persona y un asistente: todo está disponible como API REST para la interfaz incluida y como herramientas MCP,
 construidas con el mismo código, de modo que no pueden discrepar.
+
+## Títulos que afirman la conclusión
+
+Un título puede ser un rótulo («Resultados del trimestre») o la conclusión de la diapositiva («Las ventas crecieron un 12 % por el canal online»). Cicero distingue los dos y puede pasar de uno a otro, por presentación o por diapositiva, sin perder el rótulo.
+
+- **La revisión los marca.** `deck_check` (pestaña Revisión) señala cada diapositiva de contenido cuyo título es un rótulo (`label_title`) y, cuando puede, propone la conclusión en el mismo aviso. Es una nota mientras la presentación está en modo rótulos y un aviso cuando está en modo conclusiones. La portada, las diapositivas de sección, el cierre y las citas no se tocan.
+- **De dónde sale la conclusión.** Del contenido real de la diapositiva: su texto, su tabla, sus métricas, las series de su gráfico y las notas del orador. Para un gráfico se calculan los hechos que dan sus propios números (el cambio entre la primera y la última categoría, la parte mayor de un total) y se le dan al modelo. Una cifra que la diapositiva no tiene, ni se deduce de su gráfico con esa aritmética, no entra en el título: la propuesta se devuelve una vez al modelo con las cifras sobrantes y, si insiste, se usa la que escriben las reglas. Sin modelo, las reglas escriben lo que dicen los datos («Ventas sube de 100 a 112 entre 2023 y 2024 (+12 %)»), la métrica destacada o la primera frase de la diapositiva que ya es una afirmación; una lista de temas se queda sin propuesta y lo dice.
+- **Aplicar y deshacer.** En Revisión → *Títulos que afirman la conclusión*: «Proponer conclusiones», editar cada propuesta, «Aplicar» en una diapositiva o «Aplicar a toda la presentación», y «Deshacer: volver a los rótulos». Cada cambio es una revisión de la diapositiva y el rótulo se guarda; al deshacer, un título que editaste a mano después no se pisa. «Mantener rótulo» deja una diapositiva fuera del modo. Tu propia redacción pasa por la misma comprobación de cifras.
+- **Qué no hace.** No distingue un rótulo de una conclusión leyendo el significado: mira si el título tiene verbo conjugado, una cifra con signo o un porcentaje, y si es una pregunta (lista de formas verbales en español e inglés; un título muy corto o sin verbo es un rótulo). No comprueba causas: si el modelo escribe un «por…» que la diapositiva no sostiene con palabras, solo las cifras lo delatan, así que conviene leer las propuestas antes de aplicarlas. No reescribe el contenido ni las notas.
+
+Herramientas: `titles_overview`, `titles_propose`, `titles_apply`, `titles_restore`, `titles_mode`. Rutas: `GET /api/decks/{id}/titles` y `POST /api/decks/{id}/titles/propose|apply|restore|mode`.
 
 ## Qué hace
 
@@ -259,7 +270,8 @@ herramientas de la aplicación en marcha y reenvía cada llamada. Si la aplicaci
 | `slide_regenerate` | reescribir una diapositiva según unos comentarios (necesita modelo) |
 | `slide_approve` | aprobar o quitar la aprobación de una diapositiva |
 | `slide_revert` | listar las revisiones de una diapositiva o restaurar una como revisión nueva |
-| `deck_check` | revisión: desbordes, cifras que no están en las fuentes, notas ausentes, diapositivas sin aprobar |
+| `deck_check` | revisión: desbordes, cifras que no están en las fuentes, notas ausentes, diapositivas sin aprobar, títulos que son rótulos (con la conclusión propuesta) |
+| `titles_overview`, `titles_propose`, `titles_apply`, `titles_restore`, `titles_mode` | títulos que afirman la conclusión: qué títulos son rótulos, proponer la conclusión desde el contenido de cada diapositiva, aplicarla a toda la presentación o a algunas diapositivas, volver a los rótulos y fijar el modo |
 | `deck_theme` | listar los temas (los de serie y los hechos desde sistemas de diseño) o aplicar uno |
 | `asset_import` | copiar una figura local PNG/JPEG/WEBP; usar su ID en un bloque de imagen; repetir la importación reutiliza la imagen de esta presentación |
 | `figure_get` | leer la fuente editable retenida, el documento, su revisión y el PNG opcional de una figura de Vitruvius |
@@ -416,4 +428,4 @@ El original vectorial se edita en VectorCraft. El PPTX contiene el SVG como imag
 
 ## Asistente compartido de Faustus
 
-El botón Faustus monta el panel común servido por Faustus. Conversaciones, modelo, streaming, recuperación y memoria del proyecto viven allí. Cicero aporta su espacio de datos, presentación, diapositiva y revisión, selección y borrador sin guardar. Mantiene sus 69 herramientas de dominio y las revisiones para deshacer. Se conservan presentaciones, notas, fuentes y cambios manuales sin guardar. La conexión utiliza CICERO_FAUSTUS_URL o backend.json. Requiere Faustus disponible con el contrato común; no crea otro chat ni otro modelo privado.
+El botón Faustus monta el panel común servido por Faustus. Conversaciones, modelo, streaming, recuperación y memoria del proyecto viven allí. Cicero aporta su espacio de datos, presentación, diapositiva y revisión, selección y borrador sin guardar. Mantiene sus 77 herramientas de dominio y las revisiones para deshacer. Se conservan presentaciones, notas, fuentes y cambios manuales sin guardar. La conexión utiliza CICERO_FAUSTUS_URL o backend.json. Requiere Faustus disponible con el contrato común; no crea otro chat ni otro modelo privado.

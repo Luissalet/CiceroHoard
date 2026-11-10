@@ -330,4 +330,6 @@ def check_deck(deck: dict[str, Any], sources: list[dict[str, Any]], assets: Asse
             add(slide, "missing_notes", "info", "missing_notes")
         if slide.get("status") != "approved":
             add(slide, "not_approved", "info", "not_approved")
+    from . import titles  # titles that name a topic instead of stating the conclusion, with a proposal (see titles.py)
+    issues.extend(titles.review_issues(deck))
     return issues

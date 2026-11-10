@@ -20,6 +20,7 @@ from . import craft_apps
 from . import agent_undo
 from .templates import TemplateBinding
 from . import agent_visuals
+from . import titles
 
 AGENT_INSTRUCTIONS = """Cicero's Hoard builds presentations that a person can review slide by slide. Work in this order: deck_create (title, brief,
 audience, tone, language, number of slides) -> source_add (paste the text you may use, or a document the user names; figures on slides must come from
@@ -855,6 +856,48 @@ TOOLS.extend([
          "(contrast 4.5:1); non-Windows fonts are replaced. PPTX, PDF and HTML exports use the theme. Sinónimos: paleta, estilo, preset, tema para el encargo.",
          ThemeFromPresetArgs, _ann(False, False, True, True), run_deck_theme_from_preset, timeout_s=180),
 ])
+
+TOOLS.extend([
+    Tool("titles_overview",
+         "Which slide titles are labels and which state a conclusion; the deck's title mode. Títulos.\n"
+         "Per slide: is_label, the proposal waiting (if any), whether a conclusion is applied and the label it replaced, and the mode (label or\n"
+         "conclusion; a slide follows the deck unless it has its own). Cover, section, closing and quote slides are exempt.\n"
+         "Sinónimos: títulos rótulo, títulos conclusión, títulos de acción, estado de los títulos.",
+         titles.TitlesArgs, _ann(True), titles.tool_overview),
+    Tool("titles_propose",
+         "Propose a conclusion title for each slide whose title is only a label. Proponer conclusiones.\n"
+         "The title becomes one sentence that says what the slide shows («Las ventas crecieron un 12 % por el canal online» instead of «Resultados\n"
+         "del trimestre»), written from the slide's own text, table, metrics and chart data. No figure enters a title unless the slide holds it or it\n"
+         "follows from a chart by plain arithmetic (change between the first and last category, share of the largest part); a proposal that fails this\n"
+         "is asked again once and then replaced by a rule-made one. Nothing on the slides changes: proposals are kept for titles_apply. Without a\n"
+         "model (use_model=false, or none reachable) only the rule-made ones are written and the result says so.\n"
+         "Sinónimos: títulos que afirman, título conclusión, título de acción, reescribir títulos, mensaje de la diapositiva.",
+         titles.TitlesProposeArgs, _ann(False, False, True, draft_safe=True), titles.tool_propose, timeout_s=300),
+    Tool("titles_apply",
+         "Put the conclusion in the slide titles: the whole deck or some slides. Aplicar títulos conclusión.\n"
+         "Uses the stored proposals (making the missing ones first) or your own text per slide in `titles`, which is checked the same way: figures\n"
+         "the slide does not hold are refused. Each change is a slide revision and the label is kept, so titles_restore puts it back. Applied to\n"
+         "the whole deck, the deck's mode becomes conclusion and deck_check reports any remaining label title as a warning.\n"
+         "Sinónimos: aplicar a toda la presentación, cambiar títulos por conclusiones, modo conclusión.",
+         titles.TitlesApplyArgs, _ann(False, False, True, draft_safe=True), titles.tool_apply, timeout_s=300),
+    Tool("titles_restore",
+         "Undo conclusion titles: put the labels back, on the whole deck or some slides. Deshacer.\n"
+         "A title edited by hand after the conclusion was applied is left alone unless force=true. The conclusions stay as proposals. Naming a slide\n"
+         "also makes it keep its label while the deck is in conclusion mode.\n"
+         "Sinónimos: deshacer títulos, volver a los rótulos, restaurar títulos, mantener rótulo.",
+         titles.TitlesRestoreArgs, _ann(False, False, True, draft_safe=True), titles.tool_restore),
+    Tool("titles_mode",
+         "Set the title mode of a deck or of one slide: label or conclusion. Modo de títulos.\n"
+         "Deck: conclusion applies conclusion titles to every content slide, label puts every label back. With slide_id the same for one slide;\n"
+         "without mode the slide follows the deck again.\nSinónimos: modo de títulos, activar títulos conclusión, desactivar.",
+         titles.TitlesModeArgs, _ann(False, False, True, draft_safe=True), titles.tool_mode, timeout_s=300),
+])
+
+AGENT_INSTRUCTIONS += """\nConclusion titles: a title that names a topic («Resultados del trimestre») is a label; deck_check reports each one (kind label_title) with a
+proposed conclusion. titles_propose writes the conclusions from each slide's own content and data, titles_apply puts them in (the whole deck,
+or some slides, or your own wording in `titles`), titles_restore puts the labels back, titles_mode switches a deck or a slide. Never word a
+conclusion with a figure or a cause the slide does not hold: such a title is refused. Show the proposals to the user before applying them
+to a deck they have edited."""
 
 TOOLS_BY_NAME = {t.name: t for t in TOOLS}
 

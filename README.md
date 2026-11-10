@@ -29,7 +29,7 @@ Use `media_import` and `media_get` for local or HTTP(S) audio/video, then add ty
 `deck_media_control` operates playback on the current live slide.
 `dataset_link`, `dataset_links`, `dataset_bind` and `dataset_link_control` provide durable automatic local/URL
 data refresh, immutable snapshots, typed visual recipes and last-good recovery. The editor exposes the same features.
-The public catalogue now contains 69 tools, including portable figures and numbering/progress. See [live media](docs/LIVE_MEDIA.md) and [advanced authoring](docs/ADVANCED_AUTHORING.md) for contracts and format differences.
+The public catalogue now contains 77 tools, including portable figures and numbering/progress. See [live media](docs/LIVE_MEDIA.md) and [advanced authoring](docs/ADVANCED_AUTHORING.md) for contracts and format differences.
 
 `deck_design` runs a model-driven create/render/correct loop using the configured global model, with real image content in vision mode. External image feedback is bound to a source revision, variant and PNG hash; runs support resumption, cancellation and selective undo.
 `scene_model_import` packages local GLB/glTF/ZIP resources offline, retaining textures, materials, lights and clips.
@@ -40,6 +40,17 @@ an audience and the material; it proposes an outline, writes the slides with spe
 approve each slide one by one, applies a theme and exports the result. It is meant for a person and for an assistant
 working together: everything is available as a REST API for the bundled UI and as MCP tools, built from the same
 code, so the two cannot disagree.
+
+## Titles that state the conclusion
+
+A title can be a label ("Quarterly results") or the conclusion of the slide ("Sales grew 12% through the online channel"). Cicero tells them apart and can go from one to the other, per deck or per slide, without losing the label.
+
+- **The review marks them.** `deck_check` (the Revisión tab) reports every content slide whose title is a label (`label_title`) and, when it can, proposes the conclusion in the same issue. It is a note while the deck is in label mode and a warning in conclusion mode. The cover, section slides, the closing slide and quotes are left alone.
+- **Where the conclusion comes from.** From what the slide really holds: its text, its table, its metrics, its chart series and the speaker notes. For a chart, the facts its own numbers give are computed (the change between the first and the last category, the largest part of a total) and handed to the model. A figure the slide does not hold, and that does not follow from its chart by that arithmetic, never enters the title: the proposal goes back to the model once with the offending figures and, if it insists, the rule-made one is used. Without a model, the rules write what the data says ("Ventas rises from 100 to 112 between 2023 and 2024 (+12%)"), the highlighted metric, or the first sentence of the slide that already is a statement; a list of topics gets no proposal and says so.
+- **Apply and undo.** In Revisión → *Títulos que afirman la conclusión*: propose, edit each proposal, apply to one slide or to the whole presentation, and undo back to the labels. Each change is a slide revision and the label is kept; on undo, a title you edited by hand afterwards is not overwritten. *Mantener rótulo* keeps one slide out of the mode. Your own wording goes through the same figure check.
+- **What it does not do.** It does not tell a label from a conclusion by meaning: it looks for a conjugated verb, a signed figure or a percentage, and for a question (a list of verb forms in Spanish and English; a very short title or one without a verb is a label). It does not verify causes: if the model writes a "because…" the slide does not support in words, only figures give it away, so read the proposals before applying them. It does not rewrite the content or the notes.
+
+Tools: `titles_overview`, `titles_propose`, `titles_apply`, `titles_restore`, `titles_mode`. Routes: `GET /api/decks/{id}/titles` and `POST /api/decks/{id}/titles/propose|apply|restore|mode`.
 
 ## What it does
 
@@ -247,7 +258,8 @@ turns that off; the slow tools publish how long the bridge waits for them). Regi
 | `slide_regenerate` | rewrite one slide following feedback (needs a model) |
 | `slide_approve` | approve or unapprove a slide |
 | `slide_revert` | list a slide's revisions, or restore one as a new revision |
-| `deck_check` | review: overflow, figures not in the sources, missing notes, unapproved slides |
+| `deck_check` | review: overflow, figures not in the sources, missing notes, unapproved slides, titles that are labels (with the proposed conclusion) |
+| `titles_overview`, `titles_propose`, `titles_apply`, `titles_restore`, `titles_mode` | titles that state the conclusion: which titles are labels, propose the conclusion from each slide's content, apply it to the whole deck or to some slides, go back to the labels and set the mode |
 | `deck_theme` | list the themes (built-in and made from design systems) or apply one |
 | `template_inspect`, `deck_template` | inspect a local PPTX, attach it with optional per-layout bindings, read the attachment, or detach it with `clear=true` |
 | `theme_from_tokens` | make a theme from a design system (`tokens_id`, `mode` light or dark, optional `deck_id` to apply it); without `tokens_id` it lists the design systems |
@@ -395,4 +407,4 @@ The vector source is editable in VectorCraft. PPTX embeds the SVG as a picture w
 
 ## Shared Faustus assistant
 
-The Faustus button mounts the common panel served by the configured Faustus service. Conversation storage, model choice, streaming, recovery and project memory live in Faustus. Cicero supplies its data-space identity, deck, selected slide/revision, editor selection and unsaved slide draft. Its 69 native domain tools and slide revisions remain available. Existing decks, notes, sources and manual unsaved edits are preserved. Configure CICERO_FAUSTUS_URL or the existing backend.json Faustus connection. This requires a reachable Faustus service with the shared copilot contract; no private chat/model fallback is created.
+The Faustus button mounts the common panel served by the configured Faustus service. Conversation storage, model choice, streaming, recovery and project memory live in Faustus. Cicero supplies its data-space identity, deck, selected slide/revision, editor selection and unsaved slide draft. Its 77 native domain tools and slide revisions remain available. Existing decks, notes, sources and manual unsaved edits are preserved. Configure CICERO_FAUSTUS_URL or the existing backend.json Faustus connection. This requires a reachable Faustus service with the shared copilot contract; no private chat/model fallback is created.

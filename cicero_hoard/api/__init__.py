@@ -15,6 +15,7 @@ from .datasets import router as datasets_router
 from .presentation import router as presentation_router
 from .workbench import router as workbench_router
 from .advanced import router as advanced_router
+from .titles import router as titles_router
 
 ROUTERS = [status_router, decks_router, sources_router, outline_router, slides_router, assets_router, exports_router, themes_router,
-           settings_router, agent_router, templates_router, datasets_router, presentation_router, workbench_router,advanced_router]
+           settings_router, agent_router, templates_router, datasets_router, presentation_router, workbench_router,advanced_router, titles_router]
