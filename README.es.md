@@ -437,3 +437,7 @@ El original vectorial se edita en VectorCraft. El PPTX contiene el SVG como imag
 ## Asistente compartido de Faustus
 
 El botón Faustus monta el panel común servido por Faustus. Conversaciones, modelo, streaming, recuperación y memoria del proyecto viven allí. Cicero aporta su espacio de datos, presentación, diapositiva y revisión, selección y borrador sin guardar. Mantiene sus 79 herramientas de dominio y las revisiones para deshacer. Se conservan presentaciones, notas, fuentes y cambios manuales sin guardar. La conexión utiliza CICERO_FAUSTUS_URL o backend.json. Requiere Faustus disponible con el contrato común; no crea otro chat ni otro modelo privado.
+
+## Skills para los agentes que se conectan
+
+Esta app lleva procedimientos de la biblioteca de skills del espacio de trabajo de la familia para los agentes que se conectan: `presentation-from-brief`, `diagram-authoring`, `image-composition`, `deep-research`. Aparecen en lo que el agente lee al conectarse, se leen con `skills_list` y `skill_read`, se buscan y asignan con `skills_library` y `skills_assign`, y se ofrecen como prompts. Se eligen en la página de skills (`/api/agent/skills/page`) o en la pestaña Skills del hub; el bloque `skills` de `faustus-plugin.json` guarda lo que la app pide por defecto.

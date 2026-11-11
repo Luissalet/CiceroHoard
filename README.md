@@ -416,3 +416,7 @@ The vector source is editable in VectorCraft. PPTX embeds the SVG as a picture w
 ## Shared Faustus assistant
 
 The Faustus button mounts the common panel served by the configured Faustus service. Conversation storage, model choice, streaming, recovery and project memory live in Faustus. Cicero supplies its data-space identity, deck, selected slide/revision, editor selection and unsaved slide draft. Its 79 native domain tools and slide revisions remain available. Existing decks, notes, sources and manual unsaved edits are preserved. Configure CICERO_FAUSTUS_URL or the existing backend.json Faustus connection. This requires a reachable Faustus service with the shared copilot contract; no private chat/model fallback is created.
+
+## Skills for the agents that connect
+
+This app carries procedures from the skill library of the family's workspace for the agents that connect to it: `presentation-from-brief`, `diagram-authoring`, `image-composition`, `deep-research`. They are named in what an agent reads on connecting, read with `skills_list` and `skill_read`, searched and assigned with `skills_library` and `skills_assign`, and offered as prompts. The person chooses them on the skills page (`/api/agent/skills/page`) or in the hub's Skills tab; the `skills` block of `faustus-plugin.json` holds what the app asks for by default.
