@@ -1,221 +1,67 @@
+<img src="app-icon.png" width="96" alt="">
+
 # Cicero's Hoard
 
-En Datos, **Filtrar y ordenar** crea una fuente derivada guardada con una condición,
-orden opcional y nombre. El original se conserva. Puedes consultar los IDs de la
-fuente y su origen y la transformación guardada, y usar el resultado en el editor
-actual de gráficos o tablas. La vista previa indica sus primeras ocho filas;
-insertar un visual cambia el borrador de la diapositiva hasta Guardar. Los errores
-conservan el borrador del filtro.
+Espacio de trabajo local que convierte un encargo y unos documentos fuente en una presentación editable, para una persona y un asistente que trabajan juntos. [English](README.md)
 
-**Duplicar contenido**, en el editor de diapositivas, crea un borrador justo detrás con el contenido visible, incluidos cambios sin guardar, notas, bloques y referencias a fuentes. Abre la copia sin guardar cambios en el original. Reutiliza `slide_add` de API/MCP para obtener otro ID y revisión inicial; no copia aprobación ni historial, y los recursos siguen referenciados en la misma presentación.
+## Qué es
 
-## Preparar un ensayo
+Le das a Cicero un objetivo, un público y el material. Propone un esquema, escribe las diapositivas con notas del orador, te deja revisar y aprobar cada una, aplica un tema y exporta el resultado. Todo está disponible como API REST para la interfaz incluida y como herramientas MCP construidas con el mismo código, de modo que no pueden discrepar.
 
-La pestaña **Ensayo** planifica la exposición a partir de las notas guardadas: límite de tiempo, palabras por minuto, pausas, margen reservado y número de diapositivas principales. Muestra el intervalo asignado y la duración estimada de cada diapositiva, separa las de apoyo, permite consultar o abrir las notas para editarlas y conserva los ajustes elegidos al cambiar de pestaña. Puedes copiar o descargar el plan con sus notas en castellano o inglés. Si faltan notas, la duración total queda sin estimar; una exposición larga conserva el aviso de exceso. Es planificación, no un ensayo grabado ni medido. La UI utiliza `POST /api/decks/{id}/rehearsal` y el cálculo MCP existente `deck_rehearsal`, que ahora devuelve también `text` y acepta `language: es|en`. `GET /api/decks/{id}/rehearsal.txt` descarga el mismo texto con los supuestos en los parámetros de consulta. La planificación no modifica notas ni aprobaciones.
-
-## Recorridos Interactivos
-
-`deck_navigation` configura enlaces por objeto a diapositivas con ID estable, URLs, siguiente/anterior y retorno.
-El editor ofrece el mismo selector. HTML y las sesiones en vivo recuperan el origen y el paso de cada rama;
-PPTX utiliza enlaces nativos y vuelta a la ultima diapositiva vista. [Contratos](docs/INTERACTIVE_NAVIGATION.md).
-
-## Numeracion Y Progreso
-
-`deck_chrome` fija el numero de diapositiva (`n`, `n / total` o ninguno) y una barra de progreso o un segmento por
-diapositiva, arriba o abajo. `main_slides` marca el resto como anexo: no cuenta en el total ni en el progreso, asi que
-un anexo nunca muestra "16 / 15". Vista previa, HTML, PPTX y plantillas adjuntas dibujan lo mismo; el campo de numero de
-una plantilla recibe el texto. Sin ajustes se mantiene el pie de siempre. La pestana Exportar tiene el mismo panel.
-`deck_check` avisa ademas de diapositivas cuyos visuales dejan vacia la mayor parte del cuerpo, y los diagramas anchos
-se estiran en vertical.
-
-## Movimiento, Multimedia Y Datos Vinculados
-
-`deck_transitions` configura transiciones de pantalla y archivo, morph por identidad y ajustes por diapositiva.
-`media_import` y `media_get` importan e inspeccionan audio/video local o por HTTP(S); se coloca mediante bloques tipados.
-`deck_media_control` controla la reproduccion de la diapositiva activa.
-`dataset_link`, `dataset_links`, `dataset_bind` y `dataset_link_control` ofrecen actualizacion automatica durable,
-snapshots inmutables, recetas visuales y recuperacion del ultimo estado valido. Las mismas funciones estan en el editor.
-El catalogo publico contiene 79 herramientas, incluidas las figuras con fuente y la numeración/progreso. Contratos y diferencias de formato: [multimedia y datos](docs/LIVE_MEDIA.md).
-
-`deck_design` ejecuta un ciclo de crear/renderizar/corregir con el modelo global configurado, enviando imagenes reales en modo vision. La revision externa queda vinculada a version, variante y hash de PNG. Permite continuar, cancelar y deshacer los cambios propios.
-`scene_model_import` incorpora GLB/glTF/ZIP completos con texturas, materiales, iluminacion y clips, tambien offline.
-`deck_benchmark` compara flujos completos frente a PPTX creados independientemente, con el mismo renderizador y una rubrica ciega. El informe conserva fallos, empates y regresiones; no acredita superioridad universal.
-
-Un espacio de trabajo local que convierte un encargo y unos documentos en una presentación editable. Le das un
-objetivo, un público y el material; propone un guion, escribe las diapositivas con notas del orador, te deja revisar
-y aprobar cada diapositiva por separado, aplica un tema y exporta el resultado. Está pensado para que lo usen a la
-vez una persona y un asistente: todo está disponible como API REST para la interfaz incluida y como herramientas MCP,
-construidas con el mismo código, de modo que no pueden discrepar.
-
-## Títulos que afirman la conclusión
-
-Un título puede ser un rótulo («Resultados del trimestre») o la conclusión de la diapositiva («Las ventas crecieron un 12 % por el canal online»). Cicero distingue los dos y puede pasar de uno a otro, por presentación o por diapositiva, sin perder el rótulo.
-
-- **La revisión los marca.** `deck_check` (pestaña Revisión) señala cada diapositiva de contenido cuyo título es un rótulo (`label_title`) y, cuando puede, propone la conclusión en el mismo aviso. Es una nota mientras la presentación está en modo rótulos y un aviso cuando está en modo conclusiones. La portada, las diapositivas de sección, el cierre y las citas no se tocan.
-- **De dónde sale la conclusión.** Del contenido real de la diapositiva: su texto, su tabla, sus métricas, las series de su gráfico y las notas del orador. Para un gráfico se calculan los hechos que dan sus propios números (el cambio entre la primera y la última categoría, la parte mayor de un total) y se le dan al modelo. Una cifra que la diapositiva no tiene, ni se deduce de su gráfico con esa aritmética, no entra en el título: la propuesta se devuelve una vez al modelo con las cifras sobrantes y, si insiste, se usa la que escriben las reglas. Sin modelo, las reglas escriben lo que dicen los datos («Ventas sube de 100 a 112 entre 2023 y 2024 (+12 %)»), la métrica destacada o la primera frase de la diapositiva que ya es una afirmación; una lista de temas se queda sin propuesta y lo dice.
-- **Aplicar y deshacer.** En Revisión → *Títulos que afirman la conclusión*: «Proponer conclusiones», editar cada propuesta, «Aplicar» en una diapositiva o «Aplicar a toda la presentación», y «Deshacer: volver a los rótulos». Cada cambio es una revisión de la diapositiva y el rótulo se guarda; al deshacer, un título que editaste a mano después no se pisa. «Mantener rótulo» deja una diapositiva fuera del modo. Tu propia redacción pasa por la misma comprobación de cifras.
-- **Qué no hace.** No distingue un rótulo de una conclusión leyendo el significado: mira si el título tiene verbo conjugado, una cifra con signo o un porcentaje, y si es una pregunta (lista de formas verbales en español e inglés; un título muy corto o sin verbo es un rótulo). No comprueba causas: si el modelo escribe un «por…» que la diapositiva no sostiene con palabras, solo las cifras lo delatan, así que conviene leer las propuestas antes de aplicarlas. No reescribe el contenido ni las notas.
-
-Herramientas: `titles_overview`, `titles_propose`, `titles_apply`, `titles_restore`, `titles_mode`. Rutas: `GET /api/decks/{id}/titles` y `POST /api/decks/{id}/titles/propose|apply|restore|mode`.
-
-## Importar un PPTX y rehacerlo
-
-**Importar PPTX** (lista de presentaciones) crea una presentación editable a partir de un `.pptx`: título y subtítulo, el resto del texto como viñetas, tablas, gráficos de columnas, barras, líneas y circulares con sus datos, imágenes y notas del orador. Cada diapositiva recibe un diseño de Cicero y el tema que elijas; el aspecto original no se copia (para conservarlo está la plantilla PPTX). El archivo y los datos de sus gráficos quedan como fuentes, así que la revisión comprueba las cifras. Las cajas de texto sueltas (por ejemplo, cifras dibujadas como texto) llegan como viñetas y los pies de página en letra pequeña se descartan. No se leen posiciones, animaciones, vídeo ni gráficos de otros tipos (dispersión, combinados). Herramienta `deck_import_pptx`; ruta `POST /api/import/pptx` (multipart `file`, o JSON `{path}`).
-
-## Ensayos medidos
-
-La consola del orador mide cuánto tiempo pasa cada diapositiva en pantalla mientras corre el reloj (pausado no cuenta) y lo muestra como «En esta diapositiva». **Guardar ensayo** conserva esos tiempos; la pestaña **Ensayo** los pone junto al plan hecho con las notas: tiempo asignado, medido y diferencia por diapositiva, las que más se pasan y el total frente al límite. Se guardan los 20 últimos por presentación. Herramienta `deck_rehearsal_runs` (`list`, `save`, `delete`); rutas `GET|POST /api/decks/{id}/rehearsal/runs` y `DELETE /api/decks/{id}/rehearsal/runs/{run}`.
+Las fuentes se leen en tu ordenador; al modelo solo van extractos cortos y numerados, a través de Hoard Link, al backend que hayas configurado (uno local por defecto). Sin modelo accesible, el esquema y las diapositivas se construyen desde las fuentes con reglas fijas y el resultado indica `"generator": "fallback"`.
 
 ## Qué hace
 
-- **Tus plantillas PPTX**: carga una presentación de referencia en Tema, o usa `template_inspect` y
-  `deck_template` por MCP. El PPTX editable conserva tamaño, patrones, diseños, fondos, logotipos y
-  tipografías. Una copia guardada permite reutilizarla aunque cambie el original. Notas y gráficos salen
-  de la presentación nueva. Puedes asignar diapositivas modelo y formas concretas a cada diseño de Cicero.
+### Presentaciones, fuentes y diapositivas
+- Presentaciones con título, encargo, público, tono, idioma (español o inglés), de 3 a 40 diapositivas y un tema. El estado se deriva: borrador, esquema, revisión o listo (todas las diapositivas aprobadas).
+- Fuentes: texto pegado o archivos `.txt`, `.md`, `.pdf`, `.docx` y `.pptx`; los PDF escaneados los lee el servicio de documentos de la familia cuando está en marcha. Las fuentes se numeran y las diapositivas las citan.
+- Esquema generado a partir del encargo y de extractos de las fuentes, o escrito a mano.
+- Quince diseños (con evidencia, comparación y composición libre) construidos con bloques de texto, imagen, gráfico, diagrama, métrica, tabla y línea de tiempo; cada diapositiva tiene notas del orador.
+- Revisión por diapositiva: aprobar, regenerar con comentarios, editar a mano. Cada cambio es una revisión; revertir restaura una revisión antigua como una nueva. Regenerar conserva las aprobadas y reescribe los borradores.
+- Duplicar una diapositiva, editar un título, nota o viñeta sin reconstruir el resto, añadir borradores en lotes idempotentes y cambiar una figura existente.
+- Importar un `.pptx` a una presentación editable (texto, tablas, gráficos con datos, imágenes, notas) con un diseño y tema de Cicero.
+- Títulos que afirman la conclusión: los títulos de etiqueta se señalan y se propone una conclusión a partir del contenido de la propia diapositiva, aplicable por diapositiva o a toda la presentación y reversible hasta las etiquetas.
 
-- **Presentaciones**: título, encargo (brief), público, tono, idioma (español o inglés), número de diapositivas (de 3 a
-  40) y tema. El estado se deduce, nunca se escribe a mano: `draft` (nada todavía), `outline` (hay guion), `review`
-  (hay diapositivas y alguna sin aprobar), `ready` (todas aprobadas).
-- **Fuentes**: pega texto o añade un archivo `.txt`, `.md`, `.pdf`, `.docx` o `.pptx` (solo texto; un PDF escaneado lo lee el OCR
-  del servicio de documentos de la familia cuando esa aplicación está en marcha). Las fuentes se numeran y cada diapositiva puede citar en las que se apoya.
-- **Guion**: lo genera el modelo configurado de la familia a partir del encargo y fragmentos numerados de las fuentes, o se escribe a
-  mano. Cada punto tiene título, propósito, unas ideas y una sugerencia de diseño opcional.
-- **Diapositivas**: quince diseños, incluidos evidencia, comparación y composición libre, formados por
-  bloques de texto, imagen, gráfico, diagrama, métricas, tabla y cronología. Todas llevan notas del orador.
-- **Revisión una a una**: aprobar o quitar la aprobación, regenerar con comentarios, editar a mano. Cada cambio crea
-  una revisión; revertir restaura una revisión antigua como una nueva. Al volver a generar se conservan las
-  aprobadas y se reescriben los borradores.
-- **Sin cifras inventadas**: el modelo solo puede usar cifras que aparezcan en las fuentes. Un gráfico se conserva
-  únicamente si todos sus valores están en las fuentes, y `deck_check` señala cada cifra de una diapositiva que
-  ninguna fuente contiene. Los formatos numéricos se comparan entre notaciones (`1.234`, `1,234`, `1.234,5`, `1,5`).
-- **Ajuste automático**: el texto se mide y la letra baja de tamaño hasta que cabe, igual en la vista previa, en el
-  HTML y en el PPTX (los tres se dibujan desde la misma geometría). Si algo no cabe ni con la letra más pequeña, la
-  revisión lo avisa en vez de recortarlo en silencio.
-- **Temas**: siete temas (`claro`, `oscuro`, `editorial`, `carmesi`, `pizarra`, `tecnico`, `oceano`), todos con un
-  contraste mínimo de 4,5:1 en texto, texto atenuado y acentos. Las tipografías son de las que trae Windows.
-  Un sistema de diseño de la aplicación de sistemas de diseño de la familia puede convertirse en un tema propio
-  (`theme_from_tokens`, o el selector "Tema desde un sistema de diseño" de la pantalla de tema): se trasladan sus
-  colores, tipografías y radio de esquinas, los colores que no se leerían se acercan al blanco o al negro hasta llegar a
-  4,5:1 (los cambios se listan) y una tipografía que no trae Windows se sustituye por la más parecida que sí. Las
-  tarjetas de un tema con radio se dibujan con esquinas redondeadas en la vista previa, el HTML y el PPTX.
-  La pestaña "Desde Vitruvius" de la pantalla de tema (`deck_theme_from_preset`) lista los 112 presets de diseño de
-  Vitruvius's Hoard con sus muestras claras y oscuras, con buscador, y "Elegir tres para este encargo" pide al estudio
-  tres presets que encajen con el título, el encargo, el público y el tono (uno recomendado, con el motivo). Al aplicar
-  uno, claro u oscuro, sus tokens pasan a un tema propio: página = background, tarjetas = secondary, texto =
-  foreground, atenuado = muted-foreground, acento = primary, segundo acento = `chart-2` o el primary en el tono de la página,
-  tipografías reducidas a las de Windows y radio = `md`; se aplica el mismo ajuste a 4,5:1 y el tema lo usan la vista
-  previa y las exportaciones PPTX, PDF y HTML. Las cabeceras de tabla sobre el acento llevan texto blanco cuando se lee y,
-  si no, el color de página o de texto del propio tema (el acento claro de un preset oscuro).
-- **Borrar un tema guardado** (`theme_delete`, `DELETE /api/themes/{id}`, "Borrar tema" en la tarjeta de un tema guardado,
-  con confirmación): los temas creados desde un sistema de diseño o un preset se pueden borrar; los de serie no. Las
-  presentaciones que lo usaban pasan al tema de serie del mismo tipo (Oscuro si la página es oscura, Claro si no) y siguen
-  exportando; las exportaciones ya hechas se conservan.
-- **Revisión de diseño con Vitruvius** (`deck_design_audit`, "Revisar diseño" en la pestaña Revisión): la presentación
-  se renderiza como su HTML apilado (todas las diapositivas, imágenes incrustadas) y se envía a `design_slop_audit` de
-  Vitruvius's Hoard, que la renderiza a ocho anchos, puntúa el aspecto genérico de 0 a 100 y propone arreglos. Cada
-  hallazgo se coloca en su diapositiva (cada elemento de la diapositiva n lleva un id `cs{n}-{k}` que el estudio cita en
-  sus pruebas, así se distinguen diapositivas con las mismas palabras; si no, por las cajas que devuelve el estudio o por
-  las palabras que cita) y aparece
-  junto a la revisión de la presentación con el texto del arreglo; los que afectan a toda la presentación o solo al
-  envoltorio HTML se listan aparte. Se guarda la última revisión de cada presentación y se marca como desfasada cuando
-  cambian las diapositivas o el tema. Si Vitruvius no está en marcha, la revisión lo dice y ofrece arrancarlo desde el
-  Hoard Hub (y encender su módulo de diseño); `prepare=true` hace lo mismo desde MCP.
-  La revisión se pide en el idioma de la interfaz (`lang` es o en, castellano por defecto, en la ruta, la herramienta y la
-  llamada a Vitruvius); una revisión guardada en el otro idioma se vuelve a leer del estudio al cambiar de idioma, sin auditar de nuevo.
-- **Exportaciones**:
-  - PPTX con cuadros de texto reales, párrafos con viñeta, notas del orador y gráficos nativos (editables en el
-    paquete ofimático), en 16:9.
-  - PDF, una página por diapositiva, generado con un Chromium local.
-  - HTML, un único archivo autocontenido (estilos, script e imágenes dentro) con navegación por flechas. Las notas
-    del orador se dejan fuera a propósito, porque el archivo está pensado para compartirse.
-  - Markdown, diapositivas separadas por `---`, notas como comentarios y gráficos como tablas.
-- **Imágenes**: sube las tuyas o pide una por diapositiva al estudio de imágenes de la familia (Prospero's Hoard). El
-  estudio es opcional.
-- **Funciona sin modelo**: si no hay ningún modelo accesible, el guion y las diapositivas salen de las fuentes con
-  reglas fijas y el resultado indica `"generator": "fallback"`. Regenerar una diapositiva con comentarios sí necesita
-  un modelo, y lo dice en lugar de aparentar.
+### Comprobaciones y confianza
+- Sin cifras inventadas: el modelo solo puede usar cifras de las fuentes, un gráfico se conserva solo si todos sus valores aparecen en ellas, y `deck_check` lista cada cifra que ninguna fuente contiene (comparando notaciones como `1.234` y `1,5`).
+- Ajuste automático del texto en vista previa, HTML y PPTX desde una sola geometría; el texto que no cabe se avisa en vez de recortarse.
+- Revisión visual: renderiza cada diapositiva en el navegador y mide objetos fuera de la diapositiva, texto desbordado, solapes, contraste, imágenes que no cargan y títulos ausentes, con un arreglo automático del tamaño mínimo de letra.
+- Revisión de diseño con Vitruvius's Hoard: puntúa el aspecto generado de 0 a 100 y sitúa cada hallazgo en su diapositiva.
+- Comprobación de fuentes por diapositiva y un banco de pruebas que compara flujos completos de PPTX con un rasterizador común y una rúbrica fija.
 
-## Capacidades visuales para agentes
+### Temas y plantillas
+- Siete temas incluidos con contraste de al menos 4,5:1, temas propios desde un sistema de diseño o desde un preajuste de Vitruvius (claro u oscuro, con una sugerencia de «elegir tres para este encargo») y borrado de temas guardados.
+- Tus plantillas PPTX: se conservan patrones, diseños, fondos, logotipos y fuentes, con vínculos entre diseños y diapositivas de origen para plantillas poco habituales.
+- Numeración y barra de progreso (arriba o abajo), con un apéndice excluido del total.
 
-El flujo reutilizable está en `docs/AGENT_VISUALS.md` y la entrada portable en `agent-skill/SKILL.md`.
-`npm run build` incluye los motores visuales en la distribución Python. Los visuales avanzados requieren
-Node 22.13+, sin instalar dependencias por separado al ejecutar. `scripts/visual-gallery.py --output-dir <carpeta>`
-genera una galería con datos ficticios y evidencia de render nativo cuando está disponible.
+### Visuales, movimiento y medios
+- Visuales tipados: 14 tipos de gráfico, diagramas, métricas y tablas con esquemas versionados; sustituir un bloque conservando los demás; comparar tres composiciones.
+- Pasos por clic, animaciones y transiciones nativas de PPTX, rutas interactivas entre diapositivas, bloques de audio y vídeo e importación sin conexión de modelos de escena 3D.
+- Integración local con VectorCraft y DesignCraft para figuras vectoriales editables y hojas A4, y figuras de código editable desde Vitruvius.
+- Imágenes: sube las tuyas o pide una por diapositiva a Prospero's Hoard.
 
-`visual_catalog` expone esquemas versionados de 14 tipos de gráficos, diagramas, métricas y tablas.
-`slide_visual_update` sustituye o añade un bloque conservando el resto, las citas y las notas; utiliza
-`expected_revision` para detectar ediciones concurrentes. `slide_variants` compara tres composiciones sin
-cambiar el contenido. `deck_scene` informa de geometría, tipografía y pasos al clic. `deck_present` devuelve
-la dirección de presentación local con movimiento. MCP y la API utilizan estas mismas implementaciones.
+### Datos y presentación en directo
+- Importa CSV, TSV y XLSX como conjuntos inmutables, fíltralos, agrúpalos y ordénalos de forma reproducible, asócialos a gráficos y tablas y enlázalos a fuentes locales o URL que se refrescan como instantáneas.
+- Presentación en directo con URL separadas para presentador y público, pasos, pantalla en negro, cronómetro, encuestas al público y presencia de edición compartida; la vista del público nunca muestra las notas del orador.
+- Planificación de ensayos con tiempo a partir de las notas del orador y ensayos medidos desde la consola del presentador, comparados con el plan.
 
-Los gráficos admiten coordenadas X numéricas, huecos, colores, énfasis, unidades, anotaciones, referencias e
-intervalos. ECharts renderiza gráficos, ELK distribuye diagramas y reveal.js controla la presentación local.
-PPTX conserva gráficos nativos u objetos de evidencia editables. Los intervalos se muestran como bandas en
-el navegador y curvas central/inferior/superior en PPTX. Los mapas de calor se exportan como tablas coloreadas
-y los embudos como objetos de etapas. Las fuentes siguen siendo la autoridad para las cifras.
-
-Los campos `build`, `effect` y `duration_ms` definen pasos al clic. Un diagrama con `effect: stages` muestra
-sus elementos por etapas. HTML y navegador conservan objetos individuales, también con plantillas adjuntas.
-El PPTX exportado lleva animaciones y transiciones nativas escritas como OOXML, sin motor ofimático:
-`deck_animations` (o `GET|PUT|DELETE /api/decks/{id}/animations`, `.../animations/preview`, `/api/animations/catalogue`)
-fija `mode` -- `builds` (solo los pasos al clic, por defecto), `auto` (portada con zoom, título con fundido, gráfico y
-tabla con barrido, imagen con zoom, tarjetas y texto que entran volando, y después los pasos al clic), `mixed`, `none`
-o cualquiera de los 203 efectos nativos --, `trigger` (tras el anterior o al clic), `duration`, `transition`
-(ninguna o cualquiera de las 48, Morph incluida) y `transition_duration`, para todo el deck o por diapositiva. Los
-pies y las formas de fondo nunca se animan. El XML de animaciones y transiciones viene de PPT Master (MIT, copiado
-en `cicero_hoard/vendor/ppt_master` con su licencia) y cada exportación se relee con sus validadores. En la app, la pestaña Exportar fija la animación de toda la presentación y las
-transiciones en su panel de transiciones, da a cada diapositiva su propia animación en «Animaciones por diapositiva» y
-enseña con Comprobar lo que llevará el próximo PPTX en cada diapositiva.
-
-Antes de exportar, `deck_visual_review` (`POST /api/decks/{id}/visual-review`, PNG en
-`/api/decks/{id}/visual-review/slide-NN.png`) renderiza cada diapositiva en el navegador y mide lo que quedó: objetos
-fuera de la diapositiva, texto cuyas líneas se salen de su caja, objetos de contenido que se tapan, contraste del texto
-contra lo que de verdad tiene detrás (4,5:1, 3:1 en texto grande), imágenes que no cargan y título, gráfico o imagen que
-faltan para el diseño. Cada aviso trae su arreglo; `fix: true` aplica el único arreglo automático que permiten las reglas
-(letra mínima en las diapositivas cuyo texto desborda) y vuelve a revisar. PDF contiene el estado estático completo.
-La ventana local se puede compartir durante una presentación remota, sin publicar el documento.
-Una caja de texto que empieza en la diapositiva y solo se sale por abajo creció con su texto, así que cuenta como
-desborde. En la app, la pestaña Revisar lanza la revisión visual, enseña la captura de cada diapositiva con avisos y
-ofrece el arreglo automático.
-
-## Datos Y Presentacion En Vivo
-
-- `dataset_import`: fuentes CSV/TSV/XLSX inmutables, hojas y perfiles decimales explicitos.
-- `dataset_get`: filas paginadas, perfiles numericos y avisos de importacion.
-- `dataset_transform`: filtros, agrupaciones, agregados y ordenacion reproducibles.
-- `dataset_visual`: mapeo a grafico o tabla con huecos y referencias a la fuente.
-- `deck_live_start`: consola del orador y pantalla del publico, duracion y diapositivas de apoyo.
-- `deck_live_state`: navegacion y reloj sin notas privadas.
-- `deck_live_control`: pasos, saltos, pantalla negra, reloj y limite de la charla principal.
-
-El editor incorpora importacion y mapeo de datos, cronologias editables por etapas,
-composicion `freeform` por zonas y encuadre de imagenes con foco de recorte.
-Las sesiones viven en la memoria del servidor local; se reinician para adoptar cambios
-del contenido. El HTML sin conexion no depende de ellas.
-Detalles en [flujo de datos y presentacion](docs/DATA_PRESENTATION.md) y
-[matriz de capacidades](docs/CAPABILITY_MATRIX.md).
-
-### Figuras con fuente editable
-
-Exporta **Figura con fuente** desde Vitruvius, seleccionando la página de infografía cuando corresponda. Sube el `.vfigure` con el selector de imagen habitual, o usa `asset_import` y `slide_set_image`. El archivo portable `vitruvius.figure/1` incluye PNG, fuente nativa completa, ID de documento y revisión capturada. Cicero conserva una instantánea inmutable; solo reutiliza píxeles idénticos cuando también coincide la fuente. `figure_get` lee la fuente y admite `include_preview`. El editor de imagen muestra la revisión y permite abrir el origen o descargar figura y fuente. Abrir una presentación no actualiza figuras ni arranca el servidor de origen.
-
-Para actualizar, sustituye la imagen por un `.vfigure` posterior. Se conservan pie, encuadre, notas y otros bloques. El deshacer de sesión de `slide_set_image` revierte sus campos de imagen/pie y conserva notas manuales posteriores, geometría y otros bloques; si un campo que se va a revertir cambió después, informa del conflicto. Una imagen añadida solo se retira si su contenido no ha cambiado. `slide_revert` mantiene su restauración de diapositiva completa. PDF/PPTX/HTML usan el PNG capturado; la fuente editable queda en Cicero y en el archivo de figura descargable. Los enlaces declaran procedencia, no autentican al servidor. Este recorrido enlaza actualmente Vitruvius con Cicero; los demás consumidores Hoard aún no están implementados.
+### Exportaciones
+- PPTX con cuadros de texto reales, notas del orador y gráficos nativos editables (16:9 o el tamaño de la plantilla).
+- PDF, una página por diapositiva, renderizado por un Chromium local.
+- Un único HTML autónomo con navegación por teclado (sin notas del orador).
+- Markdown, con las diapositivas separadas por `---`.
 
 ## Uso responsable
 
-- **Cifras.** Una presentación generada es un borrador. La comprobación de cifras detecta las que no están en las
-  fuentes; no puede saber si una fuente es correcta. Lee las notas y las cifras antes de presentar.
-- **Las fuentes se quedan en tu equipo.** Los documentos se leen en este ordenador. Al modelo solo se le envían
-  fragmentos numerados y cortos, a través de Hoard Link, hacia el backend que hayas configurado (uno local por
-  defecto).
-- **Archivos locales.** Añadir un archivo por ruta solo admite tipos de documento (`.txt`, `.md`, `.pdf`, `.docx`,
-  `.pptx`) y se puede limitar a carpetas con `CICERO_FILE_ROOTS`.
-- **Citas.** Un bloque de cita debe reproducir una cita que aparezca en una fuente. La revisión no verifica citas.
-- **Borrados** (una presentación, una diapositiva, una fuente) exigen confirmación explícita, también por MCP.
+- **Cifras.** Una presentación generada es un borrador. La comprobación de números encuentra cifras que no están en las fuentes; no puede saber si una fuente es correcta. Lee las notas y las cifras antes de presentar.
+- **Las fuentes se quedan en local.** Los documentos se leen en este ordenador. Al modelo solo se envían extractos cortos y numerados, a través de Hoard Link.
+- **Archivos locales.** Añadir un archivo por ruta solo acepta tipos de documento (`.txt`, `.md`, `.pdf`, `.docx`, `.pptx`) y se puede limitar a carpetas con `CICERO_FILE_ROOTS`.
+- **Citas.** Un bloque de cita debe reproducir una cita que aparezca en una fuente. La comprobación no verifica citas.
+- **Borrados** (una presentación, una diapositiva, una fuente) requieren confirmación explícita, también por MCP.
 
-## Instalación
+## Cómo ejecutarlo
 
-Requisitos: Python 3.11 o superior (objetivo en Windows: 3.13); Node.js 22 o superior solo para recompilar el cliente.
+Requiere Python 3.11+ y Node.js 22+ solo para recompilar el cliente.
 
 ```bash
 python -m venv venv
@@ -225,127 +71,61 @@ python -m playwright install chromium     # solo para exportar a PDF
 python -m cicero_hoard            # http://127.0.0.1:5194
 ```
 
-El cliente compilado está incluido en `cicero_hoard/static`, así que `npm` solo hace falta para cambiar la interfaz
-(`npm install`, `npm run build`). Mientras se trabaja en la interfaz, `python scripts/dev.py` arranca la API y el
-servidor de desarrollo de Vite a la vez, y `python scripts/launch.py` arranca la aplicación y la abre en el
-navegador.
+El cliente compilado está en `cicero_hoard/static`; `npm install` y `npm run build` solo hacen falta para cambiar la interfaz. `python scripts/dev.py` arranca la API y Vite juntos; `python scripts/launch.py` arranca la app y abre el navegador.
 
-| variable | valor por defecto | significado |
+| Variable | Por defecto | Significado |
 | --- | --- | --- |
-| `CICERO_PORT` / `PORT` | `5194` | puerto; con `PORT_STRICT=1` la aplicación falla en vez de pasar a otro puerto |
-| `CICERO_DATA_DIR` | `./data` | base de datos, `assets/`, `exports/`, `mcp-token`, `url`, `backend.json` |
-| `CICERO_ALLOWED_HOSTS` | solo local | nombres de host adicionales que acepta el servidor |
-| `CICERO_FILE_ROOTS` | vacío | carpetas (separadas con el separador de rutas del sistema) de las que pueden venir archivos locales |
-| `CICERO_IMAGE_STUDIO_URL` | se descubre | dirección del estudio de imágenes, para saltarse el descubrimiento |
-| `CICERO_IMAGE_TIMEOUT` | `600` | segundos que se espera a un render del estudio de imágenes (10-86400) |
-| `CICERO_PARALLEL_SLIDES` | `3` | diapositivas que el modelo escribe a la vez después de la primera (1-8); un servidor local con varias ranuras termina antes |
-| `CICERO_SLIDE_EFFORT` | `low` | esfuerzo de razonamiento que se pide al modelo en cada diapositiva y reescritura (`off`, `low`, `medium`, `high`); el guion pide siempre `medium` |
+| `CICERO_PORT` / `PORT` | `5194` | Puerto; con `PORT_STRICT=1` la app falla en vez de moverse |
+| `CICERO_DATA_DIR` | `./data` | Base de datos, `assets/`, `exports/`, `mcp-token`, `url`, `backend.json` |
+| `CICERO_ALLOWED_HOSTS` | solo local | Nombres de host extra que acepta el servidor |
+| `CICERO_FILE_ROOTS` | vacío | Carpetas de las que pueden venir las fuentes de archivos locales |
+| `CICERO_IMAGE_STUDIO_URL` | descubierta | Dirección del estudio de imágenes |
+| `CICERO_IMAGE_TIMEOUT` | `600` | Segundos de espera por cada render de imagen |
+| `CICERO_PARALLEL_SLIDES` | `3` | Diapositivas escritas a la vez tras la primera (1-8) |
+| `CICERO_SLIDE_EFFORT` | `low` | Esfuerzo de razonamiento por diapositiva y reescritura (`off`, `low`, `medium`, `high`) |
+| `CICERO_VECTORCRAFT_CLI`, `CICERO_DESIGNCRAFT_CLI` | sin definir | Rutas de las apps opcionales de vectores y hojas |
 
-El modelo sale de Hoard Link (`data/backend.json` o las variables de entorno de Hoard); el nombre del modelo también
-se puede elegir en Ajustes.
+El modelo viene de Hoard Link (`data/backend.json` o las variables de entorno de Hoard) y también se puede elegir en Ajustes.
 
-## Código compartido de Hoard Link
+Límites: la exportación a PDF necesita Chromium (o un Edge o Chrome del sistema); sin él, exportar `pdf` falla con `pdf_unavailable` y los demás formatos siguen funcionando. La vista previa y el HTML con plantilla necesitan un motor local de diapositivas de oficina en Windows, o informan del mismo código. Las fuentes tipográficas son las del tema; una máquina que no las tenga sustituye otra. El ajuste del texto es una estimación por anchos de carácter. Los PDF escaneados sin OCR se rechazan. Las notas del orador nunca van en el HTML exportado.
 
-La fontanería es la de las librerías comunes de Hoard Link (copia en `cicero_hoard/hoard_link/`): el lanzador (una instancia
-por puerto, registros en `data/logs/`), el guardián de peticiones, el formato de errores, el `mcp-token` estable, la capa
-SQLite, los ids ULID (los decks creados con versiones anteriores conservan sus ids de 12 caracteres), el catálogo del
-agente con el límite de 20 KB, los lectores de Word y de texto con la protección contra zip-bombs, el troceador, el
-lanzador de navegador para exportar a PDF y el puente MCP.
+## Conexión con Faustus y el Hoard Hub
 
-## MCP
+- `faustus-plugin.json` describe el plugin. `mcp_server.py` es el puente stdio común de Hoard Link: lee `data/mcp-token`, pide la lista de herramientas a la app en marcha, reenvía cada llamada y arranca la app si no está en marcha (`CICERO_BRIDGE_AUTOSTART=0` lo desactiva). Regístralo con `CICERO_URL` (por defecto `http://127.0.0.1:5194`) y `CICERO_TOKEN_FILE`.
+- Escrituras de agente con responsabilidad: toda herramienta que no sea de lectura exige un `reason` de 3 a 300 caracteres, cada escritura queda en el diario `data/agent_journal.jsonl`, una sesión de agente entera se puede previsualizar y deshacer, y se pueden emitir tokens con perfiles `read_only`, `drafts` o `all`.
+- Las presentaciones se direccionan como `hoard://cicero/deck/<id>`. Los eventos de presentación, esquema, diapositivas, exportación y creación de temas van al bus del hub. Los temas de un sistema de diseño quedan enlazados a él. Las imágenes vienen de Prospero's Hoard cuando está en marcha; solo se contactan direcciones de bucle local.
+- El botón de Faustus monta el panel de asistente común; Cicero aporta su identidad de espacio de datos y la presentación, diapositiva y estado de edición sin guardar actuales.
+- La app lleva skills para agentes conectados (`presentation-from-brief`, `diagram-authoring`, `image-composition`, `deep-research`); el punto de entrada portable es `agent-skill/SKILL.md`.
 
-`mcp_server.py` es un puente stdio. Nunca abre la base de datos: lee `data/mcp-token`, obtiene la lista de
-herramientas de la aplicación en marcha y reenvía cada llamada. Si la aplicación no está en marcha, la arranca
-(`CICERO_BRIDGE_AUTOSTART=0` lo desactiva). Regístralo en cualquier cliente MCP:
+<details>
+<summary>Herramientas MCP por grupos</summary>
 
-```json
-{"mcpServers": {"cicero": {"command": "python", "args": ["/ruta/a/cicero/mcp_server.py"],
-  "env": {"CICERO_URL": "http://127.0.0.1:5194", "CICERO_TOKEN_FILE": "/ruta/a/cicero/data/mcp-token"}}}}
-```
+- Estado y presentaciones: `cicero_status`, `deck_list`, `deck_create`, `deck_get`, `deck_update`, `deck_delete`, `deck_import_pptx`.
+- Fuentes y esquema: `source_add`, `source_list`, `source_get`, `source_remove`, `outline_generate`, `outline_update`.
+- Diapositivas: `slides_generate`, `slide_get`, `slide_add`, `slides_add`, `slide_update`, `slide_edit_text`, `slide_set_image`, `slide_image`, `slide_regenerate`, `slide_approve`, `slide_revert`, `slide_delete`, `slides_reorder`, `asset_import`, `figure_get`.
+- Revisión y diseño: `deck_check`, `deck_visual_review`, `deck_design`, `deck_design_audit`, `deck_visual_lab`, `deck_benchmark`, `titles_overview`, `titles_propose`, `titles_apply`, `titles_restore`, `titles_mode`.
+- Temas y plantillas: `deck_theme`, `theme_from_tokens`, `deck_theme_from_preset`, `theme_delete`, `template_inspect`, `deck_template`, `deck_chrome`.
+- Visuales: `visual_catalog`, `slide_visual_update`, `slide_variants`, `deck_scene`, `deck_present`.
+- Movimiento, navegación y medios: `deck_animations`, `deck_transitions`, `deck_navigation`, `deck_media_control`, `media_import`, `media_get`, `scene_model_import`.
+- Datos: `dataset_import`, `dataset_get`, `dataset_transform`, `dataset_visual`, `dataset_link`, `dataset_links`, `dataset_link_control`, `dataset_bind`, `dataset_connect`.
+- Directo y colaboración: `deck_live_start`, `deck_live_state`, `deck_live_control`, `deck_poll`, `slide_collaborate`.
+- Ensayo y exportación: `deck_rehearsal`, `deck_rehearsal_runs`, `deck_export`, `deck_handout_designcraft`.
+- Apps Craft: `craft_discover`, `craft_call`, `vector_figure_create`.
 
-`faustus-plugin.json` describe la misma configuración para el espacio de trabajo Faustus.
+</details>
 
-### Herramientas
+## Estructura del proyecto
 
-| herramienta | qué hace |
+| Ruta | Contenido |
 | --- | --- |
-| `cicero_status` | estado, recuentos, disponibilidad del modelo y del PDF |
-| `deck_create`, `deck_list`, `deck_get`, `deck_update`, `deck_delete` | presentaciones; `deck_get` devuelve un resumen salvo con `detail=full`; borrar exige `confirm=true` |
-| `source_add`, `source_list`, `source_get`, `source_remove` | fuentes desde texto pegado o un archivo local; lectura por tramos; quitar exige `confirm=true` |
-| `outline_generate`, `outline_update` | generar el guion o sustituirlo a mano |
-| `slides_generate` | escribir las diapositivas a partir del guion; las aprobadas se conservan |
-| `slide_get`, `slide_update`, `slide_add`, `slide_delete`, `slides_reorder` | leer, editar, añadir, quitar (`confirm=true`) y reordenar diapositivas |
-| `slide_regenerate` | reescribir una diapositiva según unos comentarios (necesita modelo) |
-| `slide_approve` | aprobar o quitar la aprobación de una diapositiva |
-| `slide_revert` | listar las revisiones de una diapositiva o restaurar una como revisión nueva |
-| `deck_check` | revisión: desbordes, cifras que no están en las fuentes, notas ausentes, diapositivas sin aprobar, títulos que son rótulos (con la conclusión propuesta) |
-| `titles_overview`, `titles_propose`, `titles_apply`, `titles_restore`, `titles_mode` | títulos que afirman la conclusión: qué títulos son rótulos, proponer la conclusión desde el contenido de cada diapositiva, aplicarla a toda la presentación o a algunas diapositivas, volver a los rótulos y fijar el modo |
-| `deck_theme` | listar los temas (los de serie y los hechos desde sistemas de diseño) o aplicar uno |
-| `asset_import` | copiar una figura local PNG/JPEG/WEBP; usar su ID en un bloque de imagen; repetir la importación reutiliza la imagen de esta presentación |
-| `figure_get` | leer la fuente editable retenida, el documento, su revisión y el PNG opcional de una figura de Vitruvius |
-| `slides_add` | añadir lotes de borradores de forma atómica; repetir la misma clave y contenido devuelve los IDs originales |
-| `slide_edit_text` | editar un título, subtítulo, nota o viñeta conservando los demás bloques |
-| `slide_set_image` | añadir o reemplazar una figura importada o su pie; conserva los demás bloques y notas; los reintentos idénticos mantienen la revisión |
-| `deck_rehearsal` | planificar turnos y estimar la duración desde las notas; no afirma haber medido un ensayo |
-| `template_inspect`, `deck_template` | inspeccionar un PPTX local, adjuntarlo con asignaciones opcionales por diseño, consultar la plantilla o quitarla con `clear=true` |
-| `theme_from_tokens` | crear un tema desde un sistema de diseño (`tokens_id`, `mode` claro u oscuro, `deck_id` opcional para aplicarlo); sin `tokens_id` lista los sistemas de diseño |
-| `deck_theme_from_preset` | crear un tema desde un preset de diseño de Vitruvius (`preset`, `mode`, `deck_id` opcional para aplicarlo); sin `preset` lista presets (`query`, `source`) o, con `pick=true`, propone tres para el encargo |
-| `theme_delete` | borrar un tema guardado (`theme_id`; los de serie se rechazan); las presentaciones que lo usaban pasan a Claro u Oscuro |
-| `deck_design_audit` | revisar el diseño con la auditoría de slop de Vitruvius (`action` run o latest); puntuación, modo, resumen del plan y cada hallazgo en su diapositiva con el arreglo; `prepare=true` arranca el estudio desde el Hub si está parado |
-| `deck_export` | exportar a `pptx`, `pdf`, `html` o `md`; devuelve la ruta del archivo y la URL de descarga |
-| `deck_animations` | animaciones y transiciones nativas del PPTX exportado: leer, fijar, quitar, previsualizar, listar |
-| `deck_visual_review` | renderiza cada diapositiva en el navegador, guarda un PNG de cada una y aplica reglas duras antes de exportar; `fix` pone la letra mínima donde el texto desborda |
-| `deck_visual_lab` | crea composiciones sin cambiar evidencia, renderiza imágenes MCP, compara, corrige, aplica y evalúa contra una referencia explícita |
-| `deck_poll` | crea encuestas locales, vota, abre/cierra, reinicia y recupera rondas; devuelve un bloque de diapositiva |
-| `slide_collaborate` | combina texto con Yjs y reemplazos atómicos de bloques, con presencia local |
-| `dataset_connect` | conecta consultas SQL locales o un adaptador opcional de hojas al actualizador de datos |
-| `slide_image` | generar una imagen para una diapositiva con el estudio de imágenes |
-
-Los resultados que se envían a un asistente se recortan a unos 20 KB con una pista para acotar la petición. Aprobar
-una diapositiva es decisión de la persona: un asistente no debería aprobar por su cuenta.
-
-### Sesiones de agente, motivos y deshacer
-
-Toda escritura que un asistente hace por el puente MCP (o `POST /api/agent/call`) deja rastro. La interfaz web no es un agente y
-queda al margen de todo esto.
-
-- **Quién.** El puente envía el nombre del agente y la sesión que lee de `HOARD_AGENT_ID` / `HOARD_AGENT_SESSION` (cabeceras
-  `X-Agent-Id` / `X-Agent-Session`; también sirven `caller` / `_session` en el cuerpo). Un token con alcance fija el nombre del agente
-  digan lo que digan las cabeceras.
-- **Por qué.** Toda herramienta que no sea de solo lectura exige un argumento `reason` de 3 a 300 caracteres (si falta,
-  `400 reason_required` con una pista). Las de lectura no lo necesitan.
-- **Qué.** Cada escritura es una línea de `data/agent_journal.jsonl` (herramienta, agente, sesión, motivo, huella y resumen enmascarado
-  de los argumentos, ids devueltos, hora, ok o error); el archivo rota hacia los 5 MB. `GET /api/agent/journal?session=&agent=&limit=`
-  (con token) lo lee, y el evento `agent.write` llega a la familia.
-- **Deshacer una sesión entera.** `POST /api/agent/undo {"session": "...", "dry_run": true}` dice qué se deshará; con
-  `{"confirm": true, "reason": "..."}` lo hace, de la última escritura a la primera. Revierte la creación de presentaciones, sus
-  campos y su tema, el guion, añadir y quitar fuentes, toda edición de diapositivas (texto, imagen, regenerar, aprobar, revertir),
-  añadir, borrar y reordenar diapositivas, los lotes de `slides_add` (también su recibo, para poder reutilizar la clave) y
-  `slides_generate`. Informa de lo que no pudo deshacer: herramientas sin vuelta atrás (`deck_delete`, `deck_export`, `asset_import`,
-  `slide_image`, `deck_template`, `theme_from_tokens`, las de VectorCraft y DesignCraft) y lo cambiado después. Nunca toca lo que
-  escribió otra sesión: si otra sesión, o la persona en la interfaz, editó después la misma diapositiva, esa escritura se señala como
-  conflicto y se deja como está.
-- **Perfiles.** `python -m hoard_link.tokens mint --app-data-dir data --agent borrador --profile drafts` imprime un token (se muestra
-  una vez; `data/agent_tokens.json` solo guarda huellas). Perfiles: `read_only` (herramientas de lectura), `drafts` (además las que crean
-  o editan borradores: `deck_create`, `deck_update`, `deck_theme`, `source_add`, `slide_add`, `slides_add`, `slide_update`,
-  `slide_edit_text`, `slide_set_image`, `slide_regenerate`, `slide_image`, `asset_import`, `slides_reorder`, `theme_from_tokens`; nunca
-  borrar, aprobar, exportar ni generar la presentación entera) y `all`. Una llamada bloqueada responde `403 profile_forbidden`. La
-  pestaña «Sesiones de agente» del Hub muestra las sesiones de todas las apps, las deshace y crea o revoca tokens.
-
-## Familia
-
-Cicero funciona solo. Las presentaciones se pueden direccionar como `hoard://cicero/deck/<id>`. Emite
-`cicero.deck.created`, `cicero.deck.deleted`, `cicero.outline.generated`, `cicero.slides.generated` y
-`cicero.deck.exported` en el bus del hub (solo identificadores y títulos cortos). Los temas hechos desde un sistema de diseño emiten
-`cicero.theme.created` y quedan enlazados con él (`hoard://cicero/theme/<id>` derivado de
-`hoard://vitruvius/tokens/<id>`); el sistema de diseño se lee a través del hub (`tokens_list` y `tokens_get` de la
-aplicación de sistemas de diseño), así que el hub y esa aplicación deben estar en marcha, y pedir el mismo sistema en el
-mismo estado devuelve el mismo tema. Las imágenes vienen de Prospero's
-Hoard cuando está en marcha: el estudio se busca con `CICERO_IMAGE_STUDIO_URL`, con la lista de aplicaciones del hub o
-con su puerto local por defecto (8815), y se usa a través de su API REST local, que no necesita token. Las imágenes de
-las diapositivas van a un proyecto del estudio llamado "Cicero's Hoard slides" (se reutiliza o se crea la primera
-vez); cada petición envía un render 16:9, espera a que termine y guarda la imagen resultante en la presentación. Solo
-se contacta con direcciones de bucle local.
+| `cicero_hoard/` | Paquete Python: API, generación, comprobaciones, exportaciones, sesiones en directo, Hoard Link incluido |
+| `client/` | Interfaz React/Vite (compilada en `cicero_hoard/static`) |
+| `mcp_server.py` | Puente MCP por stdio |
+| `faustus-plugin.json` | Manifiesto del plugin de Faustus |
+| `agent-skill/` | Skill portable para agentes |
+| `docs/` | Referencias de API y funciones ([API](docs/API.md), [visuales para agentes](docs/AGENT_VISUALS.md), [datos y presentación](docs/DATA_PRESENTATION.md), [medios en directo](docs/LIVE_MEDIA.md), [navegación interactiva](docs/INTERACTIVE_NAVIGATION.md), [autoría avanzada](docs/ADVANCED_AUTHORING.md)) |
+| `scripts/` | `dev.py`, `launch.py`, galería visual |
+| `tests/` | Pruebas |
 
 ## Desarrollo
 
@@ -354,90 +134,4 @@ pip install -r requirements.txt
 python -m pytest -q      # sin red: el modelo y el estudio de imágenes están simulados
 ```
 
-Las pruebas de PDF solo se ejecutan si hay un Chromium disponible. La documentación de la API HTTP está en
-`docs/API.md`.
-
-## Una prueba real
-
-En un PC con Windows y un modelo local de 27B servido con llama.cpp: un plan de ventas de siete diapositivas para una
-tienda ficticia, a partir de un encargo y un informe pegado. El guion tardó 155 s; escritas una tras otra, cada
-diapositiva tardaba unos 75 s, y por eso ahora se escriben de tres en tres. El modelo usó solo las cifras del informe:
-un gráfico de barras con los cuatro trimestres, los datos de clientes en dos columnas y, tras la indicación «quita la
-frase del margen bruto, no está en el informe; muestra el desglose de los 70.000 € como gráfico de barras», una
-diapositiva con ese desglose exacto y sin la frase. La revisión no encontró cifras sin fuente. Se abrieron las
-exportaciones PPTX y PDF: gráficos nativos, notas del orador y las fuentes del tema incrustadas en el PDF. El estudio
-de imágenes dibujó una imagen 16:9 para una diapositiva en 79 s. Un asistente conectado por MCP listó las
-presentaciones, pasó la revisión y exportó el PDF en cuatro rondas. Cuatro fallos encontrados en esa prueba están
-corregidos y cubiertos por pruebas: fuentes del tema perdidas en el HTML, miles sin separar en los gráficos nativos, un
-puente que daba por parada una aplicación en marcha cuando no podía leer su token y una llamada de imagen a una
-herramienta que el estudio no tiene.
-
-## Límites
-
-- Con plantilla adjunta, la vista previa y HTML conservan objetos interactivos sobre la identidad visual del
-  original, cuyo fondo renderiza un motor ofimático local en Windows. PDF muestra el render nativo del PPTX.
-  HTML es autocontenido y conserva pasos al clic. Sin ese motor, PDF/HTML y vista previa indican `pdf_unavailable`.
-  La vista se guarda por estado del deck. Después, `deck_check` detecta texto cuyos límites medidos por el
-  motor exceden su marco; antes de renderizar indica que queda pendiente la revisión nativa.
-  No se copian animaciones ni transiciones del original; se añaden las etapas nuevas. La selección automática de formas es un punto
-  de partida; para referencias complejas, inspecciona sus IDs y asigna las formas explícitamente.
-
-Las asignaciones de plantilla admiten también `title_frame`, `subtitle_frame` (coordenadas en píxeles CSS),
-`title_font_points` y `chart_font_points`. Permiten ajustar títulos largos y etiquetas de gráficos conservando
-el patrón y la identidad de la plantilla. El ajuste de texto cuenta los saltos de línea explícitos.
-
-- Una imagen tarda lo que el estudio tarde en renderizarla; la petición espera hasta `CICERO_IMAGE_TIMEOUT` segundos.
-  Si pasa ese tiempo, el render sigue en marcha en el estudio y no se vuelve a enviar. Solo se toma una imagen por
-  petición, de un estudio de este mismo equipo; se rechazan las imágenes de más de 15 MB o que no sean PNG, JPEG ni
-  WEBP.
-- La exportación a PDF necesita Chromium (`python -m playwright install chromium`, o un Edge o Chrome del sistema). Sin
-  él, exportar `pdf` falla con el código `pdf_unavailable` y los demás formatos siguen funcionando.
-- Las tipografías son las del tema; un equipo que no las tenga sustituye otra y las líneas pueden cortarse de otra
-  manera. El ajuste deja un pequeño margen de seguridad para ese caso.
-- El ajuste del texto es una estimación a partir del ancho de los caracteres, no una medición con las métricas reales
-  de la fuente.
-- Gráficos: barras, líneas y circular; una o varias series (el circular usa la primera).
-- Las notas del orador no se incluyen en la exportación a HTML.
-- Los PDF escaneados solo se leen si el servicio de documentos de la familia (OCR) está en marcha; si no, se rechazan con un mensaje.
-
-## Licencia
-
-Consulta `LICENSE`.
-
-## Lotes para presentaciones grandes
-
-`slides_add(deck_id, batch_key, slides)` añade varias diapositivas en borrador, con notas, gráficos y fuentes, en una transacción. Repetir la misma clave y contenido tras una respuesta interrumpida devuelve los IDs originales. La misma clave con contenido distinto se rechaza. Conserva las diapositivas y aprobaciones existentes; no aprueba el lote. Si falla una diapositiva, no se guarda ninguna del lote.
-
-Cuando una diapositiva cita fuentes concretas, `deck_check` comprueba sus cifras contra esas fuentes. Los números de ejemplo de otra fuente o del encargo no sirven como evidencia. Comprueba la presencia de cifras, no el significado de una afirmación; sigue siendo necesaria la revisión del contenido.
-
-`slide_edit_text` cambia un título, subtítulo, nota o viñeta sin reconstruir los demás bloques. La edición de una viñeta usa índices de bloque y elemento desde cero; conserva gráficos y otras viñetas, y crea una revisión normal en borrador.
-
-Para una figura existente, usa `asset_import` y después `slide_set_image(deck_id, slide_id, asset_id, caption?)`. Selecciona la primera imagen por defecto; `image_index` cuenta solo bloques de imagen y un índice igual al número de imágenes añade otra. Omitir el pie lo conserva; `null` explícito lo borra. Conserva los otros bloques, notas, título, fuentes y diseño. Un reintento idéntico no duplica imágenes ni revisiones. Los cambios crean revisiones en borrador y se deshacen con `slide_revert`. `expected_revision` opcional detecta una edición concurrente (409 `conflict`); vuelve a leer la diapositiva antes de reintentar.
-
-### Plan de ensayo cronometrado
-
-`deck_rehearsal(deck_id, duration_minutes, words_per_minute, pause_seconds, main_slides)` prepara un horario por diapositiva a partir de las notas. `main_slides` selecciona las primeras diapositivas de la exposición; las restantes quedan como apoyo. Los turnos suman exactamente el objetivo, y una estimación separada indica si el guion cabe al ritmo elegido, incluyendo pausas. Si faltan notas, la duración total estimada queda desconocida. No afirma haber medido un ensayo oral ni modifica notas, revisiones o aprobaciones.
-
-### VectorCraft y DesignCraft locales
-
-Configura `CICERO_VECTORCRAFT_CLI` y `CICERO_DESIGNCRAFT_CLI` con las rutas a los ejecutables portátiles instalados. Cicero inicia cada app como servidor MCP local sin interfaz y guarda sus datos de aplicación dentro de `data/craft-runs` de Cicero. Las pruebas actuales usan los paquetes portátiles verificados VectorCraft 0.3.1 y DesignCraft 0.2.1; las demás versiones compatibles se descubren en tiempo de ejecución. No requiere cuentas ni servicios remotos.
-
-`craft_discover(app)` devuelve el catálogo MCP nativo completo y los esquemas de entrada. `craft_call(app, calls)` despacha las herramientas nativas con sus nombres y argumentos originales, en orden, y devuelve todo el contenido de texto o imagen. Así Cicero conserva la superficie MCP disponible de cada app.
-
-Herramientas: `craft_discover`, `craft_call`, `vector_figure_create` y `deck_handout_designcraft`. El descubrimiento incluye herramientas, prompts, recursos y plantillas de recursos nativos cuando la app los ofrece. El despacho acepta `kind: "tool"`, `"prompt"` o `"resource"`; si el servidor no implementa un método MCP opcional, devuelve un catálogo vacío para ese método.
-
-`vector_figure_create(deck_id, slide_id, title, shape, fill, stroke, replace_block_index?)` crea un documento VectorCraft editable, SVG y vista PNG, guarda una copia gestionada y la añade a la diapositiva como figura. Para corregir una figura existente, pasa su `block_index` devuelto como `replace_block_index`; se conservan los demás bloques, título y notas. El PPTX incluye la imagen SVG y una imagen PNG de compatibilidad. Los archivos `.vectorcraft`, `.svg` y `.png` quedan en los recursos de la presentación; no se modifica el original.
-
-Como alternativa a las variables de entorno, guarda las rutas en el archivo local no versionado `data/craft-engines.json`: `{"vectorcraft":{"executable":"..."},"designcraft":{"executable":"..."}}`. Cada lote `craft_call` abre un proceso nativo nuevo. Agrupa los comandos dependientes en un solo lote y guarda el documento antes de terminar; la selección y el historial de deshacer no persisten entre lotes. Gutenberg ofrece sesiones editoriales persistentes para trabajos de publicación más largos.
-
-El original vectorial se edita en VectorCraft. El PPTX contiene el SVG como imagen con alternativa PNG, no como geometría nativa de formas de un archivo de presentación; la herramienta informa de esta diferencia. El documento de apoyo incrusta marcos rasterizados (incluidos los PNG de respaldo de recursos SVG); los gráficos aportan sus valores como texto, no como gráficos nativos.
-
-`deck_handout_designcraft(deck_id)` crea una página A4 editable de DesignCraft por diapositiva, con marcos separados para título y cuerpo, y renderiza una vista PNG por página. Conserva el texto, las notas del orador y los pies de figura; los gráficos aportan sus valores. Las imágenes raster pasan a marcos gráficos colocados y los recursos SVG de VectorCraft usan su respaldo PNG guardado. Antes de renderizar, el proyecto nativo se copia y vuelve a abrir para verificar que conserva las imágenes incrustadas sin enlaces a los recursos de Cicero. Si el texto desborda, la operación termina con un error claro en vez de devolver un documento incompleto. El `.designcraft` y cada PNG se descargan desde la lista de exportaciones. El SVG fuente sigue disponible en los recursos y flujos de presentación de Cicero; este documento no afirma conservar contenido vectorial editable, exportar PDF ni igualar la maquetación de marca de la presentación original.
-
-## Asistente compartido de Faustus
-
-El botón Faustus monta el panel común servido por Faustus. Conversaciones, modelo, streaming, recuperación y memoria del proyecto viven allí. Cicero aporta su espacio de datos, presentación, diapositiva y revisión, selección y borrador sin guardar. Mantiene sus 79 herramientas de dominio y las revisiones para deshacer. Se conservan presentaciones, notas, fuentes y cambios manuales sin guardar. La conexión utiliza CICERO_FAUSTUS_URL o backend.json. Requiere Faustus disponible con el contrato común; no crea otro chat ni otro modelo privado.
-
-## Skills para los agentes que se conectan
-
-Esta app lleva procedimientos de la biblioteca de skills del espacio de trabajo de la familia para los agentes que se conectan: `presentation-from-brief`, `diagram-authoring`, `image-composition`, `deep-research`. Aparecen en lo que el agente lee al conectarse, se leen con `skills_list` y `skill_read`, se buscan y asignan con `skills_library` y `skills_assign`, y se ofrecen como prompts. Se eligen en la página de skills (`/api/agent/skills/page`) o en la pestaña Skills del hub; el bloque `skills` de `faustus-plugin.json` guarda lo que la app pide por defecto.
+Las pruebas de PDF solo se ejecutan si hay un Chromium disponible. Licencia: véase `LICENSE`.

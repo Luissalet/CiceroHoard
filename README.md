@@ -1,211 +1,67 @@
+<img src="app-icon.png" width="96" alt="">
+
 # Cicero's Hoard
 
-In the Data panel, **Filter and sort** creates a saved derived dataset with one
-condition, an optional sort order and a name. The original stays intact. Inspect
-the saved source/parent IDs and transformation, then use the result in the existing
-chart or table editor. The preview explicitly shows its first eight rows; inserting
-a visual edits the current slide draft until Save. Errors retain the filter draft.
+A local workspace that turns a brief and source documents into an editable presentation, for a person and an assistant working together. [Español](README.es.md)
 
-The slide editor's **Duplicate content** action creates a draft immediately after the current slide, including visible unsaved edits, notes, blocks and source references. It opens the new copy without saving changes to the original. The existing `slide_add` API/MCP operation creates the new ID and revision; approval and revision history are not copied, and referenced assets remain in the same deck.
+## What it is
 
-## Interactive Routes
+You give Cicero an objective, an audience and the material. It proposes an outline, writes the slides with speaker notes, lets you review and approve each slide one by one, applies a theme and exports the result. Everything is available as a REST API for the bundled interface and as MCP tools built from the same code, so the two cannot disagree.
 
-`deck_navigation` configures stable slide links, external URLs and next/previous/return actions on ordinary objects.
-The editor offers the same destination selector. HTML and live sessions restore nested branch origins and click stages;
-native PPTX uses editable slide relationships and last-slide-viewed return. [Contracts](docs/INTERACTIVE_NAVIGATION.md).
-
-## Numbering And Progress
-
-`deck_chrome` sets the slide number (`n`, `n / total` or none) and a progress bar or one segment per slide, at the
-top or the bottom. `main_slides` marks the rest as an appendix: excluded from the total and from the progress, so an
-appendix never reads "16 / 15". The preview, HTML, PPTX and attached templates draw the same settings; a template's own
-slide-number field receives the text. Without settings the historical footer is kept. The Export tab has the same panel.
-`deck_check` also reports slides whose visuals leave most of the body empty, and wide diagrams stretch vertically.
-
-## Motion, Media And Linked Data
-
-Use `deck_transitions` for common screen/native transitions, stable-object morph and per-slide overrides.
-Use `media_import` and `media_get` for local or HTTP(S) audio/video, then add typed media blocks.
-`deck_media_control` operates playback on the current live slide.
-`dataset_link`, `dataset_links`, `dataset_bind` and `dataset_link_control` provide durable automatic local/URL
-data refresh, immutable snapshots, typed visual recipes and last-good recovery. The editor exposes the same features.
-The public catalogue now contains 79 tools, including portable figures and numbering/progress. See [live media](docs/LIVE_MEDIA.md) and [advanced authoring](docs/ADVANCED_AUTHORING.md) for contracts and format differences.
-
-`deck_design` runs a model-driven create/render/correct loop using the configured global model, with real image content in vision mode. External image feedback is bound to a source revision, variant and PNG hash; runs support resumption, cancellation and selective undo.
-`scene_model_import` packages local GLB/glTF/ZIP resources offline, retaining textures, materials, lights and clips.
-`deck_benchmark` compares complete independently authored PPTX workflows using a common native rasterizer and a fixed blind rubric. Failures, ties and regressions remain in the report; selected cases cannot establish universal superiority.
-
-A local workspace that turns a brief and source documents into an editable presentation. You give it an objective,
-an audience and the material; it proposes an outline, writes the slides with speaker notes, lets you review and
-approve each slide one by one, applies a theme and exports the result. It is meant for a person and for an assistant
-working together: everything is available as a REST API for the bundled UI and as MCP tools, built from the same
-code, so the two cannot disagree.
-
-## Titles that state the conclusion
-
-A title can be a label ("Quarterly results") or the conclusion of the slide ("Sales grew 12% through the online channel"). Cicero tells them apart and can go from one to the other, per deck or per slide, without losing the label.
-
-- **The review marks them.** `deck_check` (the Revisión tab) reports every content slide whose title is a label (`label_title`) and, when it can, proposes the conclusion in the same issue. It is a note while the deck is in label mode and a warning in conclusion mode. The cover, section slides, the closing slide and quotes are left alone.
-- **Where the conclusion comes from.** From what the slide really holds: its text, its table, its metrics, its chart series and the speaker notes. For a chart, the facts its own numbers give are computed (the change between the first and the last category, the largest part of a total) and handed to the model. A figure the slide does not hold, and that does not follow from its chart by that arithmetic, never enters the title: the proposal goes back to the model once with the offending figures and, if it insists, the rule-made one is used. Without a model, the rules write what the data says ("Ventas rises from 100 to 112 between 2023 and 2024 (+12%)"), the highlighted metric, or the first sentence of the slide that already is a statement; a list of topics gets no proposal and says so.
-- **Apply and undo.** In Revisión → *Títulos que afirman la conclusión*: propose, edit each proposal, apply to one slide or to the whole presentation, and undo back to the labels. Each change is a slide revision and the label is kept; on undo, a title you edited by hand afterwards is not overwritten. *Mantener rótulo* keeps one slide out of the mode. Your own wording goes through the same figure check.
-- **What it does not do.** It does not tell a label from a conclusion by meaning: it looks for a conjugated verb, a signed figure or a percentage, and for a question (a list of verb forms in Spanish and English; a very short title or one without a verb is a label). It does not verify causes: if the model writes a "because…" the slide does not support in words, only figures give it away, so read the proposals before applying them. It does not rewrite the content or the notes.
-
-Tools: `titles_overview`, `titles_propose`, `titles_apply`, `titles_restore`, `titles_mode`. Routes: `GET /api/decks/{id}/titles` and `POST /api/decks/{id}/titles/propose|apply|restore|mode`.
-
-## Import a PPTX and rework it
-
-**Import PPTX** (deck list) makes an editable deck from a `.pptx`: title and subtitle, the remaining text as bullets, tables, column, bar, line and pie charts with their data, pictures and speaker notes. Each slide gets a Cicero layout and the theme you choose; the original look is not copied (the PPTX template keeps it). The file and its chart data become sources, so the review checks the figures. Loose text boxes (figures drawn as text, for instance) arrive as bullets and small footer text is dropped. Positions, animations, video and other chart kinds (scatter, combo) are not read. Tool `deck_import_pptx`; route `POST /api/import/pptx` (multipart `file`, or JSON `{path}`).
-
-## Measured rehearsals
-
-The presenter console measures how long each slide stays on screen while the timer runs (paused time does not count) and shows it as "On this slide". **Save rehearsal** keeps those times; the **Rehearsal** tab puts them next to the plan made from the notes: allocated, measured and difference per slide, the slides furthest over and the total against the limit. The last 20 per deck are kept. Tool `deck_rehearsal_runs` (`list`, `save`, `delete`); routes `GET|POST /api/decks/{id}/rehearsal/runs` and `DELETE /api/decks/{id}/rehearsal/runs/{run}`.
+Sources are read on your computer; only short numbered excerpts go to the model, through Hoard Link, to whatever backend you configured (a local one by default). With no model reachable, the outline and slides are built from the sources by fixed rules and the result says `"generator": "fallback"`.
 
 ## What it does
 
-- **Your PPTX templates**: upload a reference deck on the Theme tab, or use `template_inspect` and
-  `deck_template` over MCP. The editable PPTX keeps its dimensions, masters, layouts, backgrounds, logos
-  and fonts. A saved snapshot survives changes to the original file. Notes and charts come from the new deck.
-  Layout-to-source-slide bindings let an assistant choose precise title/body slots for unusual templates.
+### Decks, sources and slides
+- Decks with title, brief, audience, tone, language (Spanish or English), 3 to 40 slides and a theme. The status is derived: draft, outline, review or ready (every slide approved).
+- Sources: pasted text or `.txt`, `.md`, `.pdf`, `.docx` and `.pptx` files; scanned PDFs are read by the family document service when it runs. Sources are numbered and slides cite them.
+- Outline generated from the brief and source excerpts, or written by hand.
+- Fifteen layouts (including evidence, comparison and freeform composition) built from text, image, chart, diagram, metric, table and timeline blocks; every slide has speaker notes.
+- Per-slide review: approve, regenerate with feedback, edit by hand. Every change is a revision; reverting restores an old revision as a new one. Regenerating keeps approved slides and rewrites drafts.
+- Duplicate a slide, edit one title, note or bullet without rebuilding the rest, add draft slides in idempotent batches, and swap an existing figure.
+- Import a `.pptx` into an editable deck (text, tables, charts with data, pictures, notes) with a Cicero layout and theme.
+- Titles that state the conclusion: label titles are flagged and a conclusion is proposed from the slide's own content, applied per slide or per deck and undoable back to the labels.
 
-- **Decks**: title, brief, audience, tone, language (Spanish or English), number of slides (3 to 40) and theme.
-  The status is derived, never typed: `draft` (nothing yet), `outline` (an outline exists), `review` (slides exist,
-  some not approved), `ready` (every slide approved).
-- **Sources**: paste text or add a `.txt`, `.md`, `.pdf`, `.docx` or `.pptx` file (text only; a scanned PDF is read by
-  the family document service's OCR when that app is running). Sources are numbered and each slide can cite the sources it draws on.
-- **Outline**: generated by the configured family model from the brief and numbered source excerpts, or written by hand.
-  Each item has a title, a purpose, a few points and an optional layout hint.
-- **Slides**: fifteen layouts including evidence, comparison and freeform composition, built from text,
-  image, chart, diagram, metric, table and timeline blocks. Every slide has speaker notes.
-- **Per-slide review**: approve or unapprove a slide, regenerate it with feedback, edit it by hand. Every change
-  creates a revision; reverting restores an old revision as a new one. Generating slides again keeps approved slides
-  and rewrites drafts.
-- **No invented numbers**: the model may only use figures that appear in the sources. A chart is kept only when all
-  its values appear in the sources, and `deck_check` lists every figure on a slide that no source contains. Number
-  formats are compared across notations (`1.234`, `1,234`, `1.234,5`, `1,5`).
-- **Automatic fitting**: text is measured and the font is stepped down until it fits, in the preview, the HTML and
-  the PPTX alike (the three are drawn from one geometry). Text that cannot fit even at the smallest size is reported
-  by the check instead of being clipped silently.
-- **Themes**: seven built-in themes (`claro`, `oscuro`, `editorial`, `carmesi`, `pizarra`, `tecnico`, `oceano`), all
-  with a contrast of at least 4.5:1 for text, muted text and accents. Fonts are ones present on Windows.
-  A design system from the family design-system app can become an eighth, custom theme (`theme_from_tokens`, or the
-  "Theme from a design system" picker in the theme screen): its colours, fonts and corner radius are mapped, colours
-  that would not read are pulled until they reach 4.5:1 (the changes are listed), and a font that is not on Windows is
-  replaced by the closest one that is. Cards in a theme with a radius are drawn with rounded corners in the preview,
-  the HTML and the PPTX.
-  The "From Vitruvius" tab of the theme screen (`deck_theme_from_preset`) lists the 112 design presets of
-  Vitruvius's Hoard with their light and dark swatches, searchable, and "Pick three for this brief" asks the studio
-  for three presets that fit the deck's title, brief, audience and tone (one recommended, with the reason). Applying
-  one, light or dark, maps its tokens into a custom theme: page = background, cards = secondary, text = foreground,
-  muted = muted-foreground, accent = primary, second accent = `chart-2` or the primary in the page's own hue, fonts
-  reduced to Windows fonts, radius = `md`; the same 4.5:1 fit applies and the theme is used by the preview and the
-  PPTX, PDF and HTML exports. Table headers on the accent take white text when it reads, otherwise the theme's own
-  page or text colour (a dark preset's light accent).
-- **Deleting a saved theme** (`theme_delete`, `DELETE /api/themes/{id}`, "Delete theme" on a saved theme's card, with a
-  confirmation): themes made from a design system or a preset can be deleted; built-in themes cannot. Presentations that
-  used it move to the built-in theme of the same kind (Oscuro for a dark page, Claro otherwise) and keep exporting;
-  finished export files are kept.
-- **Design review with Vitruvius** (`deck_design_audit`, "Review design" in the Review tab): the deck is rendered as
-  its stacked HTML (every slide, pictures inline) and sent to Vitruvius's Hoard `design_slop_audit`, which renders it
-  at eight widths, scores the generated look 0-100 and proposes fixes. Each finding is placed on its slide (every element
-  of slide n carries an id `cs{n}-{k}` that the studio quotes in its evidence, so slides with the same words are told
-  apart; otherwise by the boxes the studio returns, or by the words it quotes) and shown next to the deck check with the fix text; findings
-  that are about the whole deck or only about the HTML wrapper are listed apart. The last audit of each deck is kept
-  and marked out of date when slides or the theme change. When Vitruvius is not running, the review says so and
-  offers to start it through the Hoard Hub (and to switch its design module on); `prepare=true` does the same from MCP.
-  The review is asked for in the UI language (`lang` es or en, Spanish by default, on the route, the tool and Vitruvius's
-  call); an audit kept in the other language is re-read from the studio when the language is switched, without auditing again.
-- **Exports**:
-  - PPTX with real text boxes, bullet paragraphs, speaker notes and native charts (editable in the office suite),
-    16:9 by default, or the attached template's size.
-  - PDF, one page per slide, rendered by a local Chromium.
-  - HTML, one self-contained file (styles, script and images inline) with arrow-key navigation. Speaker notes are
-    left out on purpose because the file is meant to be shared.
-  - Markdown, slides separated by `---`, notes as comments, charts as tables.
-- **Images**: upload your own, or ask the family's image studio (Prospero's Hoard) for a picture per slide. The
-  studio is optional.
-- **Works without a model**: when no model is reachable, the outline and the slides are built from the sources by
-  fixed rules and the result says `"generator": "fallback"`. Regenerating one slide with feedback needs a model and
-  says so instead of pretending.
+### Checks and trust
+- No invented numbers: the model may only use figures from the sources, a chart is kept only if all its values appear in them, and `deck_check` lists every figure that no source contains (comparing notations such as `1.234` and `1,5`).
+- Automatic text fitting in preview, HTML and PPTX from one geometry; text that cannot fit is reported rather than clipped.
+- Visual review: renders every slide in the browser and measures off-slide objects, overflowing text, overlaps, contrast, missing images and missing titles, with an automatic minimum-font fix.
+- Design review through Vitruvius's Hoard: scores the generated look 0-100 and places each finding on its slide.
+- Per-slide source checking, plus a benchmark that compares complete PPTX workflows with a common rasteriser and a fixed rubric.
 
-## Visual workbench for agents
+### Themes and templates
+- Seven built-in themes with at least 4.5:1 contrast, custom themes from a design system or from one of Vitruvius's presets (light or dark, with a "pick three for this brief" suggestion), and deletion of saved themes.
+- Your own PPTX templates: masters, layouts, backgrounds, logos and fonts are kept, with layout-to-slide bindings for unusual templates.
+- Slide numbering and a progress bar (top or bottom), with an appendix excluded from the total.
 
-`visual_catalog` exposes versioned schemas for 14 chart types, diagrams, metrics and tables. `slide_visual_update`
-replaces or appends one block while preserving other blocks, citations and notes; use `expected_revision` to
-detect concurrent edits. `slide_variants` compares three compositions without changing content. `deck_scene`
-reports object geometry, font sizes and click stages. `deck_present` returns the local animated presentation URL.
-These use the same implementations as ordinary slide editing and export, and are available through the MCP catalogue.
-See [the agent workflow](docs/AGENT_VISUALS.md) and the portable `agent-skill/SKILL.md` entrypoint.
-`npm run build` packages the specialist runtimes inside the Python distribution; advanced rendering needs Node 22.13+,
-but not a separate dependency install at runtime. `scripts/visual-gallery.py --output-dir <folder>` creates a
-fictional-data capability gallery and, when available, native rendering evidence.
+### Visuals, motion and media
+- Typed visuals: 14 chart types, diagrams, metrics and tables with versioned schemas; replace one block while keeping the others; compare three compositions.
+- Click stages, native PPTX animations and transitions, interactive routes between slides, audio and video blocks, and offline import of 3D scene models.
+- Local VectorCraft and DesignCraft integration for editable vector figures and A4 handouts, and editable-source figures from Vitruvius.
+- Images: upload your own or ask Prospero's Hoard for one per slide.
 
-Charts support numeric X coordinates, gaps, colors, highlighted categories, units, annotations, reference lines,
-and interval bounds. The engines are ECharts for chart rendering, ELK for diagram placement, and reveal.js for
-local presentation playback. PPTX keeps native charts or editable evidence objects. Interval charts use filled
-regions in the browser and central/lower/upper curves in PPTX. Heatmaps export as colored tables; funnels as stage
-objects. Diagram nodes, connections, metric text and tables remain editable. Sources remain the authority for values.
+### Data and live presentation
+- Import CSV, TSV and XLSX as immutable datasets, filter, group and sort them reproducibly, map them to charts and tables, and link them to local or URL sources that refresh as snapshots.
+- Live presentation with separate presenter and audience URLs, stages, blackout, timer, audience polls and shared editing presence; the audience view never shows speaker notes.
+- Timed rehearsal planning from the speaker notes, and measured rehearsals from the presenter console compared with the plan.
 
-Use `build`, `effect` and `duration_ms` on blocks for click stages. Diagram `effect: stages` builds nodes in order.
-The browser and standalone HTML retain individual objects, including with attached templates. The exported PPTX
-carries native slide animations and transitions written as OOXML, with no office engine needed:
-`deck_animations` (or `GET|PUT|DELETE /api/decks/{id}/animations`, `.../animations/preview`, `/api/animations/catalogue`)
-sets `mode` -- `builds` (only the click stages, the default), `auto` (cover zoom, title fade, chart and table wipe,
-picture zoom, cards and text fly in, then the click stages), `mixed`, `none` or any of the 203 native effects --
-`trigger` (after-previous or on-click), `duration`, `transition` (none or any of 48, Morph included) and
-`transition_duration`, deck-wide or per slide. Footers and background shapes never animate. The animation and
-transition XML comes from PPT Master (MIT, vendored in `cicero_hoard/vendor/ppt_master` with its licence) and every
-export is read back with its validators. In the app, the Export tab sets the presentation-wide motion and the transitions in
-its transitions panel, gives each slide its own animation in «Animations per slide» and lists what the next PPTX will
-carry per slide with Check.
-
-Before exporting, `deck_visual_review` (`POST /api/decks/{id}/visual-review`, PNGs at
-`/api/decks/{id}/visual-review/slide-NN.png`) renders every slide in the browser and measures what was laid out: objects
-off the slide, text whose lines leave their box, content objects covering each other, text contrast against what is really
-behind it (4.5:1, 3:1 for large text), pictures that do not load, and a missing title, chart or picture for the layout.
-Each finding says its fix; `fix: true` applies the one automatic fix the rules allow (minimum font size on the slides
-whose text overflows) and reviews again. PDF represents the complete static state. The user can share
-their local presentation window remotely; no publication is necessary.
-A text box that starts on the slide and only runs past the bottom grew with its text, so it counts as overflow. In the
-app, the Review tab runs the visual review, shows the capture of each flagged slide and offers the automatic fix.
-
-## Data And Live Presentation
-
-The **Rehearsal** tab prepares a schedule from saved speaker notes, with a time limit, speaking pace, pauses, reserved margin and a main-talk boundary. It shows each slide's allocated slot and estimated speech duration, keeps support slides separate, opens notes for reading/editing, and retains the chosen assumptions when switching tabs. Copy or download the plan with its notes in Spanish or English. Missing notes leave the total estimate unknown; an overlong speech remains visibly over the limit. This is planning, not a recorded or measured rehearsal. The UI uses `POST /api/decks/{id}/rehearsal` and the existing `deck_rehearsal` MCP calculation, which now also returns portable `text` (optional `language: es|en`). `GET /api/decks/{id}/rehearsal.txt` downloads that same text using query parameters for the assumptions. Planning changes neither notes nor slide approvals.
-
-- `dataset_import`: immutable CSV/TSV/XLSX sources, worksheets and explicit decimal profiles.
-- `dataset_get`: paginated rows, missing/numeric profiles and import warnings.
-- `dataset_transform`: reproducible filters, grouping, aggregates and mixed-type sorting.
-- `dataset_visual`: typed chart/table mapping, preserving missing observations and source IDs.
-- `deck_live_start`: separate presenter and audience URLs, support slides and a target duration.
-- `deck_live_state`: audience-safe navigation and timer state, without speaker notes.
-- `deck_live_control`: stages, slide jumps, blackout, timer and main-talk boundary.
-
-The editor includes data import/mapping, editable staged timelines, normalized `freeform`
-composition and contain/cover image crop focus. Live sessions remain in local server memory;
-restart a session after deck edits. Offline HTML remains independent of live sessions.
-See [data and presentation workflow](docs/DATA_PRESENTATION.md) and
-[capability comparison](docs/CAPABILITY_MATRIX.md) for tested behavior and remaining gaps.
-
-### Figures with editable source
-
-Export **Figure with source** from Vitruvius, choosing the current infographic page or authored isometric state when needed. Upload the `.vfigure` file with the existing image picker, or use `asset_import` then `slide_set_image`. The portable `vitruvius.figure/1` file contains a PNG, complete native source, document ID and captured revision. Cicero retains an immutable snapshot, including the selected `state_id`; matching pixels reuse an asset only when the source and captured selection also match. A selected state must exist in the retained isometric source. `figure_get` reads the source, with optional `include_preview`. The image editor displays the revision and offers origin editing and source download. Opening a deck never refreshes the figure or starts its origin server.
-
-Replace the image with a later `.vfigure` to update it. Existing caption, crop, notes and other blocks are retained. Agent-session undo of `slide_set_image` reverses its image/caption fields while preserving later manual notes, geometry and unrelated blocks; a later edit to a field being reversed is reported as a conflict. Appended images are removed only if their content is unchanged. Whole-slide `slide_revert` retains its existing semantics. PDF/PPTX/HTML exports use the captured PNG; the editable source remains in Cicero and in the downloadable figure file. Origin links are supplied provenance, not server authentication. This is currently a Vitruvius-to-Cicero path; other Hoard consumers are not yet implemented.
+### Exports
+- PPTX with real text boxes, speaker notes and native editable charts (16:9 or the template's size).
+- PDF, one page per slide, rendered by a local Chromium.
+- One self-contained HTML file with arrow-key navigation (no speaker notes).
+- Markdown, with slides separated by `---`.
 
 ## Responsible use
 
-- **Figures.** A generated deck is a draft. The number check finds figures that are not in the sources; it cannot
-  tell whether a source is right. Read the notes and the figures before presenting.
-- **Sources stay local.** Documents are read on this computer. Only short numbered excerpts are sent to the model,
-  through Hoard Link, to whatever backend you configured (a local one by default).
-- **Local files.** Adding a file by path only accepts document types (`.txt`, `.md`, `.pdf`, `.docx`, `.pptx`) and can
-  be limited to folders with `CICERO_FILE_ROOTS`.
+- **Figures.** A generated deck is a draft. The number check finds figures that are not in the sources; it cannot tell whether a source is right. Read the notes and the figures before presenting.
+- **Sources stay local.** Documents are read on this computer. Only short numbered excerpts are sent to the model, through Hoard Link.
+- **Local files.** Adding a file by path only accepts document types (`.txt`, `.md`, `.pdf`, `.docx`, `.pptx`) and can be limited to folders with `CICERO_FILE_ROOTS`.
 - **Quotes.** A quote block should reproduce a quote that appears in a source. The check does not verify quotations.
 - **Deletes** (a deck, a slide, a source) need an explicit confirmation, also over MCP.
 
-## Install
+## How to run it
 
-Requirements: Python 3.11+ (Windows target 3.13), Node.js 22+ only to rebuild the client.
+Requires Python 3.11+ and Node.js 22+ only to rebuild the client.
 
 ```bash
 python -m venv venv
@@ -215,121 +71,61 @@ python -m playwright install chromium     # only for the PDF export
 python -m cicero_hoard            # http://127.0.0.1:5194
 ```
 
-The built client is committed under `cicero_hoard/static`, so `npm` is only needed to change the UI (`npm install`,
-`npm run build`). During UI work `python scripts/dev.py` starts the API and the Vite dev server together, and
-`python scripts/launch.py` starts the app and opens it in the browser.
+The built client is committed under `cicero_hoard/static`; `npm install` and `npm run build` are only needed to change the UI. `python scripts/dev.py` starts the API and Vite together; `python scripts/launch.py` starts the app and opens the browser.
 
-| variable | default | meaning |
+| Variable | Default | Meaning |
 | --- | --- | --- |
-| `CICERO_PORT` / `PORT` | `5194` | port; with `PORT_STRICT=1` the app fails instead of moving to another port |
-| `CICERO_DATA_DIR` | `./data` | database, `assets/`, `exports/`, `mcp-token`, `url`, `backend.json` |
-| `CICERO_ALLOWED_HOSTS` | local only | extra host names the server accepts |
-| `CICERO_FILE_ROOTS` | empty | folders (separated by the OS path separator) that local-file sources may come from |
-| `CICERO_IMAGE_STUDIO_URL` | discovered | address of the image studio, to skip discovery |
-| `CICERO_IMAGE_TIMEOUT` | `600` | seconds to wait for one render in the image studio (10-86400) |
-| `CICERO_PARALLEL_SLIDES` | `3` | slides written at the same time by the model after the first one (1-8); a local server with several slots finishes a deck sooner |
-| `CICERO_SLIDE_EFFORT` | `low` | reasoning effort asked of the model for each slide and rewrite (`off`, `low`, `medium`, `high`); the outline always asks `medium` |
+| `CICERO_PORT` / `PORT` | `5194` | Port; with `PORT_STRICT=1` the app fails instead of moving |
+| `CICERO_DATA_DIR` | `./data` | Database, `assets/`, `exports/`, `mcp-token`, `url`, `backend.json` |
+| `CICERO_ALLOWED_HOSTS` | local only | Extra host names the server accepts |
+| `CICERO_FILE_ROOTS` | empty | Folders local-file sources may come from |
+| `CICERO_IMAGE_STUDIO_URL` | discovered | Address of the image studio |
+| `CICERO_IMAGE_TIMEOUT` | `600` | Seconds to wait for one image render |
+| `CICERO_PARALLEL_SLIDES` | `3` | Slides written at the same time after the first one (1-8) |
+| `CICERO_SLIDE_EFFORT` | `low` | Reasoning effort for each slide and rewrite (`off`, `low`, `medium`, `high`) |
+| `CICERO_VECTORCRAFT_CLI`, `CICERO_DESIGNCRAFT_CLI` | unset | Paths of the optional vector and handout apps |
 
-The model comes from Hoard Link (`data/backend.json` or the Hoard environment variables); the model name can also be
-chosen in Settings.
+The model comes from Hoard Link (`data/backend.json` or the Hoard environment variables) and can also be chosen in Settings.
 
-## Shared Hoard Link code
+Limits: the PDF export needs Chromium (or a system Edge or Chrome); without it exporting `pdf` fails with `pdf_unavailable` and the other formats keep working. Template preview and HTML need a local office slide engine on Windows, or they report the same code. Fonts are the theme's; a machine without them substitutes another. Text fitting is an estimate from character widths. Scanned PDFs without OCR are refused. Speaker notes are never in the HTML export.
 
-The plumbing is the shared commons of Hoard Link (vendored in `cicero_hoard/hoard_link/`): the launcher (one instance per
-port, logs in `data/logs/`), the request guard, the error envelope, the stable `mcp-token`, the SQLite layer, ULID ids
-(decks made with older versions keep their 12-character ids), the agent catalogue with the 20 KB result cap, the Word and
-text readers with the zip-bomb guard, the chunker, the browser launcher for the PDF export and the MCP bridge.
+## Connection with Faustus and Hoard Hub
 
-## MCP
+- `faustus-plugin.json` describes the plugin. `mcp_server.py` is the shared Hoard Link stdio bridge: it reads `data/mcp-token`, fetches the tool list from the running app, forwards each call and starts the app if it is not running (`CICERO_BRIDGE_AUTOSTART=0` turns that off). Register it with `CICERO_URL` (default `http://127.0.0.1:5194`) and `CICERO_TOKEN_FILE`.
+- Accountable agent writes: every non-read tool needs a `reason` of 3 to 300 characters, each write is journalled in `data/agent_journal.jsonl`, a whole agent session can be previewed and undone, and tokens can be minted with `read_only`, `drafts` or `all` profiles.
+- Decks are addressable as `hoard://cicero/deck/<id>`. Events for deck, outline, slides, export and theme creation go to the hub bus. Themes from a design system are linked to it. Images come from Prospero's Hoard when it runs; only loopback addresses are contacted.
+- The Faustus button mounts the shared assistant panel; Cicero supplies its data-space identity and the current deck, slide and unsaved editor state.
+- The app carries skills for connected agents (`presentation-from-brief`, `diagram-authoring`, `image-composition`, `deep-research`); the portable entry point is `agent-skill/SKILL.md`.
 
-`mcp_server.py` is the shared Hoard Link stdio bridge. It never opens the database: it reads `data/mcp-token`, fetches the tool list
-from the running app and forwards each call. When the app is not running it starts it (`CICERO_BRIDGE_AUTOSTART=0`
-turns that off; the slow tools publish how long the bridge waits for them). Register it in any MCP client:
+<details>
+<summary>MCP tools by group</summary>
 
-```json
-{"mcpServers": {"cicero": {"command": "python", "args": ["/path/to/cicero/mcp_server.py"],
-  "env": {"CICERO_URL": "http://127.0.0.1:5194", "CICERO_TOKEN_FILE": "/path/to/cicero/data/mcp-token"}}}}
-```
+- Status and decks: `cicero_status`, `deck_list`, `deck_create`, `deck_get`, `deck_update`, `deck_delete`, `deck_import_pptx`.
+- Sources and outline: `source_add`, `source_list`, `source_get`, `source_remove`, `outline_generate`, `outline_update`.
+- Slides: `slides_generate`, `slide_get`, `slide_add`, `slides_add`, `slide_update`, `slide_edit_text`, `slide_set_image`, `slide_image`, `slide_regenerate`, `slide_approve`, `slide_revert`, `slide_delete`, `slides_reorder`, `asset_import`, `figure_get`.
+- Review and design: `deck_check`, `deck_visual_review`, `deck_design`, `deck_design_audit`, `deck_visual_lab`, `deck_benchmark`, `titles_overview`, `titles_propose`, `titles_apply`, `titles_restore`, `titles_mode`.
+- Themes and templates: `deck_theme`, `theme_from_tokens`, `deck_theme_from_preset`, `theme_delete`, `template_inspect`, `deck_template`, `deck_chrome`.
+- Visuals: `visual_catalog`, `slide_visual_update`, `slide_variants`, `deck_scene`, `deck_present`.
+- Motion, navigation and media: `deck_animations`, `deck_transitions`, `deck_navigation`, `deck_media_control`, `media_import`, `media_get`, `scene_model_import`.
+- Data: `dataset_import`, `dataset_get`, `dataset_transform`, `dataset_visual`, `dataset_link`, `dataset_links`, `dataset_link_control`, `dataset_bind`, `dataset_connect`.
+- Live and collaboration: `deck_live_start`, `deck_live_state`, `deck_live_control`, `deck_poll`, `slide_collaborate`.
+- Rehearsal and export: `deck_rehearsal`, `deck_rehearsal_runs`, `deck_export`, `deck_handout_designcraft`.
+- Craft apps: `craft_discover`, `craft_call`, `vector_figure_create`.
 
-`faustus-plugin.json` describes the same setup for the Faustus workspace.
+</details>
 
-### Tools
+## Project layout
 
-| tool | what it does |
+| Path | Contents |
 | --- | --- |
-| `cicero_status` | health, counts, model and PDF availability |
-| `deck_create`, `deck_list`, `deck_get`, `deck_update`, `deck_delete` | decks; `deck_get` returns a summary unless `detail=full`; delete needs `confirm=true` |
-| `source_add`, `source_list`, `source_get`, `source_remove` | sources from pasted text or a local file; paged reading; removal needs `confirm=true` |
-| `outline_generate`, `outline_update` | generate the outline or replace it by hand |
-| `slides_generate` | write the slides from the outline; approved slides are kept |
-| `slide_get`, `slide_update`, `slide_add`, `slide_delete`, `slides_reorder` | read, edit, add, remove (`confirm=true`) and reorder slides |
-| `slide_regenerate` | rewrite one slide following feedback (needs a model) |
-| `slide_approve` | approve or unapprove a slide |
-| `slide_revert` | list a slide's revisions, or restore one as a new revision |
-| `deck_check` | review: overflow, figures not in the sources, missing notes, unapproved slides, titles that are labels (with the proposed conclusion) |
-| `titles_overview`, `titles_propose`, `titles_apply`, `titles_restore`, `titles_mode` | titles that state the conclusion: which titles are labels, propose the conclusion from each slide's content, apply it to the whole deck or to some slides, go back to the labels and set the mode |
-| `deck_theme` | list the themes (built-in and made from design systems) or apply one |
-| `template_inspect`, `deck_template` | inspect a local PPTX, attach it with optional per-layout bindings, read the attachment, or detach it with `clear=true` |
-| `theme_from_tokens` | make a theme from a design system (`tokens_id`, `mode` light or dark, optional `deck_id` to apply it); without `tokens_id` it lists the design systems |
-| `deck_theme_from_preset` | make a theme from a Vitruvius design preset (`preset`, `mode`, optional `deck_id` to apply it); without `preset` it lists presets (`query`, `source`) or, with `pick=true`, proposes three for the deck brief |
-| `theme_delete` | delete a saved theme (`theme_id`; built-ins refuse); decks that used it move to Claro or Oscuro |
-| `deck_design_audit` | review the deck's design with Vitruvius's slop audit (`action` run or latest); slop score, mode, plan summary and every finding mapped to its slide with the fix; `prepare=true` starts the studio through the Hub when it is down |
-| `deck_export` | export to `pptx`, `pdf`, `html` or `md`; returns the file path and the download URL |
-| `deck_animations` | native animations and transitions of the exported PPTX: get, set, reset, preview, list |
-| `deck_visual_review` | render every slide in the browser, keep a PNG of each and check hard rules before exporting; `fix` applies the minimum font size where text overflows |
-| `deck_visual_lab` | create content-preserving composition variants, render native MCP images, compare measured constraints, correct custom frames, apply and benchmark against an explicit baseline |
-| `deck_poll` | create, vote, open/close, reset and recover local audience poll rounds; obtain a slide block |
-| `slide_collaborate` | merge persistent Yjs text, stable objects, nested fields and identity order; publish local presence |
-| `dataset_connect` | connect a local SQL read query or optional spreadsheet adapter to the scheduled immutable snapshot worker |
-| `slide_image` | generate a picture for a slide with the image studio |
-| `asset_import` | copy an existing local PNG/JPEG/WEBP figure; use its returned asset ID in an image block; repeated imports reuse the image within this deck |
-| `figure_get` | read the retained editable source, document ID, revision and optional PNG of an imported Vitruvius figure |
-| `slides_add` | atomic draft batches with a reusable batch key; retrying identical content returns the original IDs |
-| `slide_edit_text` | edit one title, subtitle, note or bullet while preserving the other blocks |
-| `slide_set_image` | add or replace one imported figure or its caption; preserve all other blocks and notes; identical retries keep the revision |
-| `deck_rehearsal` | plan time slots and estimate speaking duration from notes; no claim of measured rehearsal |
-
-Results sent to an assistant are trimmed to about 20 KB with a hint to narrow the request. Approving a slide is the
-person's decision: an assistant should not approve slides on its own.
-
-### Agent sessions, reasons and undo
-
-Every write an assistant makes through the MCP bridge (or `POST /api/agent/call`) is accountable. The web interface is not an agent and
-is exempt from all of this.
-
-- **Who.** The bridge sends the agent name and session it reads from `HOARD_AGENT_ID` / `HOARD_AGENT_SESSION` (headers `X-Agent-Id` /
-  `X-Agent-Session`; a body `caller` / `_session` also works). A scoped token fixes the agent name whatever the headers say.
-- **Why.** Every tool that is not read-only needs a `reason` argument of 3 to 300 characters (`400 reason_required` with a hint
-  otherwise). Reading tools need none.
-- **What.** Each write is a line of `data/agent_journal.jsonl` (tool, agent, session, reason, a digest and a masked summary of the
-  arguments, the ids it returned, time, ok or error); the file rotates at about 5 MB. `GET /api/agent/journal?session=&agent=&limit=`
-  (Bearer token) reads it, and the event `agent.write` goes to the family.
-- **Undo a whole session.** `POST /api/agent/undo {"session": "...", "dry_run": true}` says what would be taken back; with
-  `{"confirm": true, "reason": "..."}` it does it, newest write first. It reverses presentation creation, presentation fields and
-  theme, the outline, adding and removing sources, every slide edit (text, image, regenerate, approve, revert), adding, deleting and
-  reordering slides, `slides_add` batches (their receipt too, so the same batch key can be used again) and `slides_generate`. It reports
-  what it could not undo: tools without a way back (`deck_delete`, `deck_export`, `asset_import`, `slide_image`, `deck_template`,
-  `theme_from_tokens`, the VectorCraft and DesignCraft tools) and anything changed afterwards. It never touches another session's writes:
-  if another session, or the person in the interface, edited the same slide later, that write is reported as a conflict and left as it is.
-- **Profiles.** `python -m hoard_link.tokens mint --app-data-dir data --agent drafter --profile drafts` prints a token (shown once;
-  the file `data/agent_tokens.json` keeps only hashes). Profiles: `read_only` (reading tools), `drafts` (also the tools that create or edit
-  drafts: `deck_create`, `deck_update`, `deck_theme`, `source_add`, `slide_add`, `slides_add`, `slide_update`, `slide_edit_text`,
-  `slide_set_image`, `slide_regenerate`, `slide_image`, `asset_import`, `slides_reorder`, `theme_from_tokens`; never deleting, approving,
-  exporting or generating a whole deck) and `all`. A blocked call answers `403 profile_forbidden`. The Hub tab "Sesiones de agente" shows the sessions
-  of every app and undoes them, and mints and revokes tokens.
-
-## Family
-
-Cicero works alone. Decks are addressable as `hoard://cicero/deck/<id>`. It emits `cicero.deck.created`,
-`cicero.deck.deleted`, `cicero.outline.generated`, `cicero.slides.generated` and `cicero.deck.exported` on the hub
-bus (ids and short titles only). Themes made from a design system emit `cicero.theme.created` and are linked to the
-design system (`hoard://cicero/theme/<id>` derived from `hoard://vitruvius/tokens/<id>`); the design system is read
-through the hub (`tokens_list` and `tokens_get` of the design-system app), so the hub and that app must be running,
-and asking for the same design system in the same state again gives back the same theme. Pictures come from Prospero's Hoard when it runs: the studio is looked up through
-`CICERO_IMAGE_STUDIO_URL`, the hub's app list, or its default local port (8815), and is used through its local REST
-API, which needs no token. Slide pictures go into a studio project named "Cicero's Hoard slides" (reused, or created
-the first time); each request submits one 16:9 render, waits for it and stores the resulting image in the deck. Only
-loopback addresses are ever contacted.
+| `cicero_hoard/` | Python package: API, generation, checks, exports, live sessions, vendored Hoard Link |
+| `client/` | React/Vite interface (built into `cicero_hoard/static`) |
+| `mcp_server.py` | MCP stdio bridge |
+| `faustus-plugin.json` | Faustus plugin manifest |
+| `agent-skill/` | Portable agent skill |
+| `docs/` | API and feature references ([API](docs/API.md), [agent visuals](docs/AGENT_VISUALS.md), [data and presentation](docs/DATA_PRESENTATION.md), [live media](docs/LIVE_MEDIA.md), [interactive navigation](docs/INTERACTIVE_NAVIGATION.md), [advanced authoring](docs/ADVANCED_AUTHORING.md)) |
+| `scripts/` | `dev.py`, `launch.py`, visual gallery |
+| `tests/` | Test suite |
 
 ## Development
 
@@ -338,85 +134,4 @@ pip install -r requirements.txt
 python -m pytest -q      # no network: the model and the image studio are faked
 ```
 
-The PDF tests run only when a Chromium is available. Documentation of the HTTP API is in `docs/API.md`.
-
-## A real run
-
-On a Windows PC with a local 27B model served by llama.cpp: a seven-slide sales plan for a fictional shop, from a
-brief and one pasted report. The outline took 155 s; with slides written one after another each took about 75 s, which
-is why they are now written three at a time. The model used only the report's figures: a bar chart of the four
-quarters, the customer figures in two columns, and, after the feedback "remove the gross-margin sentence, it is not in
-the report; show the 70,000 EUR breakdown as a bar chart", a slide with that exact breakdown and without the sentence.
-The check reported no unsourced figure. PPTX and PDF exports were opened: native charts, speaker notes, the theme's
-fonts embedded in the PDF. The image studio drew a 16:9 picture for one slide in 79 s. An assistant connected over
-MCP listed the decks, ran the check and exported the PDF in four rounds. Four faults found in that run are fixed and
-covered by tests: theme fonts lost in the HTML, bare thousands on native charts, a bridge that called a running app
-stopped when it could not read its token, and an image call to a tool the studio does not have.
-
-## Limits
-
-- With an attached template, preview and HTML place interactive objects over the source branding, whose
-  background is rendered by an installed local office slide engine on Windows. PDF is the native PPTX
-  rendering. HTML is self-contained with click stages. Without that engine, template PDF/HTML and preview report `pdf_unavailable`.
-  A rendered preview is cached by deck state. `deck_check` then reports native text bounds that exceed
-  their frames; a check before rendering reports that native review is still needed.
-  Source animations and transitions are not copied; authored click stages are added. Automatic slot selection is a starting point; use the
-  inspected shape IDs and explicit bindings for complex reference decks.
-
-Template bindings also accept `title_frame`, `subtitle_frame` (CSS pixel coordinates),
-`title_font_points` and `chart_font_points`. These controls retain the original master and branding while
-fitting longer titles and setting readable chart labels. Explicit line breaks count during text fitting.
-
-- A picture takes as long as the studio needs to render it; the request waits up to `CICERO_IMAGE_TIMEOUT` seconds.
-  If that time passes the render keeps running in the studio and is not submitted again. Only one image is taken
-  per request, from a studio on this machine; images over 15 MB or not PNG, JPEG or WEBP are refused.
-- The PDF export needs Chromium (`python -m playwright install chromium`, or a system Edge or Chrome). Without it,
-  exporting `pdf` fails with the code `pdf_unavailable` and the other formats keep working.
-- Fonts are those of the theme; a machine without them substitutes another and lines may wrap differently. The
-  fitting leaves a small safety margin for that.
-- Text fitting is an estimate from character widths, not a font-metrics measurement.
-- Charts: bar, line and pie; one or several series (a pie uses the first).
-- Speaker notes are not included in the HTML export.
-- Scanned PDFs have no text and are refused with a message.
-
-## License
-
-See `LICENSE`.
-
-## Draft batches for large presentations
-
-`slides_add(deck_id, batch_key, slides)` appends several draft slides, with their notes, charts and source IDs, in one transaction. Retry the same key and content after an interrupted response to recover the original slide IDs. A reused key with different content is rejected. Existing slides and approvals are preserved; the batch does not approve slides. The whole batch rolls back if any slide fails validation.
-
-When a slide cites specific sources, `deck_check` checks its figures against those sources. Example numbers in another source or in the brief do not count as evidence for that slide. This checks numeric presence, not the meaning of a claim; factual review remains necessary.
-
-`slide_edit_text` changes one title, subtitle, note or bullet item without rebuilding the other blocks. Editing a bullet uses zero-based block/item indices; charts and other bullets remain intact, and the edit creates a normal draft revision.
-
-For an existing figure, use `asset_import`, then `slide_set_image(deck_id, slide_id, asset_id, caption?)`. The first image is selected by default; `image_index` counts only image blocks, and an index equal to the image count appends. Omitted captions stay unchanged; explicit `null` clears one. Other blocks, notes, title, sources and layout are preserved. An identical retry creates no extra image or revision. Changes create draft revisions and can be undone with `slide_revert`. Optional `expected_revision` detects a concurrent edit (409 `conflict`); read the slide again before retrying.
-
-### Timed rehearsal planning
-
-`deck_rehearsal(deck_id, duration_minutes, words_per_minute, pause_seconds, main_slides)` creates a per-slide schedule from speaker notes. `main_slides` selects the leading slides of the talk; the rest are listed as support. The slots sum exactly to the target, while a separate estimate reports whether the notes fit at the chosen pace, including pauses. Missing notes leave the total estimate unknown. Planning never claims an oral rehearsal has been measured and does not modify notes, revisions or approvals.
-
-### Local VectorCraft and DesignCraft
-
-Set `CICERO_VECTORCRAFT_CLI` and `CICERO_DESIGNCRAFT_CLI` to the installed portable executable paths. Cicero starts each app as a local headless MCP server and places its app data under Cicero's own `data/craft-runs` folder. The current real artifact tests use the verified VectorCraft 0.3.1 and DesignCraft 0.2.1 portable builds; other compatible releases are discovered at runtime. No account or remote service is required.
-
-`craft_discover(app)` returns the full native MCP tool list and input schemas. `craft_call(app, calls)` dispatches native tools by their original names and arguments, in order, and returns the complete text or image content. This keeps the apps' existing MCP surface available through Cicero.
-
-Tool names: `craft_discover`, `craft_call`, `vector_figure_create`, and `deck_handout_designcraft`. Discovery includes native tools, prompts, resources, and resource templates when the installed app exposes them. Dispatch accepts `kind: "tool"`, `"prompt"`, or `"resource"`; a server which does not implement an optional MCP method reports an empty inventory for that method.
-
-`vector_figure_create(deck_id, slide_id, title, shape, fill, stroke, replace_block_index?)` creates an editable VectorCraft document, SVG, and PNG preview, stores a managed copy, and adds it to the slide as a figure. To correct an existing figure, pass its returned `block_index` as `replace_block_index`; the other blocks, title and notes remain intact. PPTX contains the SVG picture and a PNG compatibility image. The generated `.vectorcraft`, `.svg`, and `.png` files live in the deck's assets; source files are not edited.
-
-As an alternative to environment variables, store executable paths in the local, untracked `data/craft-engines.json`: `{"vectorcraft":{"executable":"..."},"designcraft":{"executable":"..."}}`. Each `craft_call` batch opens a fresh native process. Keep dependent commands in one batch and save the native document before returning; selection and undo history do not persist between batches. Gutenberg provides persistent editorial sessions for longer publishing workflows.
-
-The vector source is editable in VectorCraft. PPTX embeds the SVG as a picture with PNG fallback, not native shape geometry of a presentation file; the tool reports this distinction. Handouts embed placed raster frames (including PNG fallbacks for SVG assets), while chart blocks contribute text values rather than native charts.
-
-`deck_handout_designcraft(deck_id)` creates one editable A4 DesignCraft page per slide with separate heading and body frames, then renders a PNG preview for every page. Text, speaker notes and image captions are carried over; charts contribute their values. Raster images become placed graphic frames, and VectorCraft SVG assets use their stored PNG fallback in the handout. The native project is copied and reopened before rendering, so the downloadable `.designcraft` is verified to retain its embedded images without Cicero asset links. Text that overflows fails with a clear error instead of returning an incomplete handout. The `.designcraft` file and each PNG are downloadable from the deck's export list. SVG source remains in Cicero's asset and presentation workflows; this handout does not claim editable vector content, PDF export or branded layout parity with the source deck.
-
-## Shared Faustus assistant
-
-The Faustus button mounts the common panel served by the configured Faustus service. Conversation storage, model choice, streaming, recovery and project memory live in Faustus. Cicero supplies its data-space identity, deck, selected slide/revision, editor selection and unsaved slide draft. Its 79 native domain tools and slide revisions remain available. Existing decks, notes, sources and manual unsaved edits are preserved. Configure CICERO_FAUSTUS_URL or the existing backend.json Faustus connection. This requires a reachable Faustus service with the shared copilot contract; no private chat/model fallback is created.
-
-## Skills for the agents that connect
-
-This app carries procedures from the skill library of the family's workspace for the agents that connect to it: `presentation-from-brief`, `diagram-authoring`, `image-composition`, `deep-research`. They are named in what an agent reads on connecting, read with `skills_list` and `skill_read`, searched and assigned with `skills_library` and `skills_assign`, and offered as prompts. The person chooses them on the skills page (`/api/agent/skills/page`) or in the hub's Skills tab; the `skills` block of `faustus-plugin.json` holds what the app asks for by default.
+The PDF tests run only when a Chromium is available. Licence: see `LICENSE`.
