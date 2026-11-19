@@ -129,5 +129,5 @@
       "panel": "/api/copilot/panel.js"
     }
   },
-  "skills": {"slugs": ["presentation-from-brief", "diagram-authoring", "image-composition", "deep-research"], "limit": 4}
+  "skills": {"slugs": ["presentation-from-brief", "diagram-authoring", "image-composition", "deep-research", "studio-cicero-deck-and-rehearsal"], "limit": 5}
 }
