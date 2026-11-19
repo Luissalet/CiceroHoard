@@ -87,3 +87,17 @@ def test_deleting_the_deck_forgets_its_defects(services):
     _call(services, "deck_defects_receive", {"deck_id": deck["id"], "origin": "a", "defects": [{"slide_id": weak["id"], **OBJECTION}]})
     decks.delete_deck(services, deck["id"], confirm=True)
     assert services.db.get_setting("defects:" + deck["id"]) is None
+
+
+def test_pending_keys_keep_their_open_defects_until_judged(services):
+    """A rehearsal that could not judge an objection names it in pending: its open defect stays, nothing new opens."""
+    deck, weak, fine = _two_slides(services)
+    origin = "hypatia:rehearsal/s1"
+    _call(services, "deck_defects_receive", {"deck_id": deck["id"], "origin": origin,
+                                             "defects": [{"slide_id": weak["id"], **OBJECTION, "key": "q1"}]})
+    unjudged = _call(services, "deck_defects_receive", {"deck_id": deck["id"], "origin": origin, "defects": [],
+                                                        "pending": ["q1", "q-never-flagged"]})
+    assert unjudged["resolved"] == [] and unjudged["open_total"] == 1 and len(unjudged["pending"]) == 1
+    assert [i["slide_id"] for i in services.check(deck["id"])["issues"] if i["kind"] == "rehearsal_objection"] == [weak["id"]]
+    judged = _call(services, "deck_defects_receive", {"deck_id": deck["id"], "origin": origin, "defects": []})
+    assert len(judged["resolved"]) == 1 and judged["open_total"] == 0

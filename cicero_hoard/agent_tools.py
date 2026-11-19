@@ -926,7 +926,8 @@ TOOLS.extend([
     _accountable(Tool("deck_defects_receive",
          "Receive slide defects from a rehearsal: each slide with the objection it did not withstand. Defectos.\n"
          "origin names the sender and stays the same across runs; the list is its whole current verdict, so open defects of that origin\n"
-         "missing from it are closed as resolved. Open ones show in deck_check (kind rehearsal_objection). Undoable.\n"
+         "missing from it are closed as resolved, except the keys in pending (not judged this time), which stay open.\n"
+         "Open ones show in deck_check (kind rehearsal_objection). Undoable.\n"
          "Sinónimos: devolver diapositiva, objeción no respondida, diapositiva floja, defecto reproducible.",
          defects.ReceiveArgs, _ann(False, False, True), defects.receive)),
     Tool("deck_defects",

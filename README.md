@@ -44,7 +44,7 @@ Sources are read on your computer; only short numbered excerpts go to the model,
 - Import CSV, TSV and XLSX as immutable datasets, filter, group and sort them reproducibly, map them to charts and tables, and link them to local or URL sources that refresh as snapshots.
 - Live presentation with separate presenter and audience URLs, stages, blackout, timer, audience polls and shared editing presence; the audience view never shows speaker notes.
 - Timed rehearsal planning from the speaker notes, and measured rehearsals from the presenter console compared with the plan.
-- Slide defects sent back by an objection rehearsal: each slide with the objection it did not withstand, its expected answer and evidence. Open defects show in the deck check and close when the next rehearsal verdict no longer has them.
+- Slide defects sent back by an objection rehearsal: each slide with the objection it did not withstand, its expected answer and evidence. Open defects show in the deck check and close when the next rehearsal verdict no longer has them; one the rehearsal could not judge stays open.
 
 ### Exports
 - PPTX with real text boxes, speaker notes and native editable charts (16:9 or the template's size).

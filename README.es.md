@@ -44,7 +44,7 @@ Las fuentes se leen en tu ordenador; al modelo solo van extractos cortos y numer
 - Importa CSV, TSV y XLSX como conjuntos inmutables, fíltralos, agrúpalos y ordénalos de forma reproducible, asócialos a gráficos y tablas y enlázalos a fuentes locales o URL que se refrescan como instantáneas.
 - Presentación en directo con URL separadas para presentador y público, pasos, pantalla en negro, cronómetro, encuestas al público y presencia de edición compartida; la vista del público nunca muestra las notas del orador.
 - Planificación de ensayos con tiempo a partir de las notas del orador y ensayos medidos desde la consola del presentador, comparados con el plan.
-- Defectos de diapositiva devueltos por un ensayo de objeciones: cada diapositiva con la objeción que no aguantó, la respuesta esperada y la evidencia. Los abiertos aparecen en la comprobación de la presentación y se cierran cuando el siguiente veredicto del ensayo ya no los trae.
+- Defectos de diapositiva devueltos por un ensayo de objeciones: cada diapositiva con la objeción que no aguantó, la respuesta esperada y la evidencia. Los abiertos aparecen en la comprobación de la presentación y se cierran cuando el siguiente veredicto del ensayo ya no los trae; los que el ensayo no pudo juzgar siguen abiertos.
 
 ### Exportaciones
 - PPTX con cuadros de texto reales, notas del orador y gráficos nativos editables (16:9 o el tamaño de la plantilla).

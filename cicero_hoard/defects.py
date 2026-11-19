@@ -3,7 +3,8 @@
 A rehearsal station (Hypatia's objection rehearsal) checks each slide against hard questions and sends back the ones whose content
 does not answer them. Each defect names the slide, the objection, the expected answer and the evidence behind it, and where it came
 from (``origin``). Receiving a station's list again is its complete current verdict: open defects of that origin that are not in the
-new list are closed as resolved, so fixing the slide and re-running the rehearsal clears the warning. Defects live in the deck's
+new list are closed as resolved, so fixing the slide and re-running the rehearsal clears the warning. Objections the station could
+not judge this time are named in ``pending``: their open defects stay as they are, since no verdict is not a fix. Defects live in the deck's
 settings (``defects:<deck>``), never in the slides; open ones show up in ``deck_check`` as ``rehearsal_objection`` warnings.
 """
 from __future__ import annotations
@@ -47,6 +48,8 @@ class ReceiveArgs(BaseModel):
                         description="Who sends them, stable across runs (e.g. hypatia:rehearsal/<subject id>).")
     defects: list[DefectIn] = Field(default_factory=list, max_length=200,
                                     description="Every slide that fails now. An empty list closes all open defects of this origin.")
+    pending: list[str] = Field(default_factory=list, max_length=400,
+                               description="Keys of objections not judged this time: their open defects stay open, none is opened.")
 
 
 class ListArgs(BaseModel):
@@ -109,9 +112,14 @@ def receive(svc, a: ReceiveArgs) -> dict:
             else:
                 kept.append(current["id"])
             current.update(fields, status="open", resolved_at=None, times_flagged=int(current.get("times_flagged") or 1) + 1)
-    resolved = []
+    unjudged = {(a.origin, k.strip()) for k in a.pending if k.strip()} - seen
+    resolved, pending = [], []
     for item in items:
-        if item["origin"] == a.origin and item["status"] == "open" and (item["origin"], item["key"]) not in seen:
+        if item["origin"] != a.origin or item["status"] != "open" or (item["origin"], item["key"]) in seen:
+            continue
+        if (item["origin"], item["key"]) in unjudged:
+            pending.append(item["id"])
+        else:
             item.update(status="resolved", resolved_at=now, resolved_by=a.origin)
             resolved.append(item["id"])
     if len(items) > MAX_DEFECTS:  # forget the oldest closed ones first
@@ -119,8 +127,9 @@ def receive(svc, a: ReceiveArgs) -> dict:
         drop = {i["id"] for i in closed[: len(items) - MAX_DEFECTS]}
         items = [i for i in items if i["id"] not in drop]
     svc.db.set_setting(_key(a.deck_id), items)
-    svc.emit("cicero.deck.defects", {"id": a.deck_id, "origin": a.origin, "open": len(seen), "resolved": len(resolved)})
+    svc.emit("cicero.deck.defects", {"id": a.deck_id, "origin": a.origin, "open": len(seen) + len(pending), "resolved": len(resolved)})
     return {"deck_id": a.deck_id, "origin": a.origin, "opened": opened, "reopened": reopened, "still_open": kept, "resolved": resolved,
+            "pending": pending,
             "open_total": sum(1 for i in items if i["status"] == "open"),
             "next": "Fix each slide (slide_edit_text / slide_update), then run the rehearsal check again: it closes what now holds."}
 
