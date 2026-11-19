@@ -235,6 +235,8 @@ class Services:
         deck = store.deck_view(self, deck_id)
         sources = store.source_texts(self, deck_id)
         issues=check_deck(deck, sources, self.assets_lookup())
+        from .defects import check_issues as defect_issues
+        issues.extend(defect_issues(self, deck))
         result={"issues":issues}
         if deck.get('template'):
             folder=native_slides.cache_folder(self.config.data_dir,deck)

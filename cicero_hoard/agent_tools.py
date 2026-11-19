@@ -917,6 +917,24 @@ TOOLS.extend([
          rehearsal_runs.RunsArgs, _ann(False, False, False), rehearsal_runs.run, capped=False),
 ])
 
+from . import defects
+AGENT_INSTRUCTIONS += """\nSlide defects: a rehearsal station (Hypatia's objection rehearsal) sends back, with deck_defects_receive, each slide that does not
+answer a hard question, with the expected answer and the evidence. deck_check shows them (kind rehearsal_objection); deck_defects lists them.
+Fix the slide from the cited evidence (never invent the answer), then ask the rehearsal to check again: its new verdict closes what now holds."""
+agent_undo.HOOKS["deck_defects_receive"] = {"capture": defects.capture, "track": defects.track, "undo": defects.undo}
+TOOLS.extend([
+    _accountable(Tool("deck_defects_receive",
+         "Receive slide defects from a rehearsal: each slide with the objection it did not withstand. Defectos.\n"
+         "origin names the sender and stays the same across runs; the list is its whole current verdict, so open defects of that origin\n"
+         "missing from it are closed as resolved. Open ones show in deck_check (kind rehearsal_objection). Undoable.\n"
+         "Sinónimos: devolver diapositiva, objeción no respondida, diapositiva floja, defecto reproducible.",
+         defects.ReceiveArgs, _ann(False, False, True), defects.receive)),
+    Tool("deck_defects",
+         "List a deck's slide defects: slide, objection, expected answer, evidence and origin. Defectos.\n"
+         "slide_changed says the slide was edited since; include_resolved adds the closed ones. Sinónimos: objeciones pendientes, qué diapositivas no aguantan el ensayo.",
+         defects.ListArgs, _ann(True, False, True), defects.listing, capped=False),
+])
+
 TOOLS_BY_NAME = {t.name: t for t in TOOLS}
 
 
