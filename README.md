@@ -91,6 +91,8 @@ Limits: the PDF export needs Chromium (or a system Edge or Chrome); without it e
 
 ## Connection with Faustus and Hoard Hub
 
+Declares production handoffs from report to editable deck, and from deck to rehearsal notes or presentation export.
+
 - `faustus-plugin.json` describes the plugin. `mcp_server.py` is the shared Hoard Link stdio bridge: it reads `data/mcp-token`, fetches the tool list from the running app, forwards each call and starts the app if it is not running (`CICERO_BRIDGE_AUTOSTART=0` turns that off). Register it with `CICERO_URL` (default `http://127.0.0.1:5194`) and `CICERO_TOKEN_FILE`.
 - Accountable agent writes: every non-read tool needs a `reason` of 3 to 300 characters, each write is journalled in `data/agent_journal.jsonl`, a whole agent session can be previewed and undone, and tokens can be minted with `read_only`, `drafts` or `all` profiles.
 - Decks are addressable as `hoard://cicero/deck/<id>`. Events for deck, outline, slides, export and theme creation go to the hub bus. Themes from a design system are linked to it. Images come from Prospero's Hoard when it runs; only loopback addresses are contacted.
