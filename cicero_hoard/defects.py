@@ -4,8 +4,10 @@ A rehearsal station (Hypatia's objection rehearsal) checks each slide against ha
 does not answer them. Each defect names the slide, the objection, the expected answer and the evidence behind it, and where it came
 from (``origin``). Receiving a station's list again is its complete current verdict: open defects of that origin that are not in the
 new list are closed as resolved, so fixing the slide and re-running the rehearsal clears the warning. Objections the station could
-not judge this time are named in ``pending``: their open defects stay as they are, since no verdict is not a fix. Defects live in the deck's
-settings (``defects:<deck>``), never in the slides; open ones show up in ``deck_check`` as ``rehearsal_objection`` warnings.
+not judge this time are named in ``pending``: their open defects stay as they are, since no verdict is not a fix. When the station
+takes a verdict back (its undo) it sends the previous one again with ``reopen``, the defects the taken-back verdict closed: those
+still pending open again exactly as they were. Defects live in the deck's settings (``defects:<deck>``), never in the slides; open
+ones show up in ``deck_check`` as ``rehearsal_objection`` warnings.
 """
 from __future__ import annotations
 
@@ -50,6 +52,8 @@ class ReceiveArgs(BaseModel):
                                     description="Every slide that fails now. An empty list closes all open defects of this origin.")
     pending: list[str] = Field(default_factory=list, max_length=400,
                                description="Keys of objections not judged this time: their open defects stay open, none is opened.")
+    reopen: list[str] = Field(default_factory=list, max_length=400,
+                              description="Defect ids a verdict now taken back closed (the station's undo): those in pending open again as they were.")
 
 
 class ListArgs(BaseModel):
@@ -113,6 +117,12 @@ def receive(svc, a: ReceiveArgs) -> dict:
                 kept.append(current["id"])
             current.update(fields, status="open", resolved_at=None, times_flagged=int(current.get("times_flagged") or 1) + 1)
     unjudged = {(a.origin, k.strip()) for k in a.pending if k.strip()} - seen
+    reopen = set(a.reopen)
+    for item in items:
+        if item["id"] in reopen and item["origin"] == a.origin and item["status"] != "open" and (item["origin"], item["key"]) in unjudged:
+            item.update(status="open", resolved_at=None)
+            item.pop("resolved_by", None)
+            reopened.append(item["id"])
     resolved, pending = [], []
     for item in items:
         if item["origin"] != a.origin or item["status"] != "open" or (item["origin"], item["key"]) in seen:

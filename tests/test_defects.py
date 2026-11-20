@@ -101,3 +101,26 @@ def test_pending_keys_keep_their_open_defects_until_judged(services):
     assert [i["slide_id"] for i in services.check(deck["id"])["issues"] if i["kind"] == "rehearsal_objection"] == [weak["id"]]
     judged = _call(services, "deck_defects_receive", {"deck_id": deck["id"], "origin": origin, "defects": []})
     assert len(judged["resolved"]) == 1 and judged["open_total"] == 0
+
+
+def test_reopen_brings_back_a_pending_defect_a_taken_back_verdict_closed(services):
+    """Undo of the verdict that closed a pending objection: the previous verdict comes back with reopen, and the defect is open again as it was."""
+    deck, weak, fine = _two_slides(services)
+    origin = "hypatia:rehearsal/s1"
+    first = _call(services, "deck_defects_receive", {"deck_id": deck["id"], "origin": origin,
+                                                     "defects": [{"slide_id": weak["id"], **OBJECTION, "key": "q1"}]})
+    _call(services, "slide_edit_text", {"deck_id": deck["id"], "slide_id": weak["id"], "field": "notes", "text": "Cuatro unidades."})
+    _call(services, "deck_defects_receive", {"deck_id": deck["id"], "origin": origin, "defects": [], "pending": ["q1"]})
+    closing = _call(services, "deck_defects_receive", {"deck_id": deck["id"], "origin": origin, "defects": []})
+    assert closing["resolved"] == first["opened"] and closing["open_total"] == 0
+    before = _call(services, "deck_defects", {"deck_id": deck["id"], "include_resolved": True})["defects"][0]
+
+    restored = _call(services, "deck_defects_receive", {"deck_id": deck["id"], "origin": origin, "defects": [],
+                                                        "pending": ["q1", "q-never-flagged"], "reopen": closing["resolved"]})
+    assert restored["reopened"] == first["opened"] and restored["open_total"] == 1 and restored["resolved"] == []
+    [row] = _call(services, "deck_defects", {"deck_id": deck["id"], "include_resolved": True})["defects"]
+    assert row["status"] == "open" and row["resolved_at"] is None and row["slide_changed"] is True
+    assert {k: row[k] for k in ("slide_fingerprint", "times_flagged", "feedback")} == \
+        {k: before[k] for k in ("slide_fingerprint", "times_flagged", "feedback")}
+    issues = [i for i in services.check(deck["id"])["issues"] if i["kind"] == "rehearsal_objection"]
+    assert [i["slide_id"] for i in issues] == [weak["id"]] and "cambiado" in issues[0]["message"]
