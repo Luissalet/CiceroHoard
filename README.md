@@ -41,7 +41,7 @@ Sources are read on your computer; only short numbered excerpts go to the model,
 - Images: upload your own or ask Prospero's Hoard for one per slide.
 
 ### Data and live presentation
-- Import CSV, TSV and XLSX as immutable datasets, filter, group and sort them reproducibly, map them to charts and tables, and link them to local or URL sources that refresh as snapshots.
+- Import CSV, TSV and XLSX as immutable datasets, filter, group and sort them reproducibly, map them to charts and tables, and link them to local or URL sources, spreadsheets, SQL queries or a Nightingale chart or table that refresh as snapshots; a Nightingale source keeps its dataset, version, query and fingerprint in the snapshot's origin.
 - Live presentation with separate presenter and audience URLs, stages, blackout, timer, audience polls and shared editing presence; the audience view never shows speaker notes.
 - Timed rehearsal planning from the speaker notes, and measured rehearsals from the presenter console compared with the plan.
 - Slide defects sent back by an objection rehearsal: each slide with the objection it did not withstand, its expected answer and evidence. Open defects show in the deck check and close when the next rehearsal verdict no longer has them; one the rehearsal could not judge stays open.
