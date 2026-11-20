@@ -27,7 +27,7 @@ provide the available visual evidence; this record introduces no new identity.
 
 This surface record applies Impeccable document to the incumbent Operate panel in `client/src/pages/deck/ChromeEditor.jsx`, its placement in `client/src/pages/deck/Export.jsx` and the shared settings in `cicero_hoard/chrome.py`. It captures existing behaviour and visual relationships within the isolated combination; it establishes no replacement world. The direction contract above is retained as local history. Its reference to a DESIGN.md deliverable does not establish an existing root file or require creating one for this scoped record.
 
-The combination preserves the earlier WIP that Luis authorised keeping alongside figures. Formal combined review, integration and installation remain pending; the evidence below does not establish every retained WIP feature as newly verified. The companion `.impeccable/surfaces/export-chrome.json` is surface-scoped. No root PRODUCT.md, DESIGN.md or design sidecar is created.
+The combination preserves the earlier WIP alongside figures. Formal combined review, integration and installation remain pending; the evidence below does not establish every retained WIP feature as newly verified. The companion `.impeccable/surfaces/export-chrome.json` is surface-scoped. No root PRODUCT.md, DESIGN.md or design sidecar is created.
 
 **Key Characteristics:**
 

@@ -135,7 +135,7 @@
     "combined1021": {
       "recordedAt": "2026-10-20T14:23:21.781143Z",
       "mode": "Operate",
-      "status": "Isolated combination retaining pre-existing WIP authorised by Luis; formal combined review, integration and installation pending.",
+      "status": "Isolated combination retaining pre-existing WIP; formal combined review, integration and installation pending.",
       "authority": "Incumbent implementation and docs/design/figures.md; PRODUCT.md and DESIGN.md absent. No replacement world or root design files created.",
       "sourceFiles": [
         "client/src/pages/deck/BlockEditor.jsx",
