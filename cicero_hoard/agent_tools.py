@@ -39,6 +39,7 @@ For CSV/TSV/XLSX, dataset_import -> dataset_get -> optional dataset_transform ->
 Resolve ambiguous separators with number_format es/en; attach returned source_ids through slide_visual_update.
 Imported and derived data are immutable snapshots. For automatic local/URL updates use dataset_link -> dataset_bind;
 dataset_links reports schedule/errors; dataset_link_control refreshes, pauses, resumes or unlinks without deleting snapshots.
+Figures from Nightingale: dataset_connect kind=nightingale (chart_id or dataset) -> dataset_bind; never retype them.
 Freeform block.frame fractions position content inside the body region; font_size is explicit. Check overlaps and fit.
 Images support contain/cover and normalized crop focus. Reuse stable block IDs between adjacent slides for deck_transitions morph;
 inspect reports matched/entering/leaving IDs. Group, easing, duration and unmatched settings control web morph.
@@ -788,7 +789,7 @@ TOOLS.extend([
     _accountable(Tool('deck_visual_lab','Generate content-preserving layouts, render real PNG evidence, compare, critique and apply variants.\ninclude_image returns a native MCP image. benchmark uses baseline_id; scores measure constraints, not universal aesthetic superiority.',visual_lab.LabArgs,_ann(False,False,False),visual_lab.run,capped=False,timeout_s=600)),
     Tool('deck_poll','Create audience polls, vote, inspect counts, open/close, reset or obtain a poll block.\nVotes persist; a participant may replace their choice. Web is interactive; exported files use snapshots.',advanced.PollArgs,_ann(False,False,False),advanced.poll,capped=False),
     Tool('slide_collaborate','Join or merge a persistent Yjs collaborative slide document and publish presence.\nText updates converge; patches use title/subtitle/notes/blocks. No private account is required.',advanced.CollaborationArgs,_ann(False,False,False),advanced.collaboration,capped=False),
-    Tool('dataset_connect','Connect a cloud spreadsheet or SQL query to the immutable scheduled data worker.\nPublic sheets or configured credentials; SQLAlchemy databases use read queries. Returns link_id for dataset_bind.',connectors.ConnectorArgs,_ann(False,False,False),connectors.create,capped=False,timeout_s=120),
+    Tool('dataset_connect','Connect a cloud spreadsheet, SQL query or Nightingale chart/table to the scheduled data worker.\nPublic sheets or configured credentials; SQLAlchemy databases use read queries; kind=nightingale takes a chart_id or dataset through the Hub with its provenance (dataset, version, fingerprint). Returns link_id for dataset_bind. Conectar datos de Nightingale.',connectors.ConnectorArgs,_ann(False,False,False),connectors.create,capped=False,timeout_s=120),
 ])
 
 

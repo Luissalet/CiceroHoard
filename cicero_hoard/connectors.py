@@ -1,4 +1,4 @@
-"""Tabular cloud and database adapters feeding the existing immutable snapshot worker."""
+"""Tabular cloud, database and Nightingale adapters feeding the existing immutable snapshot worker."""
 import csv,io,json
 from pathlib import Path
 from typing import Literal,Optional,Any
@@ -12,7 +12,7 @@ from .util import jdump
 
 class ConnectorArgs(BaseModel):
     deck_id:str
-    kind:Literal['sheet','database']
+    kind:Literal['sheet','database','nightingale']
     title:str=''
     spreadsheet_id:str=''
     range:str='Sheet1'
@@ -22,6 +22,10 @@ class ConnectorArgs(BaseModel):
     database_url:str=''
     query:str=''
     parameters:dict[str,Any]=Field(default_factory=dict)
+    chart_id:Optional[int]=Field(None,description='nightingale: a saved Nightingale chart; its figures as the chart shows them.')
+    dataset:str=Field('',description='nightingale: a Nightingale dataset, as a table of its current version (instead of chart_id).')
+    columns:list[str]=Field(default_factory=list,description='nightingale: table columns, in order; all when empty.')
+    filter:str=Field('',description='nightingale: a SQL WHERE fragment for the table rows.')
     interval_s:float=Field(60,gt=0,allow_inf_nan=False)
     number_format:datasets.NumberFormat='auto'
 
@@ -48,6 +52,8 @@ def read(svc,deck_id,definition):
                 response=client.get(url,params={'format':'csv','gid':adapter.get('gid','0'),'range':adapter.get('range') or None})
                 response.raise_for_status();data=response.content
         origin={'connector':'sheet','spreadsheet_id':sid,'range':adapter.get('range')}
+    elif kind=='nightingale':
+        return _nightingale(svc,deck_id,definition,adapter)
     else:
         from sqlalchemy import create_engine,text
         from sqlalchemy.engine import make_url
@@ -69,9 +75,29 @@ def read(svc,deck_id,definition):
     return datasets.import_data(svc,datasets.ImportArgs(deck_id=deck_id,title=definition.get('title',''),number_format=definition.get('number_format','auto')),
                                 data,'connector.csv',origin)
 
+def _nightingale(svc,deck_id,definition,adapter):
+    """The chart or table Nightingale hands over (data_handoff through the Hub): its own figures, never retyped, with the
+    dataset, version, query, source and fingerprint they come from kept in the snapshot's origin."""
+    request={k:adapter[k] for k in ('chart_id','dataset','columns','filter') if adapter.get(k)}
+    answer=svc.family_call('nightingale','data_handoff',request,timeout=60)
+    result=answer.get('result') if answer.get('ok') else None
+    if not isinstance(result,dict) or not isinstance(result.get('csv'),str):
+        raise CiceroError("Nightingale did not hand over the data: "+str(answer.get('error') or (result or {}).get('error') or 'no answer')[:300]
+                          +". Start Nightingale's Hoard from the Hub and refresh the link.")
+    provenance=result.get('provenance') or {}
+    origin={'connector':'nightingale',**{k:provenance[k] for k in ('ref','dataset','version','version_created_at','query','fingerprint','source') if k in provenance}}
+    if result.get('chart'):origin['chart']=result['chart']
+    title=definition.get('title') or result.get('title') or 'Nightingale'
+    return datasets.import_data(svc,datasets.ImportArgs(deck_id=deck_id,title=title,number_format=definition.get('number_format','auto')),
+                                result['csv'].encode('utf-8'),'nightingale.csv',origin)
+
 def create(svc,args):
     decks._deck_row(svc,args.deck_id)
     if args.kind=='database' and not args.database_url:raise CiceroError('Supply database_url and query')
+    if args.kind=='nightingale':
+        if (args.chart_id is None)==(not args.dataset):raise CiceroError('Supply a Nightingale chart_id or dataset, not both')
+        # Nightingale writes plain machine numbers (point decimals, no grouping).
+        if args.number_format=='auto':args=args.model_copy(update={'number_format':'en'})
     definition={'title':args.title,'number_format':args.number_format,'adapter':args.model_dump(exclude={'deck_id','title','interval_s','number_format'})}
     link_id=new_ulid()
     svc.db.execute('INSERT INTO data_links(id,deck_id,definition,enabled,interval_s) VALUES(?,?,?,?,?)',
