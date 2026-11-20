@@ -159,6 +159,7 @@ def delete_deck(svc: Any, deck_id: str, confirm: bool) -> dict[str, Any]:
     with svc.db.transaction() as conn:
         conn.execute("DELETE FROM decks WHERE id = ?", (deck_id,))
         conn.execute("DELETE FROM settings WHERE key = ?", ("titles:" + deck_id,))
+        conn.execute("DELETE FROM settings WHERE key = ?", ("defects:" + deck_id,))
     for a in assets:
         (svc.config.assets_dir / f"{a['id']}.{a['ext']}").unlink(missing_ok=True)
         if a["ext"] == "svg":

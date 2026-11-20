@@ -44,6 +44,7 @@ Sources are read on your computer; only short numbered excerpts go to the model,
 - Import CSV, TSV and XLSX as immutable datasets, filter, group and sort them reproducibly, map them to charts and tables, and link them to local or URL sources that refresh as snapshots.
 - Live presentation with separate presenter and audience URLs, stages, blackout, timer, audience polls and shared editing presence; the audience view never shows speaker notes.
 - Timed rehearsal planning from the speaker notes, and measured rehearsals from the presenter console compared with the plan.
+- Slide defects sent back by an objection rehearsal: each slide with the objection it did not withstand, its expected answer and evidence. Open defects show in the deck check and close when the next rehearsal verdict no longer has them; one the rehearsal could not judge stays open.
 
 ### Exports
 - PPTX with real text boxes, speaker notes and native editable charts (16:9 or the template's size).
@@ -91,7 +92,7 @@ Limits: the PDF export needs Chromium (or a system Edge or Chrome); without it e
 
 ## Connection with Faustus and Hoard Hub
 
-Declares production handoffs from report to editable deck, and from deck to rehearsal notes or presentation export.
+Declares production handoffs from report to editable deck, from deck to rehearsal notes or presentation export, and from slide defects back to the corrected deck.
 
 - `faustus-plugin.json` describes the plugin. `mcp_server.py` is the shared Hoard Link stdio bridge: it reads `data/mcp-token`, fetches the tool list from the running app, forwards each call and starts the app if it is not running (`CICERO_BRIDGE_AUTOSTART=0` turns that off). Register it with `CICERO_URL` (default `http://127.0.0.1:5194`) and `CICERO_TOKEN_FILE`.
 - Accountable agent writes: every non-read tool needs a `reason` of 3 to 300 characters, each write is journalled in `data/agent_journal.jsonl`, a whole agent session can be previewed and undone, and tokens can be minted with `read_only`, `drafts` or `all` profiles.
@@ -112,6 +113,7 @@ Declares production handoffs from report to editable deck, and from deck to rehe
 - Data: `dataset_import`, `dataset_get`, `dataset_transform`, `dataset_visual`, `dataset_link`, `dataset_links`, `dataset_link_control`, `dataset_bind`, `dataset_connect`.
 - Live and collaboration: `deck_live_start`, `deck_live_state`, `deck_live_control`, `deck_poll`, `slide_collaborate`.
 - Rehearsal and export: `deck_rehearsal`, `deck_rehearsal_runs`, `deck_export`, `deck_handout_designcraft`.
+- Defects from a rehearsal: `deck_defects_receive`, `deck_defects`.
 - Craft apps: `craft_discover`, `craft_call`, `vector_figure_create`.
 
 </details>

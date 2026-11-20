@@ -37,11 +37,13 @@ REQUIRED.update({'deck_design_audit','deck_theme_from_preset','theme_delete'})
 REQUIRED.update({'titles_overview','titles_propose','titles_apply','titles_restore','titles_mode'})
 REQUIRED.update({'deck_rehearsal_runs','deck_import_pptx'})
 READ_ONLY.add('titles_overview')
+REQUIRED.update({'deck_defects_receive','deck_defects'})
+READ_ONLY.add('deck_defects')
 
 
 def test_catalogue_has_every_tool_once():
     names = [t.name for t in at.TOOLS]
-    assert set(names) == REQUIRED and len(names) == len(set(names)) == 79
+    assert set(names) == REQUIRED and len(names) == len(set(names)) == 81
 
 
 def test_large_authored_batch_keeps_all_ids_in_its_receipt(services):
