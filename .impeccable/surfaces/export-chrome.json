@@ -79,7 +79,7 @@
     "combined1021": {
       "recordedAt": "2026-10-20T14:23:21.781143Z",
       "mode": "Operate",
-      "status": "Isolated combination retaining pre-existing WIP authorised by Luis; formal combined review, integration and installation pending.",
+      "status": "Isolated combination retaining pre-existing WIP; formal combined review, integration and installation pending.",
       "authority": "Incumbent implementation and docs/design/figures.md; PRODUCT.md and DESIGN.md absent. No replacement world or root design files created.",
       "sourceFiles": [
         "client/src/pages/deck/BlockEditor.jsx",
@@ -342,7 +342,7 @@
   ],
   "narrative": {
     "northStar": "Existing Cicero slide workbench",
-    "overview": "This surface record applies Impeccable document to the incumbent Operate panel in `client/src/pages/deck/ChromeEditor.jsx`, its placement in `client/src/pages/deck/Export.jsx` and the shared settings in `cicero_hoard/chrome.py`. It captures existing behaviour and visual relationships within the isolated combination; it establishes no replacement world. The direction contract above is retained as local history. Its reference to a DESIGN.md deliverable does not establish an existing root file or require creating one for this scoped record.\n\nThe combination preserves the earlier WIP that Luis authorised keeping alongside figures. Formal combined review, integration and installation remain pending; the evidence below does not establish every retained WIP feature as newly verified. The companion `.impeccable/surfaces/export-chrome.json` is surface-scoped. No root PRODUCT.md, DESIGN.md or design sidecar is created.",
+    "overview": "This surface record applies Impeccable document to the incumbent Operate panel in `client/src/pages/deck/ChromeEditor.jsx`, its placement in `client/src/pages/deck/Export.jsx` and the shared settings in `cicero_hoard/chrome.py`. It captures existing behaviour and visual relationships within the isolated combination; it establishes no replacement world. The direction contract above is retained as local history. Its reference to a DESIGN.md deliverable does not establish an existing root file or require creating one for this scoped record.\n\nThe combination preserves the earlier WIP alongside figures. Formal combined review, integration and installation remain pending; the evidence below does not establish every retained WIP feature as newly verified. The companion `.impeccable/surfaces/export-chrome.json` is surface-scoped. No root PRODUCT.md, DESIGN.md or design sidecar is created.",
     "keyCharacteristics": [
       "Numbering, progress and appendix settings share one compact panel.",
       "The panel stays between transitions and export actions.",
