@@ -41,7 +41,7 @@ Las fuentes se leen en tu ordenador; al modelo solo van extractos cortos y numer
 - Imágenes: sube las tuyas o pide una por diapositiva a Prospero's Hoard.
 
 ### Datos y presentación en directo
-- Importa CSV, TSV y XLSX como conjuntos inmutables, fíltralos, agrúpalos y ordénalos de forma reproducible, asócialos a gráficos y tablas y enlázalos a fuentes locales o URL que se refrescan como instantáneas.
+- Importa CSV, TSV y XLSX como conjuntos inmutables, fíltralos, agrúpalos y ordénalos de forma reproducible, asócialos a gráficos y tablas y enlázalos a fuentes locales o URL, hojas de cálculo, consultas SQL o un gráfico o tabla de Nightingale que se refrescan como instantáneas; una fuente de Nightingale guarda en el origen de la instantánea su conjunto de datos, versión, consulta y huella.
 - Presentación en directo con URL separadas para presentador y público, pasos, pantalla en negro, cronómetro, encuestas al público y presencia de edición compartida; la vista del público nunca muestra las notas del orador.
 - Planificación de ensayos con tiempo a partir de las notas del orador y ensayos medidos desde la consola del presentador, comparados con el plan.
 - Defectos de diapositiva devueltos por un ensayo de objeciones: cada diapositiva con la objeción que no aguantó, la respuesta esperada y la evidencia. Los abiertos aparecen en la comprobación de la presentación y se cierran cuando el siguiente veredicto del ensayo ya no los trae; los que el ensayo no pudo juzgar siguen abiertos.
