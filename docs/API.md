@@ -202,7 +202,10 @@ the source slide. Font overrides use points, whereas frames use CSS pixels.
 | `POST /api/agent/undo` | body `{session, agent?, dry_run?, confirm?, reason?}`; `{undone \| would_undo, conflicts, not_undoable, already_undone, complete, counts}`; `confirm: true` and `reason` are required unless `dry_run`; 404 `session_not_found` |
 | `GET/POST /api/agent/tokens`, `DELETE /api/agent/tokens/{id}` | scoped agent tokens `{agent, profile: read_only \| drafts \| all}` (main token only; a minted token is shown once) |
 
-The tools are listed in `README.md`. The REST routes above and the tools share one implementation.
+The MCP bridge reads the live catalogue from `GET /api/agent/tools`. The catalogue can include tools from the local
+skills shelf, so its size depends on the app version and local configuration. Set `HOARD_SKILLS=0` on a test
+instance to check the base catalogue alone. Slow tools include an `x-timeout-s` field, which the bridge also
+exposes inside `inputSchema` for MCP clients. The REST routes above and the tools share one implementation.
 
 ## Visual agent API
 
