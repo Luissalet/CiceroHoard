@@ -7,6 +7,7 @@ import json
 import pytest
 from fastapi.testclient import TestClient
 
+from cicero_hoard import agent_tools
 from cicero_hoard import main as main_mod
 from cicero_hoard.main import create_app
 from conftest import SOURCE_TEXT, FakeLink, make_services, png_bytes
@@ -340,7 +341,8 @@ def test_themes_and_settings(client):
 
 def test_agent_endpoints_require_the_token(client):
     tools = client.get("/api/agent/tools").json()
-    assert len(tools["tools"]) == 79 and tools["instructions"]
+    assert sorted(tool["name"] for tool in tools["tools"]) == sorted(tool.name for tool in agent_tools.TOOLS)
+    assert tools["instructions"]
     assert client.post("/api/agent/call", json={"name": "deck_list"}).status_code == 401
     assert client.post("/api/agent/call", json={"name": "deck_list"}, headers={"Authorization": "Bearer wrong"}).status_code == 401
     good = {"Authorization": f"Bearer {client.svc.token}"}

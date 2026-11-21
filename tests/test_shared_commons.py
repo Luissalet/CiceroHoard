@@ -19,7 +19,14 @@ ROOT = Path(__file__).resolve().parent.parent
 def running_app(tmp_path):
     """The real app (``python -m cicero_hoard``) in a child process on a free port."""
     port = net.free_port()
-    env = {**os.environ, "CICERO_DATA_DIR": str(tmp_path / "data"), "CICERO_PORT": str(port), "HOARD_NO_BROWSER": "1", "PYTHONPATH": str(ROOT)}
+    env = {
+        **os.environ,
+        "CICERO_DATA_DIR": str(tmp_path / "data"),
+        "CICERO_PORT": str(port),
+        "HOARD_NO_BROWSER": "1",
+        "HOARD_SKILLS": "0",  # Exercise the app's catalogue independently of the local skills library.
+        "PYTHONPATH": str(ROOT),
+    }
     command = [sys.executable, "-m", "cicero_hoard"]
     child = subprocess.Popen(command, cwd=ROOT, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     try:
@@ -65,7 +72,10 @@ def test_the_shared_bridge_lists_and_calls_the_tools_of_the_running_app(running_
 
     tools, no_reason, created, missing, refused = asyncio.run(go())
     assert no_reason.is_error and no_reason.body["code"] == "reason_required"
-    assert len(tools) == 79 and next(t for t in tools if t["name"] == "slides_generate")["x-timeout-s"] >= 600
+    response = httpx.get(f"http://127.0.0.1:{running_app['port']}/api/agent/tools", trust_env=False)
+    response.raise_for_status()
+    assert tools == response.json()["tools"]
+    assert next(t for t in tools if t["name"] == "slides_generate")["x-timeout-s"] >= 600
     assert not created.is_error and created.body["title"] == "Vía puente"
     assert missing.is_error and missing.body["code"] == "not_found"
     assert refused.is_error and refused.body["code"] == "confirm_required"
